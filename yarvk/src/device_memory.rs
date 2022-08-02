@@ -1,7 +1,10 @@
 use crate::device::Device;
+use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+
+pub mod dedicated_memory;
 
 pub struct DeviceMemory {
     pub device: Arc<Device>,
@@ -27,6 +30,7 @@ impl DeviceMemory {
             device,
             allocation_size: 0,
             memory_type,
+            dedicated_allocate_info: None,
         }
     }
     pub fn map_memory<F: FnOnce(&mut [u8])>(
@@ -46,9 +50,7 @@ impl DeviceMemory {
             )?;
             let mapped_memory = std::slice::from_raw_parts_mut(ptr as _, size as _);
             f(mapped_memory);
-            self.device
-                .ash_device
-                .unmap_memory(self.vk_device_memory);
+            self.device.ash_device.unmap_memory(self.vk_device_memory);
             Ok(())
         }
     }
@@ -58,6 +60,7 @@ pub struct DeviceMemoryBuilder {
     device: Arc<Device>,
     allocation_size: ash::vk::DeviceSize,
     memory_type: MemoryType,
+    dedicated_allocate_info: Option<MemoryDedicatedAllocateInfo>,
 }
 
 impl DeviceMemoryBuilder {
@@ -65,12 +68,22 @@ impl DeviceMemoryBuilder {
         self.allocation_size = allocation_size;
         self
     }
+    pub fn dedicated_info(mut self, dedicated_memory_info: MemoryDedicatedAllocateInfo) -> Self {
+        self.dedicated_allocate_info = Some(dedicated_memory_info);
+        self
+    }
     pub fn build(self) -> Result<DeviceMemory, ash::vk::Result> {
         self.device.allocations.fetch_add(1, Ordering::Relaxed);
-        let vk_allocate_info = ash::vk::MemoryAllocateInfo::builder()
+        let mut allocate_info_builder = ash::vk::MemoryAllocateInfo::builder()
             .memory_type_index(self.memory_type.index)
-            .allocation_size(self.allocation_size)
-            .build();
+            .allocation_size(self.allocation_size);
+        let mut vk_dedicated_memory_info = Default::default();
+        if let Some(dedicated_memory_info) = self.dedicated_allocate_info {
+            vk_dedicated_memory_info = dedicated_memory_info.ash_builder().build();
+            allocate_info_builder =
+                allocate_info_builder.push_next(&mut vk_dedicated_memory_info);
+        }
+        let vk_allocate_info = allocate_info_builder.build();
         // Host Synchronization: none
         let vk_device_memory = unsafe {
             self.device

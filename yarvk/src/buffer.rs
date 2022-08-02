@@ -67,10 +67,30 @@ impl<const STATE: State> Drop for Buffer<STATE> {
 impl Buffer<{ Unbound }> {
     pub fn get_buffer_memory_requirements(&self) -> ash::vk::MemoryRequirements {
         unsafe {
+            // Host Synchronization: none
             self.device
                 .ash_device
                 .get_buffer_memory_requirements(self.ash_vk_buffer)
         }
+    }
+
+    pub fn get_buffer_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(
+        &self,
+    ) -> T {
+        let mut t = T::default();
+        let mut info = ash::vk::BufferMemoryRequirementsInfo2::builder()
+            .buffer(self.ash_vk_buffer)
+            .build();
+        let mut out = ash::vk::MemoryRequirements2::builder()
+            .push_next(&mut t)
+            .build();
+        unsafe {
+            // Host Synchronization: none
+            self.device
+                .ash_device
+                .get_buffer_memory_requirements2(&info, &mut out);
+        }
+        t
     }
 
     pub fn bind_memory(
@@ -79,6 +99,7 @@ impl Buffer<{ Unbound }> {
         memory_offset: ash::vk::DeviceSize,
     ) -> Result<Arc<Buffer<{ Bound }>>, ash::vk::Result> {
         // TODO why device_memory do not need to be synchronized?
+        // Host Synchronization buffer
         unsafe {
             self.device.ash_device.bind_buffer_memory(
                 self.ash_vk_buffer,
