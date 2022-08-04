@@ -16,6 +16,10 @@ Otherwise do not check, for performance purpose, and it's validation layers' job
 6. If a validation rule can be checked at compile time, it is encouraged to try, only if 
 the implementation will change the whole codes too much or makes the API hard to use.
 7. Follow Rust code styles, most of the can be checked by cargo or clippy.
+8. When turn a yarvk type to vulkan type, returning a builder instead of returning a raw ash::vk type, 
+this is because ash::vk builders have lifetimes, but the raw type doesn't. using builders with lifetime 
+can minimize the chance of accessing invalid memories.
+9. When implement codes for host synchronization, consider using & or &mut instead of locks,
 
 ## Commands:
 First, please check the "Command Properties" in the sp, for example:
@@ -42,7 +46,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         pipeline_bind_point: ash::vk::PipelineBindPoint,
         pipeline: &Pipeline,
     ) {
-      let _pool = self.command_pool.write(); // host synchornization: command buffer pool
       ...
     }
 ```

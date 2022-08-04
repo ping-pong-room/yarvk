@@ -49,6 +49,7 @@ use yarvk::pipeline::vertex_input_state::{
 use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::SubmitInfo;
+use yarvk::read_spv;
 use yarvk::render_pass::attachment::{AttachmentDescription, AttachmentReference};
 use yarvk::render_pass::render_pass_begin_info::RenderPassBeginInfo;
 use yarvk::render_pass::subpass::{SubpassDependency, SubpassDescription};
@@ -59,7 +60,6 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
-use yarvk::{read_spv};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
@@ -348,12 +348,13 @@ fn main() {
         .unwrap();
     let mut submit_info = SubmitInfo::new();
     submit_info.add_command_buffer(command_buffer);
+    let infos = &mut [&mut submit_info];
     let fence = present_queue
-        .submit(setup_commands_reuse_fence, vec![submit_info])
+        .submit(setup_commands_reuse_fence, infos)
         .expect("queue submit failed.");
-    let (fence, mut infos) = fence.wait().unwrap();
+    let (fence, infos) = fence.wait().unwrap();
     let setup_commands_reuse_fence = fence.reset().unwrap();
-    let mut submit_info = infos.pop().unwrap();
+    let submit_info = &mut infos[0];
     let setup_command_buffer = submit_info
         .take_invalid_buffers()
         .pop()
@@ -691,8 +692,9 @@ fn main() {
         .unwrap();
     let mut submit_info = SubmitInfo::new();
     submit_info.add_command_buffer(command_buffer);
+    let infos = &mut [&mut submit_info];
     let fence = present_queue
-        .submit(setup_commands_reuse_fence, vec![submit_info])
+        .submit(setup_commands_reuse_fence, infos)
         .expect("queue submit failed.");
     fence.wait().unwrap();
 
@@ -913,124 +915,117 @@ fn main() {
         .render_pass(renderpass.clone(), subpass_id0)
         .build()
         .unwrap();
+    let mut submit_info = SubmitInfo::new();
     let present_complete_semaphore = Semaphore::new(device.clone()).unwrap();
-    let rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
-    let mut submit_info_holder = Some(SubmitInfo::new());
+    let mut rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
     event_loop.run(move |event, _, control_flow| {
-        *control_flow = ControlFlow::Poll;
-        match event {
-            Event::WindowEvent {
-                event:
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            } => {
-                *control_flow = ControlFlow::Exit;
-                present_queue.wait_idle().unwrap();
-            }
-            Event::MainEventsCleared => {
-                let image = swapchain
-                    .acquire_next_image_semaphore_only(
-                        u64::MAX,
-                        present_complete_semaphore.as_ref(),
-                    )
-                    .unwrap();
-                let framebuffer = framebuffers.get(&image).unwrap();
-                let render_pass_begin_info =
-                    RenderPassBeginInfo::builder(renderpass.clone(), framebuffer.clone())
-                        .render_area(surface_resolution.into())
-                        .add_clear_value(ClearValue {
-                            color: ClearColorValue {
-                                float32: [0.0, 0.0, 0.0, 0.0],
-                            },
-                        })
-                        .add_clear_value(ClearValue {
-                            depth_stencil: ClearDepthStencilValue {
-                                depth: 1.0,
-                                stencil: 0,
-                            },
-                        })
-                        .build();
-                let command_buffer = draw_command_buffer.take().unwrap();
-                let command_buffer = command_buffer
-                    .record(CommandBufferUsageFlags::ONE_TIME_SUBMIT, |command_buffer| {
-                        command_buffer.cmd_begin_render_pass(
-                            &render_pass_begin_info,
-                            SubpassContents::INLINE,
-                            |command_buffer| {
-                                command_buffer.cmd_bind_descriptor_sets(
-                                    PipelineBindPoint::GRAPHICS,
-                                    &pipeline_layout,
-                                    0,
-                                    &descriptor_sets[..],
-                                    &[],
-                                );
-                                command_buffer.cmd_bind_pipeline(
-                                    PipelineBindPoint::GRAPHICS,
-                                    &graphic_pipeline,
-                                );
-                                command_buffer.cmd_bind_vertex_buffers(
-                                    0,
-                                    &[vertex_input_buffer.clone()],
-                                    &[0],
-                                );
-                                command_buffer.cmd_bind_index_buffer(
-                                    index_buffer.clone(),
-                                    0,
-                                    IndexType::UINT32,
-                                );
-                                command_buffer.cmd_draw_indexed(
-                                    index_buffer_data.len() as u32,
-                                    1,
-                                    0,
-                                    0,
-                                    1,
-                                );
-                            },
-                        );
-                    })
-                    .unwrap();
-                let mut submit_info = submit_info_holder.take().unwrap();
-                submit_info.clear();
+        // *control_flow = ControlFlow::Poll;
+        // match event {
+        //     Event::WindowEvent {
+        //         event:
+        //             WindowEvent::CloseRequested
+        //             | WindowEvent::KeyboardInput {
+        //                 input:
+        //                     KeyboardInput {
+        //                         state: ElementState::Pressed,
+        //                         virtual_keycode: Some(VirtualKeyCode::Escape),
+        //                         ..
+        //                     },
+        //                 ..
+        //             },
+        //         ..
+        //     } => {
+        //         *control_flow = ControlFlow::Exit;
+        //         present_queue.wait_idle().unwrap();
+        //     }
+        //     Event::MainEventsCleared => {
+                // let image = swapchain
+                //     .acquire_next_image_semaphore_only(u64::MAX, &present_complete_semaphore)
+                //     .unwrap();
+                // let framebuffer = framebuffers.get(&image).unwrap();
+                // let render_pass_begin_info =
+                //     RenderPassBeginInfo::builder(renderpass.clone(), framebuffer.clone())
+                //         .render_area(surface_resolution.into())
+                //         .add_clear_value(ClearValue {
+                //             color: ClearColorValue {
+                //                 float32: [0.0, 0.0, 0.0, 0.0],
+                //             },
+                //         })
+                //         .add_clear_value(ClearValue {
+                //             depth_stencil: ClearDepthStencilValue {
+                //                 depth: 1.0,
+                //                 stencil: 0,
+                //             },
+                //         })
+                //         .build();
+                // let command_buffer = draw_command_buffer.take().unwrap();
+                // let command_buffer = command_buffer
+                //     .record(CommandBufferUsageFlags::ONE_TIME_SUBMIT, |command_buffer| {
+                //         command_buffer.cmd_begin_render_pass(
+                //             &render_pass_begin_info,
+                //             SubpassContents::INLINE,
+                //             |command_buffer| {
+                //                 command_buffer.cmd_bind_descriptor_sets(
+                //                     PipelineBindPoint::GRAPHICS,
+                //                     &pipeline_layout,
+                //                     0,
+                //                     &descriptor_sets[..],
+                //                     &[],
+                //                 );
+                //                 command_buffer.cmd_bind_pipeline(
+                //                     PipelineBindPoint::GRAPHICS,
+                //                     &graphic_pipeline,
+                //                 );
+                //                 command_buffer.cmd_bind_vertex_buffers(
+                //                     0,
+                //                     &[vertex_input_buffer.clone()],
+                //                     &[0],
+                //                 );
+                //                 command_buffer.cmd_bind_index_buffer(
+                //                     index_buffer.clone(),
+                //                     0,
+                //                     IndexType::UINT32,
+                //                 );
+                //                 command_buffer.cmd_draw_indexed(
+                //                     index_buffer_data.len() as u32,
+                //                     1,
+                //                     0,
+                //                     0,
+                //                     1,
+                //                 );
+                //             },
+                //         );
+                //     })
+                //     .unwrap();
                 submit_info.add_wait_semaphore(
-                    present_complete_semaphore.clone(),
+                    &present_complete_semaphore,
                     PipelineStageFlags::BottomOfPipe,
                 );
-                submit_info.add_command_buffer(command_buffer);
-                submit_info.add_signal_semaphore(rendering_complete_semaphore.clone());
-                let fence = draw_commands_reuse_fence.take().unwrap();
-                let fence = present_queue
-                    .submit(fence, vec![submit_info])
-                    .expect("queue submit failed.");
-
-                let mut present_info = PresentInfo::builder()
-                    .add_swapchain_and_image(swapchain.clone(), &image)
-                    .add_wait_semaphore(rendering_complete_semaphore.clone())
-                    .build();
-                present_queue.queue_present(&mut present_info).unwrap();
-
-                let (fence, mut infos) = fence.wait().unwrap();
-                let fence = fence.reset().unwrap();
-                let mut submit_info = infos.pop().unwrap();
-                let command_buffer = submit_info
-                    .take_invalid_buffers()
-                    .pop()
-                    .unwrap()
-                    .reset()
-                    .unwrap();
-                submit_info_holder = Some(submit_info);
-                draw_command_buffer = Some(command_buffer);
-                draw_commands_reuse_fence = Some(fence);
-            }
-            _ => (),
-        }
+                // submit_info.add_command_buffer(command_buffer);
+                // submit_info.add_signal_semaphore(&rendering_complete_semaphore);
+                // let fence = draw_commands_reuse_fence.take().unwrap();
+                // let infos = &mut [&mut submit_info];
+                // let fence = present_queue
+                //     .submit(fence,infos)
+                //     .expect("queue submit failed.");
+                // let (fence, infos) = fence.wait().unwrap();
+                // let fence = fence.reset().unwrap();
+                // let command_buffer = infos[0]
+                //     .take_invalid_buffers()
+                //     .pop()
+                //     .unwrap()
+                //     .reset()
+                //     .unwrap();
+                submit_info = submit_info.clear();
+                // draw_command_buffer = Some(command_buffer);
+                // draw_commands_reuse_fence = Some(fence);
+                // let mut present_info = PresentInfo::builder()
+                //     .add_swapchain_and_image(swapchain.clone(), &image)
+                //     .add_wait_semaphore(&mut rendering_complete_semaphore)
+                //     .build();
+                // present_queue.queue_present(&mut present_info).unwrap();
+        //     }
+        //     _ => (),
+        // }
     });
 }

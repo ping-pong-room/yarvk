@@ -8,7 +8,7 @@ use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::surface::Surface;
 use ash::vk::Handle;
-use parking_lot::{RwLock};
+use parking_lot::RwLock;
 
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -230,28 +230,28 @@ impl SwapchainBuilder {
     }
 }
 
-pub struct PresentInfo {
-    wait_semaphores: Vec<Arc<Semaphore>>,
+pub struct PresentInfo<'a> {
+    wait_semaphores: Vec<&'a mut Semaphore>,
     swapchains_and_image_indices: Vec<(Arc<Swapchain>, u32)>,
     results: Vec<ash::vk::Result>,
 }
 
-impl PresentInfo {
-    pub fn builder()-> PresentInfoBuilder {
+impl<'a> PresentInfo<'a> {
+    pub fn builder() -> PresentInfoBuilder<'a> {
         PresentInfoBuilder {
             wait_semaphores: vec![],
-            swapchains_and_image_indices: vec![]
+            swapchains_and_image_indices: vec![],
         }
     }
 }
 
-pub struct PresentInfoBuilder {
-    wait_semaphores: Vec<Arc<Semaphore>>,
+pub struct PresentInfoBuilder<'a> {
+    wait_semaphores: Vec<&'a mut Semaphore>,
     swapchains_and_image_indices: Vec<(Arc<Swapchain>, u32)>,
 }
 
-impl PresentInfoBuilder {
-    pub fn add_wait_semaphore(mut self, semaphore: Arc<Semaphore>) -> Self {
+impl<'a> PresentInfoBuilder<'a> {
+    pub fn add_wait_semaphore(mut self, semaphore: &'a mut Semaphore) -> Self {
         self.wait_semaphores.push(semaphore);
         self
     }
@@ -265,7 +265,7 @@ impl PresentInfoBuilder {
         self
     }
 
-    pub fn build(self) -> PresentInfo {
+    pub fn build(self) -> PresentInfo<'a> {
         let image_counts = self.swapchains_and_image_indices.len();
         let _semaphore_counts = self.wait_semaphores.len();
         PresentInfo {
@@ -282,18 +282,16 @@ impl Queue {
         present_info: &'a mut PresentInfo,
     ) -> Result<&'a [ash::vk::Result], ash::vk::Result> {
         let queue = self;
-        let mut semaphore_locks = Vec::with_capacity(present_info.wait_semaphores.len());
+        let mut ash_vk_semaphores = Vec::with_capacity(present_info.wait_semaphores.len());
         let mut swapchain_locks = Vec::with_capacity(present_info.swapchains_and_image_indices.len());
-        let mut ash_vk_semaphores=  Vec::with_capacity(present_info.wait_semaphores.len());
-        let mut ash_vk_swapchains = Vec::with_capacity(present_info.swapchains_and_image_indices.len());
+        let mut ash_vk_swapchains =
+            Vec::with_capacity(present_info.swapchains_and_image_indices.len());
         let mut image_indices = Vec::with_capacity(present_info.swapchains_and_image_indices.len());
         for result in &mut present_info.results {
             *result = ash::vk::Result::SUCCESS;
         }
         for semaphore in &present_info.wait_semaphores {
-            let lock = semaphore.ash_vk_semaphore.write();
-            ash_vk_semaphores.push(*lock);
-            semaphore_locks.push(lock);
+            ash_vk_semaphores.push( semaphore.ash_vk_semaphore);
         }
 
         for (swapchain, index) in &present_info.swapchains_and_image_indices {
@@ -310,18 +308,18 @@ impl Queue {
             .results(present_info.results.as_mut_slice())
             .build();
 
-            // MUST VUID-VkPresentInfoKHR-swapchainCount-arraylength
-            let loader = &present_info
-                .swapchains_and_image_indices
-                .get(0)
-                .expect("swapchainCount must be greater than 0")
-                .0
-                .swapchain_loader;
-            unsafe {
-                // Host Synchronization: queue, semaphores, swapchains
-                // TODO suboptimal
-                let _suboptimal = loader.queue_present(queue.vk_queue, &ash_vk_present_info)?;
-            }
+        // MUST VUID-VkPresentInfoKHR-swapchainCount-arraylength
+        let loader = &present_info
+            .swapchains_and_image_indices
+            .get(0)
+            .expect("swapchainCount must be greater than 0")
+            .0
+            .swapchain_loader;
+        unsafe {
+            // Host Synchronization: queue, semaphores, swapchains
+            // TODO suboptimal
+            let _suboptimal = loader.queue_present(queue.vk_queue, &ash_vk_present_info)?;
+        }
 
         Ok(present_info.results.as_slice())
     }
@@ -387,11 +385,10 @@ impl Swapchain {
         unsafe {
             // Host Synchronization: swapchain semaphore fence
             let vk_swapchain = self.vk_swapchain.write();
-            let vk_semaphore = semaphore.ash_vk_semaphore.write();
             let (index, _) = self.swapchain_loader.acquire_next_image(
                 *vk_swapchain,
                 timeout,
-                *vk_semaphore,
+                semaphore.ash_vk_semaphore,
                 fence.vk_fence,
             )?;
             let image = self.images[index as usize].clone();
@@ -408,11 +405,10 @@ impl Swapchain {
         unsafe {
             // Host Synchronization: swapchain, semaphore, fence
             let vk_swapchain = self.vk_swapchain.write();
-            let vk_semaphore = semaphore.ash_vk_semaphore.write();
             let (index, _) = self.swapchain_loader.acquire_next_image(
                 *vk_swapchain,
                 timeout,
-                *vk_semaphore,
+                semaphore.ash_vk_semaphore,
                 ash::vk::Fence::null(),
             )?;
             let image = self.images[index as usize].clone();
