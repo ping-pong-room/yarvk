@@ -40,7 +40,7 @@ impl<'a> SubmitInfo<'a> {
         std::mem::take(&mut self.command_buffers)
     }
 
-    pub fn clear<'b>(mut self) -> SubmitInfo<'b> {
+    pub fn clear<'b>(mut self) {
         self.wait_semaphores.clear();
         self.signal_semaphores.clear();
         self.command_buffers.clear();
@@ -51,9 +51,6 @@ impl<'a> SubmitInfo<'a> {
         self.ash_vk_wait_dst_stage_masks.clear();
         self.ash_vk_signal_semaphores.clear();
         self.ash_vk_command_buffers.clear();
-        unsafe {
-            std::mem::transmute(self)
-        }
     }
     pub fn add_wait_semaphore(
         &mut self,
