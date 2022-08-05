@@ -78,7 +78,7 @@ impl Buffer<{ Unbound }> {
         &self,
     ) -> T {
         let mut t = T::default();
-        let mut info = ash::vk::BufferMemoryRequirementsInfo2::builder()
+        let info = ash::vk::BufferMemoryRequirementsInfo2::builder()
             .buffer(self.ash_vk_buffer)
             .build();
         let mut out = ash::vk::MemoryRequirements2::builder()
@@ -291,7 +291,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         }
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device.ash_device.cmd_bind_vertex_buffers(
                 self.vk_command_buffer,
                 first_binding,
@@ -314,7 +313,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
             .insert(buffer.ash_vk_buffer.as_raw(), buffer.clone());
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             // TODO index_type feature safety
             self.device.ash_device.cmd_bind_index_buffer(
                 self.vk_command_buffer,
@@ -335,7 +333,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             // TODO index_type feature safety
             self.device.ash_device.cmd_draw_indexed(
                 self.vk_command_buffer,

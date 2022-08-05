@@ -2,7 +2,6 @@ use crate::device::Device;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
-use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub enum CommandPoolCreateFlags {
@@ -26,7 +25,7 @@ impl CommandPoolCreateFlags {
 
 pub struct CommandPool {
     pub device: Arc<Device>,
-    pub(crate) vk_command_pool: RwLock<ash::vk::CommandPool>,
+    pub(crate) vk_command_pool: ash::vk::CommandPool,
 }
 
 impl CommandPool {
@@ -49,7 +48,7 @@ impl Drop for CommandPool {
             // Host Synchronization: commandPool
             self.device
                 .ash_device
-                .destroy_command_pool(*self.vk_command_pool.write(), None);
+                .destroy_command_pool(self.vk_command_pool, None);
         }
     }
 }
@@ -66,7 +65,7 @@ impl CommandPoolBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Arc<CommandPool>, ash::vk::Result> {
+    pub fn build(self) -> Result<CommandPool, ash::vk::Result> {
         let pool_create_info = ash::vk::CommandPoolCreateInfo::builder()
             .queue_family_index(self.queue_family_index.index)
             // Force using RESET_COMMAND_BUFFER flag
@@ -77,11 +76,10 @@ impl CommandPoolBuilder {
                 .ash_device
                 .create_command_pool(&pool_create_info, None)?
         };
-        let vk_command_pool = RwLock::new(vk_command_pool);
 
-        Ok(Arc::new(CommandPool {
+        Ok(CommandPool {
             device: self.device,
             vk_command_pool,
-        }))
+        })
     }
 }

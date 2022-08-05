@@ -211,7 +211,6 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
             .insert(dst_image.vk_image.as_raw(), dst_image.clone());
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device.ash_device.cmd_copy_buffer_to_image(
                 self.vk_command_buffer,
                 src_buffer.ash_vk_buffer,

@@ -261,7 +261,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
             }
             unsafe {
                 // Host Synchronization: command_buffer command_pool
-                let _pool = self.command_pool.vk_command_pool.write();
                 self.device.ash_device.cmd_pipeline_barrier(
                     self.vk_command_buffer,
                     vk_src_stage_mask,

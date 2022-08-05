@@ -77,7 +77,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     pub fn cmd_set_viewport(&mut self, viewports: &ash::vk::Viewport) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device
                 .ash_device
                 .cmd_set_viewport(self.vk_command_buffer, 0, &[*viewports]);
@@ -92,7 +91,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device.ash_device.cmd_set_viewport(
                 self.vk_command_buffer,
                 first_viewport,
@@ -105,7 +103,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     pub fn cmd_set_scissor(&mut self, scissor: &ash::vk::Rect2D) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device
                 .ash_device
                 .cmd_set_scissor(self.vk_command_buffer, 0, &[*scissor]);
@@ -121,7 +118,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device
                 .ash_device
                 .cmd_set_scissor(self.vk_command_buffer, first_scissor, scissors);

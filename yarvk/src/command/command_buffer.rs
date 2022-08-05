@@ -1,5 +1,3 @@
-
-
 use crate::buffer::Buffer;
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
@@ -8,7 +6,6 @@ use crate::command::command_pool::CommandPool;
 use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
 use crate::image::Image;
-
 
 use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
@@ -133,7 +130,7 @@ impl HoldingResources {
 
 pub struct CommandBuffer<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> {
     pub device: Arc<Device>,
-    pub(crate) command_pool: Arc<CommandPool>,
+    pub(crate) command_pool: CommandPool,
     pub(crate) vk_command_buffer: ash::vk::CommandBuffer,
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
@@ -151,10 +148,9 @@ impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Drop
         }
         // Host Synchronization: commandPool, each member of pCommandBuffers
         unsafe {
-            let vk_pool = self.command_pool.vk_command_pool.write();
             self.device
                 .ash_device
-                .free_command_buffers(*vk_pool, &[self.vk_command_buffer]);
+                .free_command_buffers(self.command_pool.vk_command_pool, &[self.vk_command_buffer]);
         }
     }
 }
@@ -167,11 +163,9 @@ macro_rules! reset_impls {
                 // Host Synchronization: commandBuffer, VkCommandPool
                 // DONE VUID-vkResetCommandBuffer-commandBuffer-00046
                 // DONE VUID-vkResetCommandBuffer-commandBuffer-00045
-                let pool = self.command_pool.vk_command_pool.write();
                 unsafe {
                     self.device.ash_device.reset_command_buffer(self.vk_command_buffer, ash::vk::CommandBufferResetFlags::RELEASE_RESOURCES)?
                 }
-                drop(pool);
                 Ok(unsafe { std::mem::transmute(self) })
             }
         }
@@ -183,13 +177,11 @@ reset_impls!(INITIAL, RECORDING, EXECUTABLE, INVALID);
 impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     fn end(self) -> Result<CommandBuffer<LEVEL, { EXECUTABLE }, SCOPE>, ash::vk::Result> {
         // Host Synchronization:commandBuffer, VkCommandPool
-        let pool = self.command_pool.vk_command_pool.write();
         unsafe {
             self.device
                 .ash_device
                 .end_command_buffer(self.vk_command_buffer)?;
         }
-        drop(pool);
         Ok(unsafe { std::mem::transmute(self) })
     }
 }
@@ -209,13 +201,11 @@ impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }
         let begin_info = ash::vk::CommandBufferBeginInfo::builder()
             .flags(flags)
             .build();
-        let pool = self.command_pool.vk_command_pool.write();
         unsafe {
             self.device
                 .ash_device
                 .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
         }
-        drop(pool);
         Ok(unsafe { std::mem::transmute(self) })
     }
 }
@@ -254,13 +244,11 @@ impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ SECONDARY
             .flags(flags)
             .inheritance_info(&self.inheritance_info.ash_vk_info)
             .build();
-        let pool = self.command_pool.vk_command_pool.write();
         unsafe {
             self.device
                 .ash_device
                 .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
         }
-        drop(pool);
         Ok(unsafe { std::mem::transmute(self) })
     }
 }
@@ -282,34 +270,35 @@ macro_rules! secondary_record_impls {
 secondary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
 impl CommandPool {
-    pub fn allocate_command_buffers<const LEVEL: Level>(
-        self: Arc<Self>,
-        command_buffer_count: u32,
-    ) -> Result<Vec<CommandBuffer<LEVEL, { INITIAL }, { OUTSIDE }>>, ash::vk::Result> {
-        let vk_command_pool = self.vk_command_pool.write();
+    // yarvk use one pool per command buffer
+    // Why: all vendors suggest that create Use L * T + N pools.
+    // (L = the number of buffered frames, T = the number of threads that record command buffers,
+    // N = extra pools for secondary command buffers),
+    // this leads to a fact that it's really rare to see two command buffers shared the same pool.
+    // Make the command buffer owns the pool will make the host synchronization easier.
+    pub fn allocate_command_buffer<const LEVEL: Level>(
+        self: Self,
+    ) -> Result<CommandBuffer<LEVEL, { INITIAL }, { OUTSIDE }>, ash::vk::Result> {
         let create_info = ash::vk::CommandBufferAllocateInfo::builder()
-            .command_pool(*vk_command_pool)
+            .command_pool(self.vk_command_pool)
             .level(LEVEL.to_ash())
-            .command_buffer_count(command_buffer_count)
+            .command_buffer_count(1)
             .build();
-        let vk_buffers = unsafe {
+        let mut vk_buffers = unsafe {
             // Host Synchronization: pAllocateInfo->commandPool
             self.device
                 .ash_device
                 .allocate_command_buffers(&create_info)?
         };
 
-        let buffers = vk_buffers
-            .into_iter()
-            .map(|vk_command_buffer| CommandBuffer {
-                device: self.device.clone(),
-                command_pool: self.clone(),
-                vk_command_buffer,
-                inheritance_info: DEFAULT_INHERITANCE_INFO.clone(),
-                holding_resources: Default::default(),
-                one_time_submit: false
-            })
-            .collect();
-        Ok(buffers)
+        let vk_command_buffer = vk_buffers.pop().unwrap();
+        Ok(CommandBuffer {
+            device: self.device.clone(),
+            command_pool: self,
+            vk_command_buffer,
+            inheritance_info: DEFAULT_INHERITANCE_INFO.clone(),
+            holding_resources: Default::default(),
+            one_time_submit: false,
+        })
     }
 }

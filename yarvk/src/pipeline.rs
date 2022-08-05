@@ -354,7 +354,6 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device.ash_device.cmd_bind_pipeline(
                 self.vk_command_buffer,
                 pipeline_bind_point,

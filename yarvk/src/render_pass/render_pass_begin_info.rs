@@ -69,7 +69,6 @@ impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
     {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device.ash_device.cmd_begin_render_pass(
                 self.vk_command_buffer,
                 &create_info.ash_builder().build(),
@@ -81,7 +80,6 @@ impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
         });
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
-            let _pool = self.command_pool.vk_command_pool.write();
             self.device
                 .ash_device
                 .cmd_end_render_pass(self.vk_command_buffer);

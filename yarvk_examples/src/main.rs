@@ -253,14 +253,21 @@ fn main() {
         .image_array_layers(1)
         .build()
         .unwrap();
-    let pool = CommandPool::builder(queue_family, device.clone())
+    let setup_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
         // do not need, yarvk enable reset feature by default
         .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
         .build()
+        .unwrap()
+        .allocate_command_buffer::<{ PRIMARY }>()
         .unwrap();
-    let mut command_buffers = pool.allocate_command_buffers::<{ PRIMARY }>(2).unwrap();
-    let setup_command_buffer = command_buffers.pop().unwrap();
-    let mut draw_command_buffer = command_buffers.pop();
+    let draw_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
+        // do not need, yarvk enable reset feature by default
+        .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
+        .build()
+        .unwrap()
+        .allocate_command_buffer::<{ PRIMARY }>()
+        .unwrap();
+    let mut draw_command_buffer = Some(draw_command_buffer);
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
         .iter()
@@ -1006,7 +1013,7 @@ fn main() {
                 let fence = draw_commands_reuse_fence.take().unwrap();
                 let infos = &mut [&mut submit_info];
                 let fence = present_queue
-                    .submit(fence,infos)
+                    .submit(fence, infos)
                     .expect("queue submit failed.");
                 let (fence, infos) = fence.wait().unwrap();
                 let fence = fence.reset().unwrap();
