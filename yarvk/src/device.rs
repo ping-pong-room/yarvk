@@ -1,16 +1,11 @@
-use crate::descriptor_pool::DescriptorSet;
-use crate::descriptor_pool::{CopyDescriptorSet, WriteDescriptorSet};
+use crate::descriptor_pool::{ChangedDescriptorSet, DescriptorSet, UpdateHolder};
 use crate::device_features::{register_features, Feature, FeatureType};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
 use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
 use crate::queue::Queue;
-use ash::vk::Handle;
-
-use parking_lot::RwLockWriteGuard;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::cell::Cell;
-
+use std::mem::ManuallyDrop;
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
@@ -219,55 +214,60 @@ impl Device {
             None
         }
     }
-    thread_local! {
-        static DESCRIPTOR_SETS_CACHES: Cell<(Vec<ash::vk::WriteDescriptorSet>,
-                                        Vec<ash::vk::CopyDescriptorSet>,
-                                        FxHashMap<u64, Arc<DescriptorSet>>,
-                                        Vec<RwLockWriteGuard<'static, ash::vk::DescriptorSet>>,
-                                        )> = Cell::new((Vec::new(), Vec::new(), FxHashMap::default(), Vec::new()));
-    }
+    // TODO implement copy
+    // TODO VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
     pub fn update_descriptor_sets(
         &self,
-        descriptor_writes: &[WriteDescriptorSet],
-        descriptor_copies: &[CopyDescriptorSet],
+        descriptor_writes: &mut [ChangedDescriptorSet],
+        // descriptor_copies: &[CopyDescriptorSet],
     ) {
-        Self::DESCRIPTOR_SETS_CACHES.with(|local| {
-            let (mut write_set_cache, mut copy_set_cache, mut unique_descriptor_sets, mut locks) =
-                local.take();
-            // Host Synchronization: pDescriptorWrites[].dstSet, DescriptorCopies[].dstSet
-            for descriptor_set in descriptor_writes {
-                write_set_cache.push(descriptor_set.ash_builder().build());
-                let lock = descriptor_set.dst_set.ash_vk_descriptor_set.read();
-                unique_descriptor_sets.insert(lock.as_raw(), descriptor_set.dst_set.clone());
-            }
-            for descriptor_set in descriptor_copies {
-                copy_set_cache.push(descriptor_set.ash_builder().build());
-                let lock = descriptor_set.dst_set.ash_vk_descriptor_set.read();
-                unique_descriptor_sets.insert(lock.as_raw(), descriptor_set.dst_set.clone());
-            }
-            unique_descriptor_sets.iter().for_each(|(_id, ds)| {
-                locks.push(unsafe { std::mem::transmute(ds.ash_vk_descriptor_set.write()) });
-            });
-            unsafe {
-                self.ash_device
-                    .update_descriptor_sets(write_set_cache.as_slice(), copy_set_cache.as_slice());
-            }
-            locks.clear();
-            unique_descriptor_sets.clear();
-            write_set_cache.clear();
-            copy_set_cache.clear();
-            local.set((
-                write_set_cache,
-                copy_set_cache,
-                unique_descriptor_sets,
-                locks,
-            ));
-        })
+        let mut images_counts = 0;
+        let mut buffers_counts = 0;
+        let mut buffer_views_counts = 0;
+
+        for ds in descriptor_writes.iter_mut() {
+            images_counts += ds.images_counts;
+            buffers_counts += ds.buffers_counts;
+            buffer_views_counts += ds.buffer_views_counts;
+        }
+        let mut holder = UpdateHolder {
+            vk_image_infos: Vec::with_capacity(images_counts),
+            vk_buffer_infos: Vec::with_capacity(buffers_counts),
+            vk_texel_buffer_views: Vec::with_capacity(buffer_views_counts),
+            vk_write_descriptor_sets: Vec::with_capacity(
+                images_counts + buffers_counts + buffer_views_counts,
+            ),
+        };
+        for ds in descriptor_writes.iter_mut() {
+            ds.to_ash(&mut holder);
+        }
+        unsafe {
+            // Host Synchronization: VUID-vkUpdateDescriptorSets-pDescriptorWrites-06993
+            //  pDescriptorWrites[i].dstSet pDescriptorCopies[i].dstSet
+            self.ash_device
+                .update_descriptor_sets(holder.vk_write_descriptor_sets.as_slice(), &[]);
+        }
     }
+
+    pub fn free_descriptor_sets(&self, ds: Vec<DescriptorSet>) -> Result<(), ash::vk::Result> {
+        let ash_vk_descriptor_sets: Vec<_> = ds.iter().map(|ds| ds.ash_vk_descriptor_set).collect();
+        let descriptor_pool = ds.first().unwrap().descriptor_pool.clone();
+        unsafe {
+            let _ = ManuallyDrop::new(ds);
+            // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
+            // Host Synchronization descriptorPool, pDescriptorSets
+            let ash_vk_descriptor_pool = descriptor_pool.ash_vk_descriptor_pool.write();
+            self.ash_device
+                .free_descriptor_sets(*ash_vk_descriptor_pool, ash_vk_descriptor_sets.as_slice())
+        }
+    }
+
     pub fn wait_idle(&self) {
-        panic!("due to performance reason, device_wait_idle is not implemented. \
+        panic!(
+            "due to performance reason, device_wait_idle is not implemented. \
         vkDeviceWaitIdle is equivalent to calling vkQueueWaitIdle for all queues owned by device. \
-        Manage queues and wait on them manually for best performance");
+        Manage queues and wait on them manually for best performance"
+        );
     }
 }
 

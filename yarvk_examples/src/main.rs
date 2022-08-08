@@ -11,9 +11,8 @@ use yarvk::command::command_buffer::Level::PRIMARY;
 use yarvk::command::command_pool::{CommandPool, CommandPoolCreateFlags};
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_pool::{
-    DescriptorBufferInfo, DescriptorImageInfo, DescriptorPool, DescriptorSet, DescriptorSetLayout,
-    DescriptorSetLayoutBinding, WriteDescriptorSet, DESCRIPTOR_INFO_TYPE_BUFFER,
-    DESCRIPTOR_INFO_TYPE_IMAGE,
+    DescriptorBufferInfo, DescriptorImageInfo, DescriptorPool, DescriptorSetLayout,
+    DescriptorSetLayoutBinding,
 };
 use yarvk::device::{Device, DeviceQueueCreateInfo};
 
@@ -770,9 +769,8 @@ fn main() {
         .build()
         .unwrap();
 
-    let descriptor_sets = DescriptorSet::builder(descriptor_pool.clone())
-        .add_set_layout(desc_set_layout.clone())
-        .build()
+    let mut descriptor_sets = descriptor_pool
+        .allocate_descriptor_sets(&[desc_set_layout.clone()])
         .unwrap();
     let uniform_color_buffer_descriptor = DescriptorBufferInfo {
         buffer: uniform_color_buffer.clone(),
@@ -785,20 +783,13 @@ fn main() {
         image_view: tex_image_view.clone(),
         sampler: sampler.clone(),
     };
-    let mut write_desc_sets = Vec::with_capacity(2);
-    write_desc_sets.push(
-        WriteDescriptorSet::builder::<DESCRIPTOR_INFO_TYPE_BUFFER>(descriptor_sets[0].clone())
-            .dst_binding(0)
-            .add_buffer_info(uniform_color_buffer_descriptor)
-            .build(),
-    );
-    write_desc_sets.push(
-        WriteDescriptorSet::builder::<DESCRIPTOR_INFO_TYPE_IMAGE>(descriptor_sets[0].clone())
-            .dst_binding(1)
-            .add_image_info(tex_descriptor)
-            .build(),
-    );
-    device.update_descriptor_sets(&write_desc_sets, &[]);
+
+    let mut changed_descriptor_set = descriptor_sets.get_mut(0).unwrap().change();
+    let buffers = &[uniform_color_buffer_descriptor];
+    let images = &[tex_descriptor];
+    changed_descriptor_set.update_buffer(0, 0, buffers);
+    changed_descriptor_set.update_image(1, 0, images);
+    device.update_descriptor_sets(&mut [changed_descriptor_set]);
     let mut vertex_spv_file = Cursor::new(&include_bytes!("vert.spv")[..]);
     let mut frag_spv_file = Cursor::new(&include_bytes!("frag.spv")[..]);
 

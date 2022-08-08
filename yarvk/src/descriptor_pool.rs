@@ -45,10 +45,42 @@ impl DescriptorPool {
     pub fn builder(device: Arc<Device>) -> DescriptorPoolBuilder {
         DescriptorPoolBuilder {
             device,
-            flags: Default::default(),
+            // TODO Allow individually free for now
+            flags: ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET,
             max_sets: 1,
             descriptor_pool_sizes: Default::default(),
         }
+    }
+
+    pub fn allocate_descriptor_sets(
+        self: &Arc<Self>,
+        layouts: &[Arc<DescriptorSetLayout>],
+    ) -> Result<Vec<DescriptorSet>, ash::vk::Result> {
+        let vk_layouts = layouts
+            .iter()
+            .map(|layout| layout.ash_vk_descriptor_set_layout)
+            .collect::<Vec<_>>();
+        let ash_vk_descriptor_pool = self.ash_vk_descriptor_pool.write();
+        let create_info = ash::vk::DescriptorSetAllocateInfo::builder()
+            .descriptor_pool(*ash_vk_descriptor_pool)
+            .set_layouts(vk_layouts.as_slice())
+            .build();
+        let ash_vk_descriptor_sets = unsafe {
+            // Host Synchronization: pAllocateInfo->descriptorPool
+            self.device
+                .ash_device
+                .allocate_descriptor_sets(&create_info)?
+        };
+        drop(ash_vk_descriptor_pool);
+        Ok(ash_vk_descriptor_sets
+            .into_iter()
+            .enumerate()
+            .map(|(i, ash_vk_descriptor_set)| DescriptorSet {
+                descriptor_pool: self.clone(),
+                ash_vk_descriptor_set,
+                descriptor_set_layout: layouts[i].clone(),
+            })
+            .collect())
     }
 }
 
@@ -247,70 +279,34 @@ impl Drop for DescriptorSetLayout {
 pub struct DescriptorSet {
     pub descriptor_pool: Arc<DescriptorPool>,
     pub descriptor_set_layout: Arc<DescriptorSetLayout>,
-    pub(crate) ash_vk_descriptor_set: RwLock<ash::vk::DescriptorSet>,
+    pub(crate) ash_vk_descriptor_set: ash::vk::DescriptorSet,
 }
 
 impl DescriptorSet {
-    pub fn builder(descriptor_pool: Arc<DescriptorPool>) -> DescriptorSetBuilder {
-        DescriptorSetBuilder {
-            descriptor_pool,
-            layouts: Default::default(),
+    pub fn change(&mut self) -> ChangedDescriptorSet {
+        ChangedDescriptorSet {
+            descriptor_set: self,
+            bindings: Default::default(),
+            images_counts: 0,
+            buffers_counts: 0,
+            buffer_views_counts: 0,
         }
     }
 }
 
-// TODO need more sufficient design, current leak the resource now
+// TODO VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
 impl Drop for DescriptorSet {
     fn drop(&mut self) {
-        // unsafe {
-        //     // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
-        //     // Host Synchronization descriptorPool, pDescriptorSets
-        //     let ash_vk_descriptor_pool = self.descriptor_pool.ash_vk_descriptor_pool.write();
-        //     self.descriptor_pool.device.ash_device.free_descriptor_sets(*ash_vk_descriptor_pool, &[self.ash_vk_descriptor_set]);
-        // }
-    }
-}
-
-pub struct DescriptorSetBuilder {
-    descriptor_pool: Arc<DescriptorPool>,
-    layouts: Vec<Arc<DescriptorSetLayout>>,
-}
-
-impl DescriptorSetBuilder {
-    pub fn add_set_layout(mut self, layout: Arc<DescriptorSetLayout>) -> Self {
-        self.layouts.push(layout);
-        self
-    }
-    pub fn build(self) -> Result<Vec<Arc<DescriptorSet>>, ash::vk::Result> {
-        let layouts = self
-            .layouts
-            .iter()
-            .map(|layout| layout.ash_vk_descriptor_set_layout)
-            .collect::<Vec<_>>();
-        let ash_vk_descriptor_pool = self.descriptor_pool.ash_vk_descriptor_pool.write();
-        let create_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(*ash_vk_descriptor_pool)
-            .set_layouts(layouts.as_slice())
-            .build();
-        let ash_vk_descriptor_sets = unsafe {
-            // Host Synchronization: pAllocateInfo->descriptorPool
+        unsafe {
+            // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
+            // Host Synchronization descriptorPool, pDescriptorSets
+            let ash_vk_descriptor_pool = self.descriptor_pool.ash_vk_descriptor_pool.write();
             self.descriptor_pool
                 .device
                 .ash_device
-                .allocate_descriptor_sets(&create_info)?
-        };
-        drop(ash_vk_descriptor_pool);
-        Ok(ash_vk_descriptor_sets
-            .into_iter()
-            .enumerate()
-            .map(|(i, ash_vk_descriptor_set)| {
-                Arc::new(DescriptorSet {
-                    descriptor_pool: self.descriptor_pool.clone(),
-                    ash_vk_descriptor_set: RwLock::new(ash_vk_descriptor_set),
-                    descriptor_set_layout: self.layouts[i].clone(),
-                })
-            })
-            .collect())
+                .free_descriptor_sets(*ash_vk_descriptor_pool, &[self.ash_vk_descriptor_set])
+                .unwrap();
+        }
     }
 }
 
@@ -346,193 +342,181 @@ impl DescriptorBufferInfo {
     }
 }
 
-pub const DESCRIPTOR_INFO_TYPE_IMAGE: usize = 0;
-pub const DESCRIPTOR_INFO_TYPE_BUFFER: usize = 1;
-pub const DESCRIPTOR_INFO_TYPE_TEXEL_BUFFER_VIEW: usize = 2;
-
-pub struct WriteDescriptorSet {
-    pub(crate) dst_set: Arc<DescriptorSet>,
-    dst_binding: u32,
+struct WriteImage<'a> {
     dst_array_element: u32,
-    p_image_info: Vec<DescriptorImageInfo>,
-    p_buffer_info: Vec<DescriptorBufferInfo>,
-    p_texel_buffer_view: Vec<Arc<BufferView>>,
-    ash_vk_image_infos: Vec<ash::vk::DescriptorImageInfo>,
-    ash_vk_buffer_infos: Vec<ash::vk::DescriptorBufferInfo>,
-    ash_vk_buffer_views: Vec<ash::vk::BufferView>,
-    which_info: usize,
+    image_info: &'a [DescriptorImageInfo],
 }
 
-impl WriteDescriptorSet {
-    pub fn builder<const INFO_TYPE: usize>(
-        dst_set: Arc<DescriptorSet>,
-    ) -> WriteDescriptorSetBuilder<INFO_TYPE> {
-        WriteDescriptorSetBuilder {
-            inner: WriteDescriptorSet {
-                which_info: 0,
-                dst_binding: 0,
-                dst_array_element: 0,
-                p_image_info: vec![],
-                p_buffer_info: vec![],
-                p_texel_buffer_view: vec![],
-                ash_vk_image_infos: vec![],
-                ash_vk_buffer_infos: vec![],
-                ash_vk_buffer_views: vec![],
-                dst_set,
-            },
+struct WriteBuffer<'a> {
+    dst_array_element: u32,
+    buffer_info: &'a [DescriptorBufferInfo],
+}
+
+struct WriteTexelBufferView<'a> {
+    dst_array_element: u32,
+    texel_buffer_view: &'a [BufferView],
+}
+
+enum DescriptorInfoType<'a> {
+    Image(WriteImage<'a>),
+    Buffer(WriteBuffer<'a>),
+    TexelBufferView(WriteTexelBufferView<'a>),
+}
+
+// TODO CopyDescriptorSet
+pub struct ChangedDescriptorSet<'a> {
+    descriptor_set: &'a mut DescriptorSet,
+    bindings: FxHashMap<u32, DescriptorInfoType<'a>>,
+    pub(crate) images_counts: usize,
+    pub(crate) buffers_counts: usize,
+    pub(crate) buffer_views_counts: usize,
+}
+
+// used for device.update_descriptor_sets for performance reason
+pub(crate) struct UpdateHolder {
+    pub vk_image_infos: Vec<Vec<ash::vk::DescriptorImageInfo>>,
+    pub vk_buffer_infos: Vec<Vec<ash::vk::DescriptorBufferInfo>>,
+    pub vk_texel_buffer_views: Vec<Vec<ash::vk::BufferView>>,
+    pub vk_write_descriptor_sets: Vec<ash::vk::WriteDescriptorSet>,
+}
+
+impl<'a> ChangedDescriptorSet<'a> {
+    pub fn update_image(
+        &mut self,
+        binding: u32,
+        dst_array_element: u32,
+        image_info: &'a [DescriptorImageInfo],
+    ) {
+        if self
+            .bindings
+            .insert(
+                binding,
+                DescriptorInfoType::Image(WriteImage {
+                    dst_array_element,
+                    image_info,
+                }),
+            )
+            .is_none()
+        {
+            self.images_counts += 1;
         }
     }
-    pub(crate) fn ash_builder(&self) -> ash::vk::WriteDescriptorSetBuilder {
-        // Must VUID-VkWriteDescriptorSet-dstBinding-00315
-        let binding = self
-            .dst_set
-            .descriptor_set_layout
+
+    pub fn update_buffer(
+        &mut self,
+        binding: u32,
+        dst_array_element: u32,
+        buffer_info: &'a [DescriptorBufferInfo],
+    ) {
+        if self
             .bindings
-            .get(&self.dst_binding)
-            .expect("VUID-VkWriteDescriptorSet-dstBinding-00315");
-        let builder = ash::vk::WriteDescriptorSet::builder()
-            .dst_set(*self.dst_set.ash_vk_descriptor_set.read())
-            .dst_binding(self.dst_binding)
-            .dst_array_element(self.dst_array_element)
-            .descriptor_type(binding.descriptor_type);
-        return match self.which_info {
-            DESCRIPTOR_INFO_TYPE_IMAGE => builder.image_info(self.ash_vk_image_infos.as_slice()),
-            DESCRIPTOR_INFO_TYPE_BUFFER => builder.buffer_info(self.ash_vk_buffer_infos.as_slice()),
-            DESCRIPTOR_INFO_TYPE_TEXEL_BUFFER_VIEW => {
-                builder.texel_buffer_view(self.ash_vk_buffer_views.as_slice())
-            }
-            _ => {
-                panic!("unsupported descriptor info")
-            }
+            .insert(
+                binding,
+                DescriptorInfoType::Buffer(WriteBuffer {
+                    dst_array_element,
+                    buffer_info,
+                }),
+            )
+            .is_none()
+        {
+            self.buffers_counts += 1;
+        }
+    }
+
+    pub fn update_texel_buffer_view(
+        &mut self,
+        binding: u32,
+        dst_array_element: u32,
+        texel_buffer_view: &'a [BufferView],
+    ) {
+        if self
+            .bindings
+            .insert(
+                binding,
+                DescriptorInfoType::TexelBufferView(WriteTexelBufferView {
+                    dst_array_element,
+                    texel_buffer_view,
+                }),
+            )
+            .is_none()
+        {
+            self.buffer_views_counts += 1;
+        }
+    }
+
+    pub(crate) fn to_ash(&self, holder: &mut UpdateHolder) {
+        let write_descriptors = self
+            .bindings
+            .iter()
+            .map(|(binding, descriptor_info_type)| {
+                let mut builder = ash::vk::WriteDescriptorSet::builder()
+                    .dst_set(self.descriptor_set.ash_vk_descriptor_set)
+                    .dst_binding(*binding)
+                    .descriptor_type(
+                        self.descriptor_set.descriptor_set_layout.bindings[&binding]
+                            .descriptor_type,
+                    );
+                match descriptor_info_type {
+                    DescriptorInfoType::Image(image_info) => {
+                        builder = builder.dst_array_element(image_info.dst_array_element);
+                        holder.vk_image_infos.push(
+                            image_info
+                                .image_info
+                                .iter()
+                                .map(|info| info.ash_builder().build())
+                                .collect(),
+                        );
+                        let slice = holder.vk_image_infos.last().unwrap().as_slice();
+                        builder = builder.image_info(slice);
+                    }
+                    DescriptorInfoType::Buffer(buffer_info) => {
+                        builder = builder.dst_array_element(buffer_info.dst_array_element);
+                        holder.vk_buffer_infos.push(
+                            buffer_info
+                                .buffer_info
+                                .iter()
+                                .map(|info| info.ash_builder().build())
+                                .collect(),
+                        );
+                        let slice = holder.vk_buffer_infos.last().unwrap();
+                        builder = builder.buffer_info(slice);
+                    }
+                    DescriptorInfoType::TexelBufferView(ash_vk_buffer_views) => {
+                        builder = builder.dst_array_element(ash_vk_buffer_views.dst_array_element);
+                        holder.vk_texel_buffer_views.push(
+                            ash_vk_buffer_views
+                                .texel_buffer_view
+                                .iter()
+                                .map(|info| info.ash_vk_buffer_view)
+                                .collect(),
+                        );
+                        let slice = holder.vk_texel_buffer_views.last().unwrap();
+                        builder = builder.texel_buffer_view(slice);
+                    }
+                }
+                builder.build()
+            })
+            .collect::<Vec<_>>();
+        holder.vk_write_descriptor_sets = write_descriptors;
+    }
+    // TODO implement copy
+    pub fn update(self) {
+        let mut holder = UpdateHolder {
+            vk_image_infos: Vec::with_capacity(self.images_counts),
+            vk_buffer_infos: Vec::with_capacity(self.buffers_counts),
+            vk_texel_buffer_views: Vec::with_capacity(self.buffer_views_counts),
+            vk_write_descriptor_sets: Vec::with_capacity(self.bindings.len()),
         };
-    }
-}
-
-pub struct WriteDescriptorSetBuilder<const INFO_TYPE: usize> {
-    inner: WriteDescriptorSet,
-}
-
-impl<const INFO_TYPE: usize> WriteDescriptorSetBuilder<INFO_TYPE> {
-    pub fn dst_set(mut self, dst_set: Arc<DescriptorSet>) -> Self {
-        self.inner.dst_set = dst_set;
-        self
-    }
-    pub fn dst_binding(mut self, dst_binding: u32) -> Self {
-        self.inner.dst_binding = dst_binding;
-        self
-    }
-    pub fn dst_array_element(mut self, dst_array_element: u32) -> Self {
-        self.inner.dst_array_element = dst_array_element;
-        self
-    }
-}
-
-impl WriteDescriptorSetBuilder<DESCRIPTOR_INFO_TYPE_IMAGE> {
-    pub fn add_image_info(mut self, image_info: DescriptorImageInfo) -> Self {
-        self.inner.p_image_info.push(image_info);
-        self
-    }
-    pub fn build(mut self) -> WriteDescriptorSet {
-        self.inner.which_info = DESCRIPTOR_INFO_TYPE_IMAGE;
-        self.inner.ash_vk_image_infos = self
-            .inner
-            .p_image_info
-            .iter()
-            .map(|b| b.ash_builder().build())
-            .collect::<Vec<_>>();
-        self.inner
-    }
-}
-
-impl WriteDescriptorSetBuilder<DESCRIPTOR_INFO_TYPE_BUFFER> {
-    pub fn add_buffer_info(mut self, buffer_info: DescriptorBufferInfo) -> Self {
-        self.inner.p_buffer_info.push(buffer_info);
-        self
-    }
-    pub fn build(mut self) -> WriteDescriptorSet {
-        self.inner.which_info = DESCRIPTOR_INFO_TYPE_BUFFER;
-        self.inner.ash_vk_buffer_infos = self
-            .inner
-            .p_buffer_info
-            .iter()
-            .map(|b| b.ash_builder().build())
-            .collect::<Vec<_>>();
-        self.inner
-    }
-}
-
-impl WriteDescriptorSetBuilder<DESCRIPTOR_INFO_TYPE_TEXEL_BUFFER_VIEW> {
-    pub fn add_texel_buffer_view(mut self, texel_buffer_view: Arc<BufferView>) -> Self {
-        self.inner.p_texel_buffer_view.push(texel_buffer_view);
-        self
-    }
-    pub fn build(mut self) -> WriteDescriptorSet {
-        self.inner.which_info = DESCRIPTOR_INFO_TYPE_TEXEL_BUFFER_VIEW;
-        self.inner.ash_vk_buffer_views = self
-            .inner
-            .p_texel_buffer_view
-            .iter()
-            .map(|b| b.ash_vk_buffer_view)
-            .collect::<Vec<_>>();
-        self.inner
-    }
-}
-
-pub struct CopyDescriptorSet {
-    pub(crate) src_set: Arc<DescriptorSet>,
-    src_binding: u32,
-    src_array_element: u32,
-    pub(crate) dst_set: Arc<DescriptorSet>,
-    dst_binding: u32,
-    dst_array_element: u32,
-    descriptor_count: u32,
-}
-
-impl CopyDescriptorSet {
-    pub(crate) fn ash_builder(&self) -> ash::vk::CopyDescriptorSetBuilder {
-        ash::vk::CopyDescriptorSet::builder()
-            .src_set(*self.src_set.ash_vk_descriptor_set.read())
-            .src_binding(self.src_binding)
-            .src_array_element(self.src_array_element)
-            .dst_set(*self.dst_set.ash_vk_descriptor_set.read())
-            .dst_binding(self.dst_binding)
-            .dst_array_element(self.dst_array_element)
-            .descriptor_count(self.descriptor_count)
-    }
-}
-
-pub struct CopyDescriptorSetBuilder {
-    inner: CopyDescriptorSet,
-}
-
-impl CopyDescriptorSetBuilder {
-    pub fn src_set(mut self, src_set: Arc<DescriptorSet>) -> Self {
-        self.inner.src_set = src_set;
-        self
-    }
-    pub fn src_binding(mut self, src_binding: u32) -> Self {
-        self.inner.src_binding = src_binding;
-        self
-    }
-    pub fn src_array_element(mut self, src_array_element: u32) -> Self {
-        self.inner.src_array_element = src_array_element;
-        self
-    }
-    pub fn dst_set(mut self, dst_set: Arc<DescriptorSet>) -> Self {
-        self.inner.dst_set = dst_set;
-        self
-    }
-    pub fn dst_binding(mut self, dst_binding: u32) -> Self {
-        self.inner.dst_binding = dst_binding;
-        self
-    }
-    pub fn dst_array_element(mut self, dst_array_element: u32) -> Self {
-        self.inner.dst_array_element = dst_array_element;
-        self
-    }
-    pub fn descriptor_count(mut self, descriptor_count: u32) -> Self {
-        self.inner.descriptor_count = descriptor_count;
-        self
+        self.to_ash(&mut holder);
+        unsafe {
+            // Host Synchronization: VUID-vkUpdateDescriptorSets-pDescriptorWrites-06993
+            //  pDescriptorWrites[i].dstSet pDescriptorCopies[i].dstSet
+            self.descriptor_set
+                .descriptor_pool
+                .device
+                .ash_device
+                .update_descriptor_sets(holder.vk_write_descriptor_sets.as_slice(), &[]);
+        }
     }
 }
 
@@ -543,18 +527,13 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         pipeline_bind_point: ash::vk::PipelineBindPoint,
         layout: &PipelineLayout,
         first_set: u32,
-        descriptor_sets: &[Arc<DescriptorSet>],
+        descriptor_sets: &[DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
-        // TODO performance (vec new)
-        let mut locks = Vec::new();
-        let mut vk_descriptor_sets = Vec::new();
-        for set in descriptor_sets.iter() {
-            let lock = set.ash_vk_descriptor_set.read();
-            let vk_ds = *lock;
-            locks.push(lock);
-            vk_descriptor_sets.push(vk_ds);
-        }
+        let vk_descriptor_sets: Vec<_> = descriptor_sets
+            .iter()
+            .map(|ds| ds.ash_vk_descriptor_set)
+            .collect();
 
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
