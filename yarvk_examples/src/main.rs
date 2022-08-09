@@ -239,7 +239,7 @@ fn main() {
         .cloned()
         .find(|&mode| mode == PresentModeKHR::MAILBOX)
         .unwrap_or(PresentModeKHR::FIFO);
-    let swapchain = Swapchain::builder(surface.clone(), swapchian_extension.clone())
+    let mut swapchain = Swapchain::builder(surface.clone(), swapchian_extension.clone())
         .min_image_count(desired_image_count)
         .image_color_space(surface_format.color_space)
         .image_format(surface_format.format)
@@ -1018,7 +1018,7 @@ fn main() {
                 draw_command_buffer = Some(command_buffer);
                 draw_commands_reuse_fence = Some(fence);
                 let mut present_info = PresentInfo::builder()
-                    .add_swapchain_and_image(swapchain.clone(), &image)
+                    .add_swapchain_and_image(&mut swapchain, &image)
                     .add_wait_semaphore(&mut rendering_complete_semaphore)
                     .build();
                 present_queue.queue_present(&mut present_info).unwrap();

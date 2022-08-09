@@ -8,7 +8,6 @@ use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::surface::Surface;
 use ash::vk::Handle;
-use parking_lot::RwLock;
 
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
@@ -144,7 +143,7 @@ impl SwapchainBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Arc<Swapchain>, ash::vk::Result> {
+    pub fn build(self) -> Result<Swapchain, ash::vk::Result> {
         let image_create_info = Arc::new(self.get_image_create_info());
         // Done VUID-VkSwapchainCreateInfoKHR-surface-01270
         // Done VUID-VkSwapchainCreateInfoKHR-imageUsage-parameter
@@ -191,8 +190,8 @@ impl SwapchainBuilder {
         }
 
         if let Some(old_swapchain) = self.old_swapchain {
-            let mut old_swapchain = ManuallyDrop::new(old_swapchain);
-            create_info = create_info.old_swapchain(*old_swapchain.vk_swapchain.get_mut());
+            let old_swapchain = ManuallyDrop::new(old_swapchain);
+            create_info = create_info.old_swapchain(old_swapchain.vk_swapchain);
         }
 
         let swapchain_loader = {
@@ -207,6 +206,7 @@ impl SwapchainBuilder {
             // TODO Host Synchronization: pCreateInfo->surface, pCreateInfo->oldSwapchain
             swapchain_loader.create_swapchain(&create_info, None)?
         };
+        // Host Synchronization: none
         let vk_images = unsafe { swapchain_loader.get_swapchain_images(vk_swapchain)? };
         let images = vk_images
             .into_iter()
@@ -219,20 +219,20 @@ impl SwapchainBuilder {
                 })
             })
             .collect();
-        Ok(Arc::new(Swapchain {
+        Ok(Swapchain {
             surface: self.surface,
             device: self.device,
-            vk_swapchain: RwLock::new(vk_swapchain),
+            vk_swapchain,
             swapchain_loader,
             // image_create_info,
             images,
-        }))
+        })
     }
 }
 
 pub struct PresentInfo<'a> {
     wait_semaphores: Vec<&'a mut Semaphore>,
-    swapchains_and_image_indices: Vec<(Arc<Swapchain>, u32)>,
+    swapchains_and_image_indices: Vec<(&'a mut Swapchain, u32)>,
     results: Vec<ash::vk::Result>,
 }
 
@@ -247,7 +247,7 @@ impl<'a> PresentInfo<'a> {
 
 pub struct PresentInfoBuilder<'a> {
     wait_semaphores: Vec<&'a mut Semaphore>,
-    swapchains_and_image_indices: Vec<(Arc<Swapchain>, u32)>,
+    swapchains_and_image_indices: Vec<(&'a mut Swapchain, u32)>,
 }
 
 impl<'a> PresentInfoBuilder<'a> {
@@ -256,7 +256,7 @@ impl<'a> PresentInfoBuilder<'a> {
         self
     }
 
-    pub fn add_swapchain_and_image(mut self, swapchian: Arc<Swapchain>, image: &Image) -> Self {
+    pub fn add_swapchain_and_image(mut self, swapchian: &'a mut Swapchain, image: &Image) -> Self {
         let image_index = swapchian.get_image_index(image)
             .expect("Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array");
 
@@ -283,7 +283,6 @@ impl Queue {
     ) -> Result<&'a [ash::vk::Result], ash::vk::Result> {
         let queue = self;
         let mut ash_vk_semaphores = Vec::with_capacity(present_info.wait_semaphores.len());
-        let mut swapchain_locks = Vec::with_capacity(present_info.swapchains_and_image_indices.len());
         let mut ash_vk_swapchains =
             Vec::with_capacity(present_info.swapchains_and_image_indices.len());
         let mut image_indices = Vec::with_capacity(present_info.swapchains_and_image_indices.len());
@@ -295,10 +294,8 @@ impl Queue {
         }
 
         for (swapchain, index) in &present_info.swapchains_and_image_indices {
-            let lock = swapchain.vk_swapchain.write();
-            ash_vk_swapchains.push(*lock);
+            ash_vk_swapchains.push(swapchain.vk_swapchain);
             image_indices.push(*index);
-            swapchain_locks.push(lock);
         }
 
         let ash_vk_present_info = ash::vk::PresentInfoKHR::builder()
@@ -329,7 +326,7 @@ pub struct Swapchain {
     // Done VUID-vkDestroySurfaceKHR-surface-01266
     pub surface: Arc<Surface>,
     pub device: Arc<Device>,
-    vk_swapchain: RwLock<ash::vk::SwapchainKHR>,
+    vk_swapchain: ash::vk::SwapchainKHR,
     swapchain_loader: ash::extensions::khr::Swapchain,
     // image_create_info: Arc<ImageCreateInfo>,
     images: Vec<Arc<Image<{ Bound }>>>,
@@ -360,7 +357,7 @@ impl Swapchain {
             clipped: false,
         }
     }
-    pub fn get_swapchain_images<'a>(self: &'a Arc<Self>) -> &'a [Arc<Image<{ Bound }>>] {
+    pub fn get_swapchain_images(&self) -> &[Arc<Image<{ Bound }>>] {
         self.images.as_slice()
     }
     pub(crate) fn get_image_index(&self, image: &Image) -> Option<u32> {
@@ -377,16 +374,15 @@ impl Swapchain {
     // DONE VUID-vkAcquireNextImageKHR-semaphore-01780
     // DONE VUID-vkAcquireNextImageKHR-semaphore-03265
     pub fn acquire_next_image_both(
-        self: &Arc<Self>,
+        &mut self,
         timeout: u64,
         semaphore: &Semaphore,
         fence: UnsignaledFence,
     ) -> Result<(Arc<Image<{ Bound }>>, SignalingFence<()>), ash::vk::Result> {
         unsafe {
             // Host Synchronization: swapchain semaphore fence
-            let vk_swapchain = self.vk_swapchain.write();
             let (index, _) = self.swapchain_loader.acquire_next_image(
-                *vk_swapchain,
+                self.vk_swapchain,
                 timeout,
                 semaphore.ash_vk_semaphore,
                 fence.vk_fence,
@@ -398,15 +394,14 @@ impl Swapchain {
     }
 
     pub fn acquire_next_image_semaphore_only(
-        self: &Arc<Self>,
+        &mut self,
         timeout: u64,
         semaphore: &Semaphore,
     ) -> Result<Arc<Image<{ Bound }>>, ash::vk::Result> {
         unsafe {
             // Host Synchronization: swapchain, semaphore, fence
-            let vk_swapchain = self.vk_swapchain.write();
             let (index, _) = self.swapchain_loader.acquire_next_image(
-                *vk_swapchain,
+                self.vk_swapchain,
                 timeout,
                 semaphore.ash_vk_semaphore,
                 ash::vk::Fence::null(),
@@ -417,15 +412,14 @@ impl Swapchain {
     }
 
     pub fn acquire_next_image_fence_only(
-        self: &Arc<Self>,
+        &mut self,
         timeout: u64,
         fence: UnsignaledFence,
     ) -> Result<(Arc<Image<{ Bound }>>, SignalingFence<()>), ash::vk::Result> {
-        let vk_swapchain = self.vk_swapchain.write();
         let (index, _) = unsafe {
             // Host Synchronization: swapchain, semaphore, fence
             self.swapchain_loader.acquire_next_image(
-                *vk_swapchain,
+                self.vk_swapchain,
                 timeout,
                 ash::vk::Semaphore::null(),
                 fence.vk_fence,
@@ -445,7 +439,7 @@ impl Drop for Swapchain {
             // TODO VUID-vkDestroySwapchainKHR-swapchain-01284
             // Host Synchronization: swapchain
             self.swapchain_loader
-                .destroy_swapchain(*self.vk_swapchain.get_mut(), None);
+                .destroy_swapchain(self.vk_swapchain, None);
         }
     }
 }
