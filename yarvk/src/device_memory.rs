@@ -25,7 +25,7 @@ impl Drop for DeviceMemory {
 }
 
 impl DeviceMemory {
-    pub fn builder(memory_type: MemoryType, device: Arc<Device>) -> DeviceMemoryBuilder {
+    pub fn builder<'a>(memory_type: MemoryType, device: Arc<Device>) -> DeviceMemoryBuilder<'a> {
         DeviceMemoryBuilder {
             device,
             allocation_size: 0,
@@ -56,19 +56,19 @@ impl DeviceMemory {
     }
 }
 
-pub struct DeviceMemoryBuilder {
+pub struct DeviceMemoryBuilder<'a> {
     device: Arc<Device>,
     allocation_size: ash::vk::DeviceSize,
     memory_type: MemoryType,
-    dedicated_allocate_info: Option<MemoryDedicatedAllocateInfo>,
+    dedicated_allocate_info: Option<MemoryDedicatedAllocateInfo<'a>>,
 }
 
-impl DeviceMemoryBuilder {
+impl<'a> DeviceMemoryBuilder<'a> {
     pub fn allocation_size(mut self, allocation_size: ash::vk::DeviceSize) -> Self {
         self.allocation_size = allocation_size;
         self
     }
-    pub fn dedicated_info(mut self, dedicated_memory_info: MemoryDedicatedAllocateInfo) -> Self {
+    pub fn dedicated_info(mut self, dedicated_memory_info: MemoryDedicatedAllocateInfo<'a>) -> Self {
         self.dedicated_allocate_info = Some(dedicated_memory_info);
         self
     }
@@ -77,7 +77,7 @@ impl DeviceMemoryBuilder {
         let mut allocate_info_builder = ash::vk::MemoryAllocateInfo::builder()
             .memory_type_index(self.memory_type.index)
             .allocation_size(self.allocation_size);
-        let mut vk_dedicated_memory_info = Default::default();
+        let mut vk_dedicated_memory_info;
         if let Some(dedicated_memory_info) = self.dedicated_allocate_info {
             vk_dedicated_memory_info = dedicated_memory_info.ash_builder().build();
             allocate_info_builder =

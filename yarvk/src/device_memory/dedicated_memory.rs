@@ -1,21 +1,21 @@
 use crate::buffer::Buffer;
 use crate::image::Image;
-use std::sync::Arc;
+use crate::{buffer, image};
 
 // DONE VUID-VkMemoryDedicatedAllocateInfo-image-01432
 // TODO can image and buffer both be null?
 // TODO VUID-VkMemoryDedicatedAllocateInfo-image-01434
 // TODO VUID-VkMemoryDedicatedAllocateInfo-buffer-01436
-pub enum DedicatedResource {
-    Image(Arc<Image>),
-    Buffer(Arc<Buffer>),
+pub enum DedicatedResource<'a> {
+    Image(&'a Image<{ image::State::Unbound }>),
+    Buffer(&'a Buffer<{ buffer::State::Unbound }>),
 }
 
-pub struct MemoryDedicatedAllocateInfo {
-    resource: DedicatedResource,
+pub struct MemoryDedicatedAllocateInfo<'a> {
+    pub resource: DedicatedResource<'a>,
 }
 
-impl MemoryDedicatedAllocateInfo {
+impl MemoryDedicatedAllocateInfo<'_> {
     pub(crate) fn ash_builder(&self) -> ash::vk::MemoryDedicatedAllocateInfoBuilder {
         let mut builder = ash::vk::MemoryDedicatedAllocateInfo::builder();
         match &self.resource {

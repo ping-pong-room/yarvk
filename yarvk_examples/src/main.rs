@@ -70,6 +70,7 @@ use yarvk::{
     SampleCountFlags, SamplerAddressMode, SamplerMipmapMode, StencilOp, StencilOpState,
     SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate, Viewport, SUBPASS_EXTERNAL,
 };
+use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -316,6 +317,8 @@ fn main() {
     .expect("Unable to find suitable memory index for depth image.");
     let depth_image_memory = DeviceMemory::builder(depth_image_memory, device.clone())
         .allocation_size(depth_image_memory_req.size)
+        // example of how to use dedicated memory
+        .dedicated_info(MemoryDedicatedAllocateInfo{resource: DedicatedResource::Image(&depth_image)})
         .build()
         .unwrap();
     let depth_image = depth_image
