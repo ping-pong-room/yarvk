@@ -1,7 +1,7 @@
 use crate::buffer::Buffer;
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
-use crate::command::command_buffer::RenderPassScope::OUTSIDE;
-use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID, PENDING, RECORDING};
+use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
+use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID, RECORDING};
 use crate::command::command_pool::CommandPool;
 use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
@@ -13,6 +13,8 @@ use crate::render_pass::RenderPass;
 use lazy_static::lazy_static;
 use rustc_hash::FxHashMap;
 
+use crate::Handler;
+use ash::vk::Handle;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -26,7 +28,8 @@ pub enum State {
     INITIAL,
     RECORDING,
     EXECUTABLE,
-    PENDING,
+    // pending buffers' are owned by yarvk structs, user cannot get a buffer which type is pending.
+    // PENDING,
     INVALID,
 }
 
@@ -82,6 +85,30 @@ pub struct CommandBufferInheritanceInfoBuilder {
 }
 
 impl CommandBufferInheritanceInfoBuilder {
+    pub fn render_pass(mut self, render_pass: Arc<RenderPass>) -> Self {
+        self.render_pass = Some(render_pass);
+        self
+    }
+    pub fn subpass(mut self, subpass: SubpassIndex) -> Self {
+        self.subpass = Some(subpass);
+        self
+    }
+    pub fn framebuffer(mut self, framebuffer: Arc<Framebuffer>) -> Self {
+        self.framebuffer = Some(framebuffer);
+        self
+    }
+    pub fn occlusion_query_enable(mut self, enable: bool) -> Self {
+        self.occlusion_query_enable = enable;
+        self
+    }
+    pub fn query_flags(mut self, query_flags: ash::vk::QueryControlFlags) -> Self {
+        self.query_flags = query_flags;
+        self
+    }
+    pub fn pipeline_statistics(mut self, pipeline_statistics: ash::vk::QueryPipelineStatisticFlags) -> Self {
+        self.pipeline_statistics = pipeline_statistics;
+        self
+    }
     pub fn build(self) -> Pin<Arc<CommandBufferInheritanceInfo>> {
         // TODO VUID-VkCommandBufferInheritanceInfo-occlusionQueryEnable-00056
         // TODO VUID-VkCommandBufferInheritanceInfo-queryFlags-00057
@@ -135,6 +162,16 @@ pub struct CommandBuffer<const LEVEL: Level, const STATE: State, const SCOPE: Re
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
     pub(crate) one_time_submit: bool,
+    pub(crate) secondary_buffers:
+        FxHashMap<u64, CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
+}
+
+impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Handler
+    for CommandBuffer<LEVEL, STATE, SCOPE>
+{
+    fn handler(&self) -> u64 {
+        self.vk_command_buffer.as_raw()
+    }
 }
 
 impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Drop
@@ -142,10 +179,7 @@ impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Drop
 {
     fn drop(&mut self) {
         // DONE VUID-vkFreeCommandBuffers-pCommandBuffers-00048
-        // MUST VUID-vkFreeCommandBuffers-pCommandBuffers-00047
-        if STATE == PENDING {
-            panic!("VUID-vkFreeCommandBuffers-pCommandBuffers-00047")
-        }
+        // TODO VUID-vkFreeCommandBuffers-pCommandBuffers-00047
         // Host Synchronization: commandPool, each member of pCommandBuffers
         unsafe {
             self.device
@@ -186,18 +220,24 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     }
 }
 
-impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, STATE, SCOPE> {
+impl<const STATE: State> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }> {
+    // DONE VUID-vkBeginCommandBuffer-commandBuffer-02840
     fn begin(
         mut self,
-        flags: ash::vk::CommandBufferUsageFlags,
-    ) -> Result<CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE>, ash::vk::Result> {
+        one_time_submit: bool,
+    ) -> Result<CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>, ash::vk::Result> {
         self.holding_resources.clear();
-        self.one_time_submit = flags.contains(ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        self.one_time_submit = one_time_submit;
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
         // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
         // Host Synchronization:commandBuffer, VkCommandPool
+        let flags = if one_time_submit {
+            ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT
+        } else {
+            ash::vk::CommandBufferUsageFlags::default()
+        };
         let begin_info = ash::vk::CommandBufferBeginInfo::builder()
             .flags(flags)
             .build();
@@ -212,11 +252,11 @@ impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }
 
 macro_rules! primary_record_impls {
     ($($stage: expr),*) => {$(
-        impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { $stage }, SCOPE> {
-            pub fn record<F>(self, flags: ash::vk::CommandBufferUsageFlags, f: F)
-                             -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, SCOPE>, ash::vk::Result>
-                where F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE>) {
-                let mut recording_buffer = self.begin(flags)?;
+        impl CommandBuffer<{ PRIMARY }, { $stage }, { OUTSIDE }> {
+            pub fn record<F>(self, one_time_submit: bool, f: F)
+                             -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>, ash::vk::Result>
+                where F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>) {
+                let mut recording_buffer = self.begin(one_time_submit)?;
                 f(&mut recording_buffer);
                 recording_buffer.end()
             }
@@ -226,20 +266,27 @@ macro_rules! primary_record_impls {
 
 primary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
-impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ SECONDARY }, STATE, SCOPE> {
-    fn begin(
+impl<const STATE: State> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }> {
+    fn begin<const SCOPE: RenderPassScope>(
         mut self,
-        flags: ash::vk::CommandBufferUsageFlags,
+        one_time_submit: bool,
         inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE>, ash::vk::Result> {
         self.holding_resources.clear();
-        self.one_time_submit = flags.contains(ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+        self.one_time_submit = one_time_submit;
         self.inheritance_info = inheritance_info;
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
         // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
         // Host Synchronization:commandBuffer, VkCommandPool
+        let mut flags = ash::vk::CommandBufferUsageFlags::default();
+        if one_time_submit {
+            flags |= ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
+        }
+        if SCOPE == INSIDE {
+            flags |= ash::vk::CommandBufferUsageFlags::RENDER_PASS_CONTINUE;
+        };
         let begin_info = ash::vk::CommandBufferBeginInfo::builder()
             .flags(flags)
             .inheritance_info(&self.inheritance_info.ash_vk_info)
@@ -255,11 +302,20 @@ impl<const STATE: State, const SCOPE: RenderPassScope> CommandBuffer<{ SECONDARY
 
 macro_rules! secondary_record_impls {
     ($($stage: expr),*) => {$(
-        impl<const SCOPE: RenderPassScope> CommandBuffer<{ SECONDARY }, { $stage }, SCOPE> {
-            pub fn record<F>(self, flags: ash::vk::CommandBufferUsageFlags, inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: F)
-                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE>, ash::vk::Result>
-                where F: FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE>) {
-                let mut recording_buffer = self.begin(flags, inheritance_info)?;
+        impl CommandBuffer<{ SECONDARY }, { $stage },  { OUTSIDE }> {
+            pub fn record<F>(self, one_time_submit: bool,
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: F)
+                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }>, ash::vk::Result>
+                where F: FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }>) {
+                let mut recording_buffer = self.begin::<{ OUTSIDE }>(one_time_submit, inheritance_info)?;
+                f(&mut recording_buffer);
+                recording_buffer.end()
+            }
+            pub fn record_render_pass_continue<F>(self, one_time_submit: bool,
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: F)
+                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { INSIDE }>, ash::vk::Result>
+                where F: FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }>) {
+                let mut recording_buffer = self.begin::<{ INSIDE }>(one_time_submit, inheritance_info)?;
                 f(&mut recording_buffer);
                 recording_buffer.end()
             }
@@ -299,6 +355,30 @@ impl CommandPool {
             inheritance_info: DEFAULT_INHERITANCE_INFO.clone(),
             holding_resources: Default::default(),
             one_time_submit: false,
+            secondary_buffers: Default::default(),
         })
+    }
+}
+
+impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE> {
+    pub fn cmd_execute_commands(
+        &mut self,
+        secondary_command_buffers: &mut Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE>>,
+    ) {
+        let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
+        while !secondary_command_buffers.is_empty() {
+            let buffer = secondary_command_buffers.pop().unwrap();
+            vk_buffers.push(buffer.vk_command_buffer);
+            let handler = buffer.vk_command_buffer.as_raw();
+            let buffer = unsafe { std::mem::transmute(buffer) };
+            self.secondary_buffers.insert(handler, buffer);
+        }
+
+        // Host Synchronization: commandBuffer, VkCommandPool
+        unsafe {
+            self.device
+                .ash_device
+                .cmd_execute_commands(self.vk_command_buffer, vk_buffers.as_slice());
+        }
     }
 }

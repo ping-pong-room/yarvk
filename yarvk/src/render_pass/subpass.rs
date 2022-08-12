@@ -193,4 +193,5 @@ impl SubpassDescriptionBuilder {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct SubpassIndex(pub(crate) u32);

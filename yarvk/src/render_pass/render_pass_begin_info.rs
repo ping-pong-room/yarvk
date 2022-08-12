@@ -1,7 +1,7 @@
-use crate::command::command_buffer::CommandBuffer;
-use crate::command::command_buffer::Level::PRIMARY;
+use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 use crate::command::command_buffer::State::RECORDING;
+use crate::command::command_buffer::{CommandBuffer, RenderPassScope};
 use crate::frame_buffer::Framebuffer;
 use crate::render_pass::RenderPass;
 use ash::vk::{ClearValue, Rect2D};

@@ -9,3 +9,4 @@ edition = "2021"
 yarvk = { path = "../yarvk"}
 winit = "0.26.0"
 image = "0.23"
+rayon = "1.5.3"
