@@ -3,21 +3,15 @@ use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
-use crate::device_memory::DeviceMemory;
-use crate::image::State::{Bound, Unbound};
+use crate::device_memory::{DeviceMemory, State};
 use crate::physical_device::SharingMode;
 use ash::vk::Handle;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
+use crate::device_memory::State::{Bound, Unbound};
 
 pub mod image_subresource_range;
 pub mod image_view;
-
-#[derive(PartialEq, Eq)]
-pub enum State {
-    Unbound,
-    Bound,
-}
 
 #[derive(Default)]
 pub struct ImageCreateInfo {

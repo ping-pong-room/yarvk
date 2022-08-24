@@ -4,7 +4,6 @@ use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::image::image_subresource_range::ImageSubresourceRange;
 use crate::image::Image;
-use crate::image::State::Bound;
 use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use ash::vk::Handle;
@@ -12,6 +11,7 @@ use ash::vk::Handle;
 use std::cell::Cell;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::device_memory::State::Bound;
 
 pub struct MemoryBarrier {
     pub(crate) ash_vk_memory_barrier: ash::vk::MemoryBarrier,

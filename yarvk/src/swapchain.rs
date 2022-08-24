@@ -1,7 +1,6 @@
 use crate::device::Device;
 use crate::extensions::{DeviceExtension, PhysicalDeviceExtensionType};
 use crate::fence::{SignalingFence, UnsignaledFence};
-use crate::image::State::Bound;
 use crate::image::{Image, ImageCreateInfo, ImageFormatListCreateInfo};
 use crate::physical_device::SharingMode;
 use crate::queue::Queue;
@@ -11,6 +10,7 @@ use ash::vk::Handle;
 
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
+use crate::device_memory::State::Bound;
 
 pub struct SwapchainBuilder {
     surface: Arc<Surface>,

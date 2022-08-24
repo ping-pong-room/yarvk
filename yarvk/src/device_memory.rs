@@ -6,6 +6,13 @@ use std::sync::Arc;
 
 pub mod dedicated_memory;
 
+#[derive(PartialEq, Eq)]
+pub enum State {
+    Unbound,
+    Bound,
+}
+
+
 pub struct DeviceMemory {
     pub device: Arc<Device>,
     pub(crate) vk_device_memory: ash::vk::DeviceMemory,

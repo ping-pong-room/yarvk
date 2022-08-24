@@ -1,5 +1,3 @@
-use crate::buffer::State::{Bound, Unbound};
-
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device::Device;
@@ -9,17 +7,12 @@ use crate::device_features::PhysicalDeviceFeatures::{
 };
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
-use crate::device_memory::DeviceMemory;
+use crate::device_memory::{DeviceMemory, State};
 use crate::physical_device::SharingMode;
 
 use std::sync::Arc;
 use ash::vk::Handle;
-
-#[derive(PartialEq, Eq)]
-pub enum State {
-    Unbound,
-    Bound,
-}
+use crate::device_memory::State::{Bound, Unbound};
 
 pub enum BufferCreateFlags {
     // DONE VUID-VkBufferCreateInfo-flags-00915

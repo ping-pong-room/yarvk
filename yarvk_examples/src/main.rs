@@ -30,7 +30,6 @@ use yarvk::frame_buffer::Framebuffer;
 use yarvk::image::image_subresource_range::ImageSubresourceRange;
 use yarvk::image::image_view::{ImageView, ImageViewType};
 use yarvk::image::Image;
-use yarvk::image::State::Bound;
 use yarvk::instance::{ApplicationInfo, Instance};
 use yarvk::physical_device::memory_properties::{MemoryType, PhysicalDeviceMemoryProperties};
 use yarvk::physical_device::SharingMode;
@@ -75,6 +74,7 @@ use yarvk::{
     SampleCountFlags, SamplerAddressMode, SamplerMipmapMode, StencilOp, StencilOpState,
     SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate, Viewport, SUBPASS_EXTERNAL,
 };
+use yarvk::device_memory::State::Bound;
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{

@@ -5,9 +5,9 @@ use crate::device_features::{
 };
 use crate::image::image_subresource_range::ImageSubresourceRange;
 use crate::image::Image;
-use crate::image::State::Bound;
 use ash::vk::{ComponentMapping, Format};
 use std::sync::Arc;
+use crate::device_memory::State::Bound;
 
 pub enum ImageViewType {
     Type1d,
