@@ -8,17 +8,15 @@ use crate::pipeline::input_assembly_state::PipelineInputAssemblyStateCreateInfo;
 use crate::pipeline::multisample_state::PipelineMultisampleStateCreateInfo;
 
 use crate::pipeline::rasterization_state::PipelineRasterizationStateCreateInfo;
-use crate::pipeline::shader_stage::{PipelineShaderStageCreateInfo};
-use crate::pipeline::vertex_input_state::{
-    PipelineVertexInputStateCreateInfo,
-};
+use crate::pipeline::shader_stage::PipelineShaderStageCreateInfo;
+use crate::pipeline::vertex_input_state::PipelineVertexInputStateCreateInfo;
 use crate::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
 
+use crate::shader_module::ShaderModule;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::Arc;
-use crate::shader_module::ShaderModule;
 
 pub mod color_blend_state;
 pub mod depth_stencil_state;
@@ -345,7 +343,9 @@ impl Drop for Pipeline {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
     // DONE VUID-vkCmdBindPipeline-commandBuffer-recording
     pub fn cmd_bind_pipeline(
         &mut self,

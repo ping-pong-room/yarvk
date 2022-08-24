@@ -7,7 +7,7 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::buffer::Buffer;
-use yarvk::command::command_buffer::Level::PRIMARY;
+use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_pool::{CommandPool, CommandPoolCreateFlags};
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_pool::{
@@ -16,12 +16,16 @@ use yarvk::descriptor_pool::{
 };
 use yarvk::device::{Device, DeviceQueueCreateInfo};
 
+use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
+use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
+use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
+use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::DeviceMemory;
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
 };
-use yarvk::fence::Fence;
+use yarvk::fence::{Fence, UnsignaledFence};
 use yarvk::frame_buffer::Framebuffer;
 use yarvk::image::image_subresource_range::ImageSubresourceRange;
 use yarvk::image::image_view::{ImageView, ImageViewType};
@@ -47,8 +51,8 @@ use yarvk::pipeline::vertex_input_state::{
 };
 use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use yarvk::pipeline::{Pipeline, PipelineLayout};
-use yarvk::queue::SubmitInfo;
-use yarvk::read_spv;
+use yarvk::queue::submit_info::{SubmitInfo, Submittable};
+use yarvk::queue::Queue;
 use yarvk::render_pass::attachment::{AttachmentDescription, AttachmentReference};
 use yarvk::render_pass::render_pass_begin_info::RenderPassBeginInfo;
 use yarvk::render_pass::subpass::{SubpassDependency, SubpassDescription};
@@ -59,10 +63,11 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
+use yarvk::{read_spv, Handler};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
-    CommandBufferUsageFlags, CompareOp, ComponentMapping, ComponentSwizzle, CompositeAlphaFlagsKHR,
+    CompareOp, ComponentMapping, ComponentSwizzle, CompositeAlphaFlagsKHR,
     DebugUtilsMessageSeverityFlagsEXT, DependencyFlags, DescriptorPoolSize, DescriptorType,
     Extent2D, Extent3D, Filter, Format, FrontFace, ImageAspectFlags, ImageLayout,
     ImageSubresourceLayers, ImageTiling, ImageType, ImageUsageFlags, IndexType,
@@ -70,7 +75,6 @@ use yarvk::{
     SampleCountFlags, SamplerAddressMode, SamplerMipmapMode, StencilOp, StencilOpState,
     SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate, Viewport, SUBPASS_EXTERNAL,
 };
-use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -94,6 +98,31 @@ pub struct Vector3 {
     pub y: f32,
     pub z: f32,
     pub _pad: f32,
+}
+
+pub fn submit(
+    queue: &mut Queue,
+    buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>,
+    fence: UnsignaledFence,
+) -> (
+    UnsignaledFence,
+    CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
+) {
+    let handler = buffer.handler();
+    let submit_info = SubmitInfo::builder()
+        .add_one_time_submit_command_buffer(buffer)
+        .build();
+    let fence = Submittable::new()
+        .add_submit_info(submit_info)
+        .submit(queue, fence)
+        .expect("queue submit failed.");
+    let (fence, mut invalid_buffers) = fence.wait().unwrap();
+    let fence = fence.reset().unwrap();
+    let buffer = invalid_buffers
+        .get_invalid_primary_buffers(&handler)
+        .unwrap();
+    let buffer = buffer.reset().unwrap();
+    (fence, buffer)
 }
 
 pub fn find_memory_type_index(
@@ -253,21 +282,14 @@ fn main() {
         .image_array_layers(1)
         .build()
         .unwrap();
-    let setup_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
+    let command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
         // do not need, yarvk enable reset feature by default
         .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
         .build()
         .unwrap()
         .allocate_command_buffer::<{ PRIMARY }>()
         .unwrap();
-    let draw_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        // do not need, yarvk enable reset feature by default
-        .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
-        .build()
-        .unwrap()
-        .allocate_command_buffer::<{ PRIMARY }>()
-        .unwrap();
-    let mut draw_command_buffer = Some(draw_command_buffer);
+    let command_buffer_handler = command_buffer.handler();
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
         .iter()
@@ -318,19 +340,19 @@ fn main() {
     let depth_image_memory = DeviceMemory::builder(depth_image_memory, device.clone())
         .allocation_size(depth_image_memory_req.size)
         // example of how to use dedicated memory
-        .dedicated_info(MemoryDedicatedAllocateInfo{resource: DedicatedResource::Image(&depth_image)})
+        .dedicated_info(MemoryDedicatedAllocateInfo {
+            resource: DedicatedResource::Image(&depth_image),
+        })
         .build()
         .unwrap();
     let depth_image = depth_image
         .bind_memory(&depth_image_memory, 0)
         .expect("Unable to bind depth image memory");
 
-    let draw_commands_reuse_fence = Fence::new(device.clone()).unwrap();
-    let mut draw_commands_reuse_fence = Some(draw_commands_reuse_fence);
-    let setup_commands_reuse_fence = Fence::new(device.clone()).unwrap();
+    let fence = Fence::new(device.clone()).unwrap();
 
-    let command_buffer = setup_command_buffer
-        .record(CommandBufferUsageFlags::ONE_TIME_SUBMIT, |command_buffer| {
+    let command_buffer = command_buffer
+        .record(|command_buffer| {
             command_buffer.cmd_pipeline_barrier(
                 &[PipelineStageFlags::BottomOfPipe],
                 &[PipelineStageFlags::LateFragmentTests],
@@ -355,21 +377,9 @@ fn main() {
             );
         })
         .unwrap();
-    let mut submit_info = SubmitInfo::new();
-    submit_info.add_command_buffer(command_buffer);
-    let infos = &mut [&mut submit_info];
-    let fence = present_queue
-        .submit(setup_commands_reuse_fence, infos)
-        .expect("queue submit failed.");
-    let (fence, infos) = fence.wait().unwrap();
-    let setup_commands_reuse_fence = fence.reset().unwrap();
-    let submit_info = &mut infos[0];
-    let setup_command_buffer = submit_info
-        .take_invalid_buffers()
-        .pop()
-        .unwrap()
-        .reset()
-        .unwrap();
+
+    let (setup_commands_reuse_fence, setup_command_buffer) =
+        submit(&mut present_queue, command_buffer, fence);
 
     let depth_image_view = ImageView::builder(depth_image.clone())
         .subresource_range(
@@ -633,7 +643,7 @@ fn main() {
         .expect("Unable to bind depth image memory");
 
     let command_buffer = setup_command_buffer
-        .record(CommandBufferUsageFlags::ONE_TIME_SUBMIT, |command_buffer| {
+        .record(|command_buffer| {
             let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
                 .dst_access_mask(AccessFlags::TRANSFER_WRITE)
                 .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
@@ -699,13 +709,11 @@ fn main() {
             );
         })
         .unwrap();
-    let mut submit_info = SubmitInfo::new();
-    submit_info.add_command_buffer(command_buffer);
-    let infos = &mut [&mut submit_info];
-    let fence = present_queue
-        .submit(setup_commands_reuse_fence, infos)
-        .expect("queue submit failed.");
-    fence.wait().unwrap();
+    let (fence, command_buffer) = submit(
+        &mut present_queue,
+        command_buffer,
+        setup_commands_reuse_fence,
+    );
 
     let sampler = Sampler::builder(device.clone())
         .mag_filter(Filter::LINEAR)
@@ -918,6 +926,20 @@ fn main() {
         .unwrap();
     let present_complete_semaphore = Semaphore::new(device.clone()).unwrap();
     let mut rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
+    let mut draw_commands_reuse_fence = Some(fence);
+    let mut draw_command_buffer = Some(command_buffer);
+    let secondary_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
+        .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
+        .build()
+        .unwrap()
+        .allocate_command_buffer::<{ SECONDARY }>()
+        .unwrap();
+    let secondary_command_buffer_handler = secondary_command_buffer.handler();
+    let mut secondary_command_buffer = Some(secondary_command_buffer);
+    let inheritance_info = CommandBufferInheritanceInfo::builder()
+        .render_pass(renderpass.clone())
+        .subpass(subpass_id0)
+        .build();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
         match event {
@@ -960,66 +982,87 @@ fn main() {
                         .build();
                 let command_buffer = draw_command_buffer.take().unwrap();
                 let command_buffer = command_buffer
-                    .record(CommandBufferUsageFlags::ONE_TIME_SUBMIT, |command_buffer| {
+                    .record(|command_buffer| {
                         command_buffer.cmd_begin_render_pass(
                             &render_pass_begin_info,
-                            SubpassContents::INLINE,
+                            SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
-                                command_buffer.cmd_bind_descriptor_sets(
-                                    PipelineBindPoint::GRAPHICS,
-                                    &pipeline_layout,
-                                    0,
-                                    &descriptor_sets[..],
-                                    &[],
-                                );
-                                command_buffer.cmd_bind_pipeline(
-                                    PipelineBindPoint::GRAPHICS,
-                                    &graphic_pipeline,
-                                );
-                                command_buffer.cmd_bind_vertex_buffers(
-                                    0,
-                                    &[vertex_input_buffer.clone()],
-                                    &[0],
-                                );
-                                command_buffer.cmd_bind_index_buffer(
-                                    index_buffer.clone(),
-                                    0,
-                                    IndexType::UINT32,
-                                );
-                                command_buffer.cmd_draw_indexed(
-                                    index_buffer_data.len() as u32,
-                                    1,
-                                    0,
-                                    0,
-                                    1,
-                                );
+                                let secondary_buffer = secondary_command_buffer.take().unwrap();
+                                let secondary_buffer = secondary_buffer
+                                    .record_render_pass_continue::<true>(
+                                        inheritance_info.clone(),
+                                        |command_buffer| {
+                                            // use thread pool in real cases
+                                            std::thread::scope(|s| {
+                                                s.spawn(|| {
+                                                    command_buffer.cmd_bind_descriptor_sets(
+                                                        PipelineBindPoint::GRAPHICS,
+                                                        &pipeline_layout,
+                                                        0,
+                                                        &descriptor_sets[..],
+                                                        &[],
+                                                    );
+                                                    command_buffer.cmd_bind_pipeline(
+                                                        PipelineBindPoint::GRAPHICS,
+                                                        &graphic_pipeline,
+                                                    );
+                                                    command_buffer.cmd_bind_vertex_buffers(
+                                                        0,
+                                                        &[vertex_input_buffer.clone()],
+                                                        &[0],
+                                                    );
+                                                    command_buffer.cmd_bind_index_buffer(
+                                                        index_buffer.clone(),
+                                                        0,
+                                                        IndexType::UINT32,
+                                                    );
+                                                    command_buffer.cmd_draw_indexed(
+                                                        index_buffer_data.len() as u32,
+                                                        1,
+                                                        0,
+                                                        0,
+                                                        1,
+                                                    );
+                                                })
+                                                .join()
+                                                .unwrap();
+                                            });
+                                        },
+                                    )
+                                    .unwrap();
+                                let mut vec = vec![secondary_buffer];
+                                command_buffer.cmd_execute_commands(&mut vec);
                             },
                         );
                     })
                     .unwrap();
-                let mut submit_info = SubmitInfo::new();
-                submit_info.add_wait_semaphore(
-                    &present_complete_semaphore,
-                    PipelineStageFlags::BottomOfPipe,
-                );
-                submit_info.add_command_buffer(command_buffer);
-                submit_info.add_signal_semaphore(&rendering_complete_semaphore);
+                let submit_info = SubmitInfo::builder()
+                    .add_wait_semaphore(
+                        &present_complete_semaphore,
+                        PipelineStageFlags::BottomOfPipe,
+                    )
+                    .add_one_time_submit_command_buffer(command_buffer)
+                    .add_signal_semaphore(&rendering_complete_semaphore)
+                    .build();
                 let fence = draw_commands_reuse_fence.take().unwrap();
-                let infos = &mut [&mut submit_info];
-                let fence = present_queue
-                    .submit(fence, infos)
+                let fence = Submittable::new()
+                    .add_submit_info(submit_info)
+                    .submit(&mut present_queue, fence)
                     .expect("queue submit failed.");
-                let (fence, infos) = fence.wait().unwrap();
+
+                let (fence, mut result) = fence.wait().unwrap();
                 let fence = fence.reset().unwrap();
-                let command_buffer = infos[0]
-                    .take_invalid_buffers()
-                    .pop()
-                    .unwrap()
-                    .reset()
+                let command_buffer = result
+                    .get_invalid_primary_buffers(&command_buffer_handler)
                     .unwrap();
-                // submit_info = submit_info.clear();
+                let command_buffer = command_buffer.reset().unwrap();
+                let secondary_buffer = result
+                    .get_invalid_secondary_buffers(&secondary_command_buffer_handler)
+                    .unwrap();
+                let secondary_buffer = secondary_buffer.reset().unwrap();
                 draw_command_buffer = Some(command_buffer);
                 draw_commands_reuse_fence = Some(fence);
+                secondary_command_buffer = Some(secondary_buffer);
                 let mut present_info = PresentInfo::builder()
                     .add_swapchain_and_image(&mut swapchain, &image)
                     .add_wait_semaphore(&mut rendering_complete_semaphore)

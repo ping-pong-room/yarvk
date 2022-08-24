@@ -1,4 +1,3 @@
-
 use crate::buffer::Buffer;
 
 use crate::command::command_buffer::State::RECORDING;
@@ -214,7 +213,9 @@ impl BufferMemoryBarrierBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
     thread_local! {
         static BARRIERS_CACHES: Cell<(Vec<ash::vk::MemoryBarrier>,
                                         Vec<ash::vk::BufferMemoryBarrier>,

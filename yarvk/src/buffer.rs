@@ -273,7 +273,7 @@ impl BufferViewBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT> {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
     pub fn cmd_bind_vertex_buffers(
         &mut self,

@@ -3,7 +3,6 @@ use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceFeatures::MultiViewport;
 
-
 #[derive(Default)]
 pub struct PipelineViewportStateCreateInfo {
     viewports: Vec<ash::vk::Viewport>,
@@ -72,7 +71,9 @@ impl PipelineViewportStateCreateInfoBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
     // DONE VUID-vkCmdSetViewport-commandBuffer-recording
     pub fn cmd_set_viewport(&mut self, viewports: &ash::vk::Viewport) {
         unsafe {

@@ -194,7 +194,7 @@ impl<const STATE: State> Drop for Image<STATE> {
 
 pub type ImageFormatListCreateInfo = Vec<ash::vk::Format>;
 
-impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
+impl<const LEVEL: Level, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT> {
     // DONE VUID-vkCmdCopyBufferToImage-commandBuffer-recording
     pub fn cmd_copy_buffer_to_image(
         &mut self,

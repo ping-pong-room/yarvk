@@ -1,7 +1,7 @@
-use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
+use crate::command::command_buffer::Level::{PRIMARY};
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 use crate::command::command_buffer::State::RECORDING;
-use crate::command::command_buffer::{CommandBuffer, RenderPassScope};
+use crate::command::command_buffer::{CommandBuffer};
 use crate::frame_buffer::Framebuffer;
 use crate::render_pass::RenderPass;
 use ash::vk::{ClearValue, Rect2D};
@@ -56,7 +56,9 @@ impl RenderPassBeginInfo {
     }
 }
 
-impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
+impl<const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>
+{
     // DONE VUID-vkCmdBeginRenderPass-commandBuffer-recording
     // DONE VUID-vkCmdEndRenderPass-commandBuffer-recording
     pub fn cmd_begin_render_pass<F>(
@@ -65,7 +67,7 @@ impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
         contents: ash::vk::SubpassContents,
         f: F,
     ) where
-        F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }>),
+        F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>),
     {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
@@ -76,7 +78,7 @@ impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
             );
         }
         f(unsafe {
-            &mut *(self as *mut Self as *mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }>)
+            &mut *(self as *mut Self as *mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>)
         });
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool

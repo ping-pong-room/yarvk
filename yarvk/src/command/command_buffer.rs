@@ -105,7 +105,10 @@ impl CommandBufferInheritanceInfoBuilder {
         self.query_flags = query_flags;
         self
     }
-    pub fn pipeline_statistics(mut self, pipeline_statistics: ash::vk::QueryPipelineStatisticFlags) -> Self {
+    pub fn pipeline_statistics(
+        mut self,
+        pipeline_statistics: ash::vk::QueryPipelineStatisticFlags,
+    ) -> Self {
         self.pipeline_statistics = pipeline_statistics;
         self
     }
@@ -155,27 +158,39 @@ impl HoldingResources {
     }
 }
 
-pub struct CommandBuffer<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> {
+pub struct CommandBuffer<
+    const LEVEL: Level,
+    const STATE: State,
+    const SCOPE: RenderPassScope,
+    const ONE_TIME_SUBMIT: bool,
+> {
     pub device: Arc<Device>,
     pub(crate) command_pool: CommandPool,
     pub(crate) vk_command_buffer: ash::vk::CommandBuffer,
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
-    pub(crate) one_time_submit: bool,
     pub(crate) secondary_buffers:
-        FxHashMap<u64, CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
+        Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, false>>,
 }
 
-impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Handler
-    for CommandBuffer<LEVEL, STATE, SCOPE>
+impl<
+        const LEVEL: Level,
+        const STATE: State,
+        const SCOPE: RenderPassScope,
+        const ONE_TIME_SUBMIT: bool,
+    > Handler for CommandBuffer<LEVEL, STATE, SCOPE, ONE_TIME_SUBMIT>
 {
     fn handler(&self) -> u64 {
         self.vk_command_buffer.as_raw()
     }
 }
 
-impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Drop
-    for CommandBuffer<LEVEL, STATE, SCOPE>
+impl<
+        const LEVEL: Level,
+        const STATE: State,
+        const SCOPE: RenderPassScope,
+        const ONE_TIME_SUBMIT: bool,
+    > Drop for CommandBuffer<LEVEL, STATE, SCOPE, ONE_TIME_SUBMIT>
 {
     fn drop(&mut self) {
         // DONE VUID-vkFreeCommandBuffers-pCommandBuffers-00048
@@ -191,8 +206,8 @@ impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> Drop
 
 macro_rules! reset_impls {
     ($($stage: expr),*) => {$(
-        impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { $stage }, SCOPE> {
-            pub fn reset(mut self) -> Result<CommandBuffer<LEVEL, { INITIAL }, SCOPE>, ash::vk::Result> {
+        impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { $stage }, SCOPE, ONE_TIME_SUBMIT> {
+            pub fn reset(mut self) -> Result<CommandBuffer<LEVEL, { INITIAL }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result> {
                 self.holding_resources.clear();
                 // Host Synchronization: commandBuffer, VkCommandPool
                 // DONE VUID-vkResetCommandBuffer-commandBuffer-00046
@@ -208,8 +223,12 @@ macro_rules! reset_impls {
 
 reset_impls!(INITIAL, RECORDING, EXECUTABLE, INVALID);
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
-    fn end(self) -> Result<CommandBuffer<LEVEL, { EXECUTABLE }, SCOPE>, ash::vk::Result> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
+    fn end(
+        self,
+    ) -> Result<CommandBuffer<LEVEL, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result> {
         // Host Synchronization:commandBuffer, VkCommandPool
         unsafe {
             self.device
@@ -220,20 +239,21 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     }
 }
 
-impl<const STATE: State> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }> {
+impl<const STATE: State, const C: bool> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }, C> {
     // DONE VUID-vkBeginCommandBuffer-commandBuffer-02840
-    fn begin(
+    fn begin<const ONE_TIME_SUBMIT: bool>(
         mut self,
-        one_time_submit: bool,
-    ) -> Result<CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>, ash::vk::Result> {
+    ) -> Result<
+        CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>,
+        ash::vk::Result,
+    > {
         self.holding_resources.clear();
-        self.one_time_submit = one_time_submit;
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
         // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
         // Host Synchronization:commandBuffer, VkCommandPool
-        let flags = if one_time_submit {
+        let flags = if ONE_TIME_SUBMIT == true {
             ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT
         } else {
             ash::vk::CommandBufferUsageFlags::default()
@@ -252,11 +272,11 @@ impl<const STATE: State> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }> {
 
 macro_rules! primary_record_impls {
     ($($stage: expr),*) => {$(
-        impl CommandBuffer<{ PRIMARY }, { $stage }, { OUTSIDE }> {
-            pub fn record<F>(self, one_time_submit: bool, f: F)
-                             -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>, ash::vk::Result>
-                where F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>) {
-                let mut recording_buffer = self.begin(one_time_submit)?;
+        impl<const C: bool> CommandBuffer<{ PRIMARY }, { $stage }, { OUTSIDE }, C> {
+            pub fn record<const ONE_TIME_SUBMIT: bool>(self, f: impl FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>))
+                             -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
+            {
+                let mut recording_buffer = self.begin()?;
                 f(&mut recording_buffer);
                 recording_buffer.end()
             }
@@ -266,14 +286,13 @@ macro_rules! primary_record_impls {
 
 primary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
-impl<const STATE: State> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }> {
-    fn begin<const SCOPE: RenderPassScope>(
+impl<const STATE: State, const C: bool> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, C> {
+    fn begin<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>(
         mut self,
-        one_time_submit: bool,
         inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
-    ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE>, ash::vk::Result> {
+    ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result>
+    {
         self.holding_resources.clear();
-        self.one_time_submit = one_time_submit;
         self.inheritance_info = inheritance_info;
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
@@ -281,7 +300,7 @@ impl<const STATE: State> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }> {
         // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
         // Host Synchronization:commandBuffer, VkCommandPool
         let mut flags = ash::vk::CommandBufferUsageFlags::default();
-        if one_time_submit {
+        if ONE_TIME_SUBMIT {
             flags |= ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
         }
         if SCOPE == INSIDE {
@@ -302,20 +321,20 @@ impl<const STATE: State> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }> {
 
 macro_rules! secondary_record_impls {
     ($($stage: expr),*) => {$(
-        impl CommandBuffer<{ SECONDARY }, { $stage },  { OUTSIDE }> {
-            pub fn record<F>(self, one_time_submit: bool,
-                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: F)
-                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }>, ash::vk::Result>
-                where F: FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }>) {
-                let mut recording_buffer = self.begin::<{ OUTSIDE }>(one_time_submit, inheritance_info)?;
+        impl<const C: bool> CommandBuffer<{ SECONDARY }, { $stage },  { OUTSIDE }, C> {
+            pub fn record<const ONE_TIME_SUBMIT: bool>(self,
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }, ONE_TIME_SUBMIT>))
+                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
+            {
+                let mut recording_buffer = self.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info)?;
                 f(&mut recording_buffer);
                 recording_buffer.end()
             }
-            pub fn record_render_pass_continue<F>(self, one_time_submit: bool,
-                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: F)
-                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { INSIDE }>, ash::vk::Result>
-                where F: FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }>) {
-                let mut recording_buffer = self.begin::<{ INSIDE }>(one_time_submit, inheritance_info)?;
+            pub fn record_render_pass_continue<const ONE_TIME_SUBMIT: bool>(self,
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }, ONE_TIME_SUBMIT>))
+                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { INSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
+            {
+                let mut recording_buffer = self.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info)?;
                 f(&mut recording_buffer);
                 recording_buffer.end()
             }
@@ -334,7 +353,15 @@ impl CommandPool {
     // Make the command buffer owns the pool will make the host synchronization easier.
     pub fn allocate_command_buffer<const LEVEL: Level>(
         self: Self,
-    ) -> Result<CommandBuffer<LEVEL, { INITIAL }, { OUTSIDE }>, ash::vk::Result> {
+    ) -> Result<
+        CommandBuffer<
+            LEVEL,
+            { INITIAL },
+            { OUTSIDE },
+            true, /*onetime submit or not does not important here*/
+        >,
+        ash::vk::Result,
+    > {
         let create_info = ash::vk::CommandBufferAllocateInfo::builder()
             .command_pool(self.vk_command_pool)
             .level(LEVEL.to_ash())
@@ -354,16 +381,17 @@ impl CommandPool {
             vk_command_buffer,
             inheritance_info: DEFAULT_INHERITANCE_INFO.clone(),
             holding_resources: Default::default(),
-            one_time_submit: false,
             secondary_buffers: Default::default(),
         })
     }
 }
 
-impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE> {
+impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
     pub fn cmd_execute_commands(
         &mut self,
-        secondary_command_buffers: &mut Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE>>,
+        secondary_command_buffers: &mut Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>>,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
         while !secondary_command_buffers.is_empty() {
@@ -371,7 +399,7 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { RECORDING }, SCO
             vk_buffers.push(buffer.vk_command_buffer);
             let handler = buffer.vk_command_buffer.as_raw();
             let buffer = unsafe { std::mem::transmute(buffer) };
-            self.secondary_buffers.insert(handler, buffer);
+            self.secondary_buffers.push(buffer);
         }
 
         // Host Synchronization: commandBuffer, VkCommandPool
