@@ -149,7 +149,7 @@ impl Image<{ Unbound }> {
             inner: Default::default(),
         }
     }
-    pub fn get_image_memory_requirements(&self) -> ash::vk::MemoryRequirements {
+    pub fn get_memory_requirements(&self) -> ash::vk::MemoryRequirements {
         unsafe {
             // Host Synchronization: none
             self.device

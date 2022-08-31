@@ -330,7 +330,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let depth_image_memory_req = depth_image.get_image_memory_requirements();
+    let depth_image_memory_req = depth_image.get_memory_requirements();
     let depth_image_memory = find_memory_type_index(
         &depth_image_memory_req,
         &device_memory_properties,
@@ -460,7 +460,7 @@ fn main() {
         .sharing_mode(SharingMode::EXCLUSIVE)
         .build()
         .unwrap();
-    let index_buffer_memory_req = index_buffer.get_buffer_memory_requirements();
+    let index_buffer_memory_req = index_buffer.get_memory_requirements();
     let index_buffer_memory_index = find_memory_type_index(
         &index_buffer_memory_req,
         &device_memory_properties,
@@ -509,7 +509,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let vertex_input_buffer_memory_req = vertex_input_buffer.get_buffer_memory_requirements();
+    let vertex_input_buffer_memory_req = vertex_input_buffer.get_memory_requirements();
 
     let vertex_input_buffer_memory_index = find_memory_type_index(
         &vertex_input_buffer_memory_req,
@@ -552,7 +552,7 @@ fn main() {
         .sharing_mode(SharingMode::EXCLUSIVE)
         .build()
         .unwrap();
-    let uniform_color_buffer_memory_req = uniform_color_buffer.get_buffer_memory_requirements();
+    let uniform_color_buffer_memory_req = uniform_color_buffer.get_memory_requirements();
     let uniform_color_buffer_memory_index = find_memory_type_index(
         &uniform_color_buffer_memory_req,
         &device_memory_properties,
@@ -595,7 +595,7 @@ fn main() {
         .sharing_mode(SharingMode::EXCLUSIVE)
         .build()
         .unwrap();
-    let image_buffer_memory_req = image_buffer.get_buffer_memory_requirements();
+    let image_buffer_memory_req = image_buffer.get_memory_requirements();
     let image_buffer_memory_index = find_memory_type_index(
         &image_buffer_memory_req,
         &device_memory_properties,
@@ -626,7 +626,7 @@ fn main() {
         .sharing_mode(SharingMode::EXCLUSIVE)
         .build()
         .unwrap();
-    let texture_memory_req = texture_image.get_image_memory_requirements();
+    let texture_memory_req = texture_image.get_memory_requirements();
     let texture_memory_index = find_memory_type_index(
         &texture_memory_req,
         &device_memory_properties,

@@ -58,7 +58,7 @@ impl<const STATE: State> Drop for Buffer<STATE> {
 }
 
 impl Buffer<{ Unbound }> {
-    pub fn get_buffer_memory_requirements(&self) -> ash::vk::MemoryRequirements {
+    pub fn get_memory_requirements(&self) -> ash::vk::MemoryRequirements {
         unsafe {
             // Host Synchronization: none
             self.device
@@ -67,7 +67,7 @@ impl Buffer<{ Unbound }> {
         }
     }
 
-    pub fn get_buffer_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(
+    pub fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(
         &self,
     ) -> T {
         let mut t = T::default();
