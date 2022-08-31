@@ -1,4 +1,5 @@
 use crate::physical_device::PhysicalDevice;
+use crate::Handler;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -7,6 +8,12 @@ pub struct MemoryType {
     pub(crate) index: u32,
     pub property_flags: ash::vk::MemoryPropertyFlags,
     pub heap: ash::vk::MemoryHeap,
+}
+
+impl Handler for MemoryType {
+    fn handler(&self) -> u64 {
+        self.index as u64
+    }
 }
 
 pub struct PhysicalDeviceMemoryProperties {
