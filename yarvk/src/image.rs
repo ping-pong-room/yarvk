@@ -3,12 +3,13 @@ use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
+use crate::device_memory::State::{Bound, Unbound};
 use crate::device_memory::{DeviceMemory, State};
 use crate::physical_device::SharingMode;
+use crate::Handler;
 use ash::vk::Handle;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
-use crate::device_memory::State::{Bound, Unbound};
 
 pub mod image_subresource_range;
 pub mod image_view;
@@ -111,11 +112,19 @@ impl ImageBuilder {
                 .ash_device
                 .create_image(&vk_image_create_info, None)?
         };
+        let memory_requirements = unsafe {
+            // Host Synchronization: none
+            self.device
+                .ash_device
+                .get_image_memory_requirements(vk_image)
+        };
         Ok(Image {
             device: self.device,
             vk_image,
             presentable: false,
             image_create_info: Arc::new(image_create_info),
+            free_notification: None,
+            memory_requirements,
         })
     }
 }
@@ -125,6 +134,14 @@ pub struct Image<const STATE: State = Bound> {
     pub(crate) vk_image: ash::vk::Image,
     pub image_create_info: Arc<ImageCreateInfo>,
     pub(crate) presentable: bool,
+    pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
+    pub(crate) memory_requirements: ash::vk::MemoryRequirements,
+}
+
+impl<const STATE: State> Handler for Image<STATE> {
+    fn handler(&self) -> u64 {
+        self.vk_image.as_raw()
+    }
 }
 
 impl<const STATE: State> PartialEq for Image<STATE> {
@@ -149,13 +166,8 @@ impl Image<{ Unbound }> {
             inner: Default::default(),
         }
     }
-    pub fn get_memory_requirements(&self) -> ash::vk::MemoryRequirements {
-        unsafe {
-            // Host Synchronization: none
-            self.device
-                .ash_device
-                .get_image_memory_requirements(self.vk_image)
-        }
+    pub fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+        &self.memory_requirements
     }
     pub fn bind_memory(
         self,
@@ -173,6 +185,16 @@ impl Image<{ Unbound }> {
         }
         Ok(Arc::new(unsafe { std::mem::transmute(self) }))
     }
+
+    pub fn bind_memory_with_free_notification(
+        mut self,
+        memory: &DeviceMemory,
+        memory_offset: ash::vk::DeviceSize,
+        free_notification: Box<dyn FnOnce(&Self) + Sync + Send>,
+    ) -> Result<Arc<Image<{ Bound }>>, ash::vk::Result> {
+        self.free_notification = Some(free_notification);
+        self.bind_memory(memory, memory_offset)
+    }
 }
 
 impl<const STATE: State> Drop for Image<STATE> {
@@ -181,6 +203,9 @@ impl<const STATE: State> Drop for Image<STATE> {
         unsafe {
             if !self.presentable {
                 self.device.ash_device.destroy_image(self.vk_image, None);
+                if let Some(free_notification) = self.free_notification.take() {
+                    free_notification(self);
+                }
             }
         }
     }
@@ -188,7 +213,9 @@ impl<const STATE: State> Drop for Image<STATE> {
 
 pub type ImageFormatListCreateInfo = Vec<ash::vk::Format>;
 
-impl<const LEVEL: Level, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT> {
+impl<const LEVEL: Level, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>
+{
     // DONE VUID-vkCmdCopyBufferToImage-commandBuffer-recording
     pub fn cmd_copy_buffer_to_image(
         &mut self,

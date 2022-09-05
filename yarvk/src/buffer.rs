@@ -10,9 +10,10 @@ use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressC
 use crate::device_memory::{DeviceMemory, State};
 use crate::physical_device::SharingMode;
 
-use std::sync::Arc;
-use ash::vk::Handle;
 use crate::device_memory::State::{Bound, Unbound};
+use crate::Handler;
+use ash::vk::Handle;
+use std::sync::Arc;
 
 pub enum BufferCreateFlags {
     // DONE VUID-VkBufferCreateInfo-flags-00915
@@ -44,6 +45,14 @@ impl BufferCreateFlags {
 pub struct Buffer<const STATE: State = Bound> {
     pub device: Arc<Device>,
     pub(crate) ash_vk_buffer: ash::vk::Buffer,
+    pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
+    memory_requirements: ash::vk::MemoryRequirements,
+}
+
+impl<const STATE: State> Handler for Buffer<STATE> {
+    fn handler(&self) -> u64 {
+        self.ash_vk_buffer.as_raw()
+    }
 }
 
 impl<const STATE: State> Drop for Buffer<STATE> {
@@ -54,22 +63,18 @@ impl<const STATE: State> Drop for Buffer<STATE> {
                 .ash_device
                 .destroy_buffer(self.ash_vk_buffer, None);
         }
+        if let Some(free_notification) = self.free_notification.take() {
+            free_notification(self);
+        }
     }
 }
 
 impl Buffer<{ Unbound }> {
-    pub fn get_memory_requirements(&self) -> ash::vk::MemoryRequirements {
-        unsafe {
-            // Host Synchronization: none
-            self.device
-                .ash_device
-                .get_buffer_memory_requirements(self.ash_vk_buffer)
-        }
+    pub fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+        &self.memory_requirements
     }
 
-    pub fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(
-        &self,
-    ) -> T {
+    pub fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
         let mut t = T::default();
         let info = ash::vk::BufferMemoryRequirementsInfo2::builder()
             .buffer(self.ash_vk_buffer)
@@ -101,6 +106,16 @@ impl Buffer<{ Unbound }> {
             )?;
         }
         Ok(Arc::new(unsafe { std::mem::transmute(self) }))
+    }
+
+    pub fn bind_memory_with_free_notification(
+        mut self,
+        memory: &DeviceMemory,
+        memory_offset: ash::vk::DeviceSize,
+        free_notification: Box<dyn FnOnce(&Self) + Sync + Send>,
+    ) -> Result<Arc<Buffer<{ Bound }>>, ash::vk::Result> {
+        self.free_notification = Some(free_notification);
+        self.bind_memory(memory, memory_offset)
     }
 }
 
@@ -183,9 +198,17 @@ impl BufferBuilder {
         }
         // Host Synchronization: none
         let ash_vk_buffer = unsafe { self.device.ash_device.create_buffer(&create_info, None)? };
+        let memory_requirements = unsafe {
+            // Host Synchronization: none
+            self.device
+                .ash_device
+                .get_buffer_memory_requirements(ash_vk_buffer)
+        };
         Ok(Buffer {
             device: self.device,
             ash_vk_buffer,
+            free_notification: None,
+            memory_requirements,
         })
     }
 }
@@ -266,7 +289,9 @@ impl BufferViewBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT> {
+impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+{
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
     pub fn cmd_bind_vertex_buffers(
         &mut self,

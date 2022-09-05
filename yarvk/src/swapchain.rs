@@ -211,11 +211,19 @@ impl SwapchainBuilder {
         let images = vk_images
             .into_iter()
             .map(|vk_image| {
+                let memory_requirements = unsafe {
+                    // Host Synchronization: none
+                    self.device
+                        .ash_device
+                        .get_image_memory_requirements(vk_image)
+                };
                 Arc::new(Image {
                     device: self.device.clone(),
                     vk_image,
                     presentable: true,
                     image_create_info: image_create_info.clone(),
+                    free_notification: None,
+                    memory_requirements
                 })
             })
             .collect();
