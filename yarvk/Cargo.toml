@@ -3,6 +3,10 @@ name = "yarvk"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["max_memory_allocation_count_check",]
+max_memory_allocation_count_check = []
+
 [dependencies]
 ash = "0.37.0"
 rustc-hash = "1.1.0"

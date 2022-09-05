@@ -12,7 +12,6 @@ pub enum State {
     Bound,
 }
 
-
 pub struct DeviceMemory {
     pub device: Arc<Device>,
     pub(crate) vk_device_memory: ash::vk::DeviceMemory,
@@ -26,6 +25,7 @@ impl Drop for DeviceMemory {
             self.device
                 .ash_device
                 .free_memory(self.vk_device_memory, None);
+            #[cfg(feature = "max_memory_allocation_count_check")]
             self.device.allocations.fetch_sub(1, Ordering::Relaxed);
         }
     }
@@ -75,20 +75,21 @@ impl<'a> DeviceMemoryBuilder<'a> {
         self.allocation_size = allocation_size;
         self
     }
-    pub fn dedicated_info(mut self, dedicated_memory_info: MemoryDedicatedAllocateInfo<'a>) -> Self {
+    pub fn dedicated_info(
+        mut self,
+        dedicated_memory_info: MemoryDedicatedAllocateInfo<'a>,
+    ) -> Self {
         self.dedicated_allocate_info = Some(dedicated_memory_info);
         self
     }
     pub fn build(self) -> Result<DeviceMemory, ash::vk::Result> {
-        self.device.allocations.fetch_add(1, Ordering::Relaxed);
         let mut allocate_info_builder = ash::vk::MemoryAllocateInfo::builder()
             .memory_type_index(self.memory_type.index)
             .allocation_size(self.allocation_size);
         let mut vk_dedicated_memory_info;
         if let Some(dedicated_memory_info) = self.dedicated_allocate_info {
             vk_dedicated_memory_info = dedicated_memory_info.ash_builder().build();
-            allocate_info_builder =
-                allocate_info_builder.push_next(&mut vk_dedicated_memory_info);
+            allocate_info_builder = allocate_info_builder.push_next(&mut vk_dedicated_memory_info);
         }
         let vk_allocate_info = allocate_info_builder.build();
         // Host Synchronization: none
@@ -97,6 +98,23 @@ impl<'a> DeviceMemoryBuilder<'a> {
                 .ash_device
                 .allocate_memory(&vk_allocate_info, None)?
         };
+        #[cfg(feature = "max_memory_allocation_count_check")]
+        {
+            // codes below has bugs, it should use mutex other than atomic if to make the checking
+            // 100% accurate. But for performance reasons, it is acceptable to have some deviation.
+            let max_memory_allocation_count = self
+                .device
+                .physical_device
+                .get_physical_device_properties()
+                .limits
+                .max_memory_allocation_count;
+
+            let result = self.device.allocations.fetch_add(1, Ordering::Relaxed);
+            if result >= max_memory_allocation_count {
+                self.device.allocations.fetch_sub(1, Ordering::Relaxed);
+                return Err(ash::vk::Result::ERROR_TOO_MANY_OBJECTS);
+            }
+        }
 
         Ok(DeviceMemory {
             device: self.device,

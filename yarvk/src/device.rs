@@ -6,6 +6,7 @@ use crate::physical_device::PhysicalDevice;
 use crate::queue::Queue;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::mem::ManuallyDrop;
+#[cfg(feature = "max_memory_allocation_count_check")]
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
 
@@ -138,6 +139,7 @@ impl DeviceBuilder {
             ash_device: vk_device,
             enabled_extensions: self.enabled_extensions,
             enabled_features: self.enabled_features,
+            #[cfg(feature = "max_memory_allocation_count_check")]
             allocations: AtomicU32::default(),
         });
 
@@ -172,6 +174,7 @@ pub struct Device {
     pub(crate) ash_device: ash::Device,
     pub(crate) enabled_extensions: FxHashSet<PhysicalDeviceExtensionType>,
     pub(crate) enabled_features: FxHashSet<FeatureType>,
+    #[cfg(feature = "max_memory_allocation_count_check")]
     pub(crate) allocations: AtomicU32,
 }
 
