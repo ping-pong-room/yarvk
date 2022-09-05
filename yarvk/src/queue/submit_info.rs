@@ -13,7 +13,7 @@ use std::cell::UnsafeCell;
 thread_local! {
     static SUBMIT_INFO_CACHE: UnsafeCell<Vec<SubmitInfo<'static>>> = UnsafeCell::new(Vec::new());
     static SUBMITTABLE_CACHE: UnsafeCell<Vec<Submittable<'static>>> = UnsafeCell::new(Vec::new());
-    static SUBMIT_RESULT_CACHE: UnsafeCell<Vec<SubmitResult>> = UnsafeCell::new(Vec::new());
+    static SUBMIT_RESULT_CACHE: UnsafeCell<Vec<SubmitResultRaw>> = UnsafeCell::new(Vec::new());
 }
 
 pub struct SubmitInfo<'a> {
@@ -153,10 +153,18 @@ impl<'a> Submittable<'a> {
     ) -> Result<SignalingFence<SubmitResult>, ash::vk::Result> {
         let mut submit_result = SUBMIT_RESULT_CACHE.with(|unsafe_cell| unsafe {
             let vec = &mut *unsafe_cell.get();
-            vec.pop().unwrap_or(SubmitResult {
-                invalid_command_buffers: Default::default(),
-                invalid_secondary_buffers: Default::default(),
-            })
+            return match vec.pop() {
+                Some(raw) => {
+                    SubmitResult {
+                        invalid_command_buffers: raw.invalid_command_buffers,
+                        invalid_secondary_buffers: raw.invalid_secondary_buffers,
+                    }
+                }
+                None => SubmitResult {
+                    invalid_command_buffers: Default::default(),
+                    invalid_secondary_buffers: Default::default(),
+                },
+            };
         });
         // Host Synchronization: queue fence
         // DONE VUID-vkQueueSubmit-fence-00063
@@ -251,16 +259,18 @@ impl SubmitResult {
 
 impl Drop for SubmitResult {
     fn drop(&mut self) {
-        let submit_result = std::mem::replace(
-            self,
-            SubmitResult {
-                invalid_command_buffers: Default::default(),
-                invalid_secondary_buffers: Default::default(),
-            },
-        );
         SUBMIT_RESULT_CACHE.with(|unsafe_cell| unsafe {
             let vec = &mut *unsafe_cell.get();
-            vec.push(submit_result);
+            vec.push(SubmitResultRaw {
+                invalid_command_buffers: std::mem::take(&mut self.invalid_command_buffers),
+                invalid_secondary_buffers: std::mem::take(&mut self.invalid_secondary_buffers),
+            });
         });
     }
+}
+struct SubmitResultRaw {
+    invalid_command_buffers:
+        FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
+    invalid_secondary_buffers:
+        FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>>,
 }
