@@ -32,7 +32,7 @@ impl Drop for DeviceMemory {
 }
 
 impl DeviceMemory {
-    pub fn builder<'a>(memory_type: MemoryType, device: Arc<Device>) -> DeviceMemoryBuilder<'a> {
+    pub fn builder(memory_type: &MemoryType, device: Arc<Device>) -> DeviceMemoryBuilder {
         DeviceMemoryBuilder {
             device,
             allocation_size: 0,
@@ -66,7 +66,7 @@ impl DeviceMemory {
 pub struct DeviceMemoryBuilder<'a> {
     device: Arc<Device>,
     allocation_size: ash::vk::DeviceSize,
-    memory_type: MemoryType,
+    memory_type: &'a MemoryType,
     dedicated_allocate_info: Option<MemoryDedicatedAllocateInfo<'a>>,
 }
 

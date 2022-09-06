@@ -337,7 +337,7 @@ fn main() {
         MemoryPropertyFlags::DEVICE_LOCAL,
     )
     .expect("Unable to find suitable memory index for depth image.");
-    let depth_image_memory = DeviceMemory::builder(depth_image_memory, device.clone())
+    let depth_image_memory = DeviceMemory::builder(&depth_image_memory, device.clone())
         .allocation_size(depth_image_memory_req.size)
         // example of how to use dedicated memory
         .dedicated_info(MemoryDedicatedAllocateInfo {
@@ -467,7 +467,7 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the index buffer.");
-    let mut index_buffer_memory = DeviceMemory::builder(index_buffer_memory_index, device.clone())
+    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -519,7 +519,7 @@ fn main() {
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
     let mut vertex_input_buffer_memory =
-        DeviceMemory::builder(vertex_input_buffer_memory_index, device.clone())
+        DeviceMemory::builder(&vertex_input_buffer_memory_index, device.clone())
             .allocation_size(vertex_input_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -560,7 +560,7 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
     let mut uniform_color_buffer_memory =
-        DeviceMemory::builder(uniform_color_buffer_memory_index, device.clone())
+        DeviceMemory::builder(&uniform_color_buffer_memory_index, device.clone())
             .allocation_size(uniform_color_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -603,7 +603,7 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let mut image_buffer_memory = DeviceMemory::builder(image_buffer_memory_index, device.clone())
+    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
         .allocation_size(image_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -634,7 +634,7 @@ fn main() {
     )
     .expect("Unable to find suitable memory index for depth image.");
 
-    let texture_memory = DeviceMemory::builder(texture_memory_index, device.clone())
+    let texture_memory = DeviceMemory::builder(&texture_memory_index, device.clone())
         .allocation_size(texture_memory_req.size)
         .build()
         .unwrap();
