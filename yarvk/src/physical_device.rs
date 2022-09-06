@@ -1,8 +1,7 @@
 use crate::device_features::{PhysicalDeviceFeatures, SubPhysicalFeature, VkDeviceFeature};
-use crate::extensions::{
-    PhysicalDeviceExtensionType,
-};
+use crate::extensions::PhysicalDeviceExtensionType;
 use crate::instance::Instance;
+use crate::physical_device::memory_properties::PhysicalDeviceMemoryProperties;
 use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
 use rustc_hash::FxHashSet;
 use std::ffi::CStr;
@@ -28,6 +27,7 @@ pub struct PhysicalDevice {
     pub instance: Arc<Instance>,
     pub(crate) vk_physical_device: ash::vk::PhysicalDevice,
     pub(crate) supported_extensions: FxHashSet<PhysicalDeviceExtensionType>,
+    pub(crate) memory_properties: PhysicalDeviceMemoryProperties,
 }
 
 impl PhysicalDevice {
@@ -44,10 +44,13 @@ impl PhysicalDevice {
                         unsafe { CStr::from_ptr(ext_props.extension_name.as_ptr()) }
                     )
                 }).collect();
+        let memory_properties =
+            Self::memory_properties_inner(&instance.ash_instance, vk_physical_device);
         Ok(Arc::new(Self {
             instance,
             vk_physical_device,
             supported_extensions,
+            memory_properties,
         }))
     }
 

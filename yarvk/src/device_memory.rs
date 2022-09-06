@@ -1,6 +1,8 @@
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
+use crate::Handler;
+use ash::vk::Handle;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -28,6 +30,12 @@ impl Drop for DeviceMemory {
             #[cfg(feature = "max_memory_allocation_count_check")]
             self.device.allocations.fetch_sub(1, Ordering::Relaxed);
         }
+    }
+}
+
+impl Handler for DeviceMemory {
+    fn handler(&self) -> u64 {
+        self.vk_device_memory.as_raw()
     }
 }
 

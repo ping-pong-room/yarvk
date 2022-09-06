@@ -1,10 +1,10 @@
 use crate::physical_device::PhysicalDevice;
 use crate::Handler;
 use std::sync::Arc;
+use crate::device::Device;
 
 #[derive(Clone)]
 pub struct MemoryType {
-    pub physical_device: Arc<PhysicalDevice>,
     pub(crate) index: u32,
     pub property_flags: ash::vk::MemoryPropertyFlags,
     pub heap: ash::vk::MemoryHeap,
@@ -17,17 +17,15 @@ impl Handler for MemoryType {
 }
 
 pub struct PhysicalDeviceMemoryProperties {
-    pub physical_device: Arc<PhysicalDevice>,
     pub memory_types: Vec<MemoryType>,
 }
 
 impl PhysicalDevice {
-    pub fn memory_properties(self: &Arc<Self>) -> PhysicalDeviceMemoryProperties {
+    pub(super) fn memory_properties_inner(instance: &ash::Instance, physical_device: ash::vk::PhysicalDevice) -> PhysicalDeviceMemoryProperties {
         let vk_physical_device_memory_properties = unsafe {
             // Host Synchronization: none
-            self.instance
-                .ash_instance
-                .get_physical_device_memory_properties(self.vk_physical_device)
+            instance
+                .get_physical_device_memory_properties(physical_device)
         };
         let mut memory_properties =
             Vec::with_capacity(vk_physical_device_memory_properties.memory_type_count as _);
@@ -37,7 +35,6 @@ impl PhysicalDevice {
             .enumerate()
             .for_each(|(index, vk_memory_type)| {
                 memory_properties.push(MemoryType {
-                    physical_device: self.clone(),
                     index: index as u32,
                     property_flags: vk_memory_type.property_flags,
                     heap: vk_physical_device_memory_properties.memory_heaps
@@ -45,9 +42,12 @@ impl PhysicalDevice {
                 })
             });
         PhysicalDeviceMemoryProperties {
-            physical_device: self.clone(),
             memory_types: memory_properties,
         }
+    }
+
+    pub fn memory_properties(&self) -> &PhysicalDeviceMemoryProperties {
+        &self.memory_properties
     }
 
     pub fn memory_properties2<T: ash::vk::ExtendsPhysicalDeviceMemoryProperties2 + Default>(
