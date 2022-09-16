@@ -8,6 +8,11 @@ use std::sync::Arc;
 
 pub mod dedicated_memory;
 
+pub trait MemoryRequirement {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements;
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
+}
+
 #[derive(PartialEq, Eq)]
 pub enum State {
     Unbound,

@@ -20,7 +20,7 @@ use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
 use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
-use yarvk::device_memory::DeviceMemory;
+use yarvk::device_memory::{DeviceMemory, MemoryRequirement};
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,

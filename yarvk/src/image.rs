@@ -4,7 +4,7 @@ use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{DeviceMemory, State};
+use crate::device_memory::{DeviceMemory, MemoryRequirement, State};
 use crate::physical_device::SharingMode;
 use crate::Handler;
 use ash::vk::Handle;
@@ -159,15 +159,35 @@ impl<const STATE: State> Hash for Image<STATE> {
     }
 }
 
+impl<const STATE: State> MemoryRequirement for Image<STATE> {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+        &self.memory_requirements
+    }
+
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
+        let mut t = T::default();
+        let info = ash::vk::ImageMemoryRequirementsInfo2::builder()
+            .image(self.vk_image)
+            .build();
+        let mut out = ash::vk::MemoryRequirements2::builder()
+            .push_next(&mut t)
+            .build();
+        unsafe {
+            // Host Synchronization: none
+            self.device
+                .ash_device
+                .get_image_memory_requirements2(&info, &mut out);
+        }
+        t
+    }
+}
+
 impl Image<{ Unbound }> {
     pub fn builder(device: Arc<Device>) -> ImageBuilder {
         ImageBuilder {
             device,
             inner: Default::default(),
         }
-    }
-    pub fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
-        &self.memory_requirements
     }
     pub fn bind_memory(
         self,

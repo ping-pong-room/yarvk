@@ -7,7 +7,7 @@ use crate::device_features::PhysicalDeviceFeatures::{
 };
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
-use crate::device_memory::{DeviceMemory, State};
+use crate::device_memory::{DeviceMemory, MemoryRequirement, State};
 use crate::physical_device::SharingMode;
 
 use crate::device_memory::State::{Bound, Unbound};
@@ -69,12 +69,12 @@ impl<const STATE: State> Drop for Buffer<STATE> {
     }
 }
 
-impl Buffer<{ Unbound }> {
-    pub fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+impl<const STATE: State> MemoryRequirement for Buffer<STATE> {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         &self.memory_requirements
     }
 
-    pub fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
         let mut t = T::default();
         let info = ash::vk::BufferMemoryRequirementsInfo2::builder()
             .buffer(self.ash_vk_buffer)
@@ -90,7 +90,9 @@ impl Buffer<{ Unbound }> {
         }
         t
     }
+}
 
+impl Buffer<{ Unbound }> {
     pub fn bind_memory(
         self,
         memory: &DeviceMemory,
