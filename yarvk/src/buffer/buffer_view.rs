@@ -1,0 +1,78 @@
+use std::sync::Arc;
+use crate::buffer::Buffer;
+
+pub struct BufferView {
+    pub buffer: Arc<dyn Buffer>,
+    pub(crate) ash_vk_buffer_view: ash::vk::BufferView,
+}
+
+impl BufferView {
+    pub fn builder(buffer: Arc<dyn Buffer>) -> BufferViewBuilder {
+        BufferViewBuilder {
+            buffer,
+            flags: Default::default(),
+            format: Default::default(),
+            offset: 0,
+            range: 0,
+        }
+    }
+}
+
+impl Drop for BufferView {
+    fn drop(&mut self) {
+        unsafe {
+            // Host Synchronization: bufferView
+            self.buffer
+                .device
+                .ash_device
+                .destroy_buffer_view(self.ash_vk_buffer_view, None);
+        }
+    }
+}
+
+pub struct BufferViewBuilder {
+    buffer: Arc<dyn Buffer>,
+    pub flags: ash::vk::BufferViewCreateFlags,
+    pub format: ash::vk::Format,
+    pub offset: ash::vk::DeviceSize,
+    pub range: ash::vk::DeviceSize,
+}
+
+impl BufferViewBuilder {
+    pub fn flags(mut self, flags: ash::vk::BufferViewCreateFlags) -> Self {
+        self.flags = flags;
+        self
+    }
+    pub fn format(mut self, format: ash::vk::Format) -> Self {
+        self.format = format;
+        self
+    }
+    pub fn offset(mut self, offset: ash::vk::DeviceSize) -> Self {
+        self.offset = offset;
+        self
+    }
+    pub fn range(mut self, range: ash::vk::DeviceSize) -> Self {
+        self.range = range;
+        self
+    }
+    pub fn build(self) -> Result<Arc<BufferView>, ash::vk::Result> {
+        let create_info = ash::vk::BufferViewCreateInfo::builder()
+            .flags(self.flags)
+            .format(self.format)
+            .offset(self.offset)
+            .range(self.range)
+            .buffer(self.buffer.ash_vk_buffer);
+        unsafe {
+            // Host Synchronization: none
+            let ash_vk_buffer_view = self
+                .buffer
+                .device
+                .ash_device
+                .create_buffer_view(&create_info, None)?;
+            Ok(Arc::new(BufferView {
+                buffer: self.buffer,
+                ash_vk_buffer_view,
+            }))
+        }
+    }
+}

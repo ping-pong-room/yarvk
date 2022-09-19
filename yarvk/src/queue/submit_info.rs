@@ -6,7 +6,7 @@ use crate::fence::{SignalingFence, UnsignaledFence};
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
-use crate::Handler;
+use crate::Handle;
 use rustc_hash::FxHashMap;
 use std::cell::UnsafeCell;
 
@@ -196,14 +196,14 @@ impl<'a> Submittable<'a> {
                         .unwrap();
                     submit_result
                         .invalid_secondary_buffers
-                        .insert(secondary_buffer.handler(), unsafe {
+                        .insert(secondary_buffer.handle(), unsafe {
                             std::mem::transmute(secondary_buffer)
                         });
                 }
 
                 submit_result
                     .invalid_command_buffers
-                    .insert(onetime_submit_command_buffer.handler(), unsafe {
+                    .insert(onetime_submit_command_buffer.handle(), unsafe {
                         std::mem::transmute(onetime_submit_command_buffer)
                     });
             }

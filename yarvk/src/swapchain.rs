@@ -1,7 +1,7 @@
 use crate::device::Device;
 use crate::extensions::{DeviceExtension, PhysicalDeviceExtensionType};
 use crate::fence::{SignalingFence, UnsignaledFence};
-use crate::image::{Image, ImageCreateInfo, ImageFormatListCreateInfo};
+use crate::image::{ContinuousImage, Image, ImageCreateInfo, ImageFormatListCreateInfo, RawImage};
 use crate::physical_device::SharingMode;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
@@ -217,13 +217,15 @@ impl SwapchainBuilder {
                         .ash_device
                         .get_image_memory_requirements(vk_image)
                 };
-                Arc::new(Image {
-                    device: self.device.clone(),
-                    vk_image,
-                    presentable: true,
-                    image_create_info: image_create_info.clone(),
-                    free_notification: None,
-                    memory_requirements
+                Arc::new(ContinuousImage {
+                    0: RawImage {
+                        device: self.device.clone(),
+                        vk_image,
+                        presentable: true,
+                        image_create_info: image_create_info.clone(),
+                        free_notification: None,
+                        memory_requirements
+                    }
                 })
             })
             .collect();
@@ -264,7 +266,7 @@ impl<'a> PresentInfoBuilder<'a> {
         self
     }
 
-    pub fn add_swapchain_and_image(mut self, swapchian: &'a mut Swapchain, image: &Image) -> Self {
+    pub fn add_swapchain_and_image(mut self, swapchian: &'a mut Swapchain, image: &ContinuousImage) -> Self {
         let image_index = swapchian.get_image_index(image)
             .expect("Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array");
 
@@ -337,7 +339,7 @@ pub struct Swapchain {
     vk_swapchain: ash::vk::SwapchainKHR,
     swapchain_loader: ash::extensions::khr::Swapchain,
     // image_create_info: Arc<ImageCreateInfo>,
-    images: Vec<Arc<Image<{ Bound }>>>,
+    images: Vec<Arc<ContinuousImage<{ Bound }>>>,
 }
 
 impl Swapchain {
@@ -365,10 +367,10 @@ impl Swapchain {
             clipped: false,
         }
     }
-    pub fn get_swapchain_images(&self) -> &[Arc<Image<{ Bound }>>] {
+    pub fn get_swapchain_images(&self) -> &[Arc<ContinuousImage<{ Bound }>>] {
         self.images.as_slice()
     }
-    pub(crate) fn get_image_index(&self, image: &Image) -> Option<u32> {
+    pub(crate) fn get_image_index(&self, image: &ContinuousImage) -> Option<u32> {
         let handle = image.vk_image.as_raw();
         for i in 0..self.images.len() {
             if self.images[i].vk_image.as_raw() == handle {
@@ -386,7 +388,7 @@ impl Swapchain {
         timeout: u64,
         semaphore: &Semaphore,
         fence: UnsignaledFence,
-    ) -> Result<(Arc<Image<{ Bound }>>, SignalingFence<()>), ash::vk::Result> {
+    ) -> Result<(Arc<dyn Image>, SignalingFence<()>), ash::vk::Result> {
         unsafe {
             // Host Synchronization: swapchain semaphore fence
             let (index, _) = self.swapchain_loader.acquire_next_image(
@@ -405,7 +407,7 @@ impl Swapchain {
         &mut self,
         timeout: u64,
         semaphore: &Semaphore,
-    ) -> Result<Arc<Image<{ Bound }>>, ash::vk::Result> {
+    ) -> Result<Arc<ContinuousImage<{ Bound }>>, ash::vk::Result> {
         unsafe {
             // Host Synchronization: swapchain, semaphore, fence
             let (index, _) = self.swapchain_loader.acquire_next_image(
@@ -423,7 +425,7 @@ impl Swapchain {
         &mut self,
         timeout: u64,
         fence: UnsignaledFence,
-    ) -> Result<(Arc<Image<{ Bound }>>, SignalingFence<()>), ash::vk::Result> {
+    ) -> Result<(Arc<dyn Image>, SignalingFence<()>), ash::vk::Result> {
         let (index, _) = unsafe {
             // Host Synchronization: swapchain, semaphore, fence
             self.swapchain_loader.acquire_next_image(

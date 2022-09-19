@@ -1,11 +1,11 @@
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer};
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID, RECORDING};
 use crate::command::command_pool::CommandPool;
 use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
-use crate::image::Image;
+use crate::image::{Image};
 
 use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
@@ -13,11 +13,10 @@ use crate::render_pass::RenderPass;
 use lazy_static::lazy_static;
 use rustc_hash::FxHashMap;
 
-use crate::Handler;
-use ash::vk::Handle;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
+use ash::vk::Handle;
 lazy_static! {
     pub static ref DEFAULT_INHERITANCE_INFO: Pin<Arc<CommandBufferInheritanceInfo>> =
         CommandBufferInheritanceInfo::builder().build();
@@ -143,10 +142,10 @@ impl CommandBufferInheritanceInfoBuilder {
 
 #[derive(Default)]
 pub(crate) struct HoldingResources {
-    pub write_images: FxHashMap<u64, Arc<Image>>,
-    pub write_buffers: FxHashMap<u64, Arc<Buffer>>,
-    pub read_images: FxHashMap<u64, Arc<Image>>,
-    pub read_buffers: FxHashMap<u64, Arc<Buffer>>,
+    pub write_images: FxHashMap<u64, Arc<dyn Image>>,
+    pub write_buffers: FxHashMap<u64, Arc<dyn Buffer>>,
+    pub read_images: FxHashMap<u64, Arc<dyn Image>>,
+    pub read_buffers: FxHashMap<u64, Arc<dyn Buffer>>,
 }
 
 impl HoldingResources {
@@ -178,9 +177,9 @@ impl<
         const STATE: State,
         const SCOPE: RenderPassScope,
         const ONE_TIME_SUBMIT: bool,
-    > Handler for CommandBuffer<LEVEL, STATE, SCOPE, ONE_TIME_SUBMIT>
+    > crate::Handle for CommandBuffer<LEVEL, STATE, SCOPE, ONE_TIME_SUBMIT>
 {
-    fn handler(&self) -> u64 {
+    fn handle(&self) -> u64 {
         self.vk_command_buffer.as_raw()
     }
 }
@@ -397,7 +396,7 @@ impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
         while !secondary_command_buffers.is_empty() {
             let buffer = secondary_command_buffers.pop().unwrap();
             vk_buffers.push(buffer.vk_command_buffer);
-            let handler = buffer.vk_command_buffer.as_raw();
+            let _handler = buffer.vk_command_buffer.as_raw();
             let buffer = unsafe { std::mem::transmute(buffer) };
             self.secondary_buffers.push(buffer);
         }

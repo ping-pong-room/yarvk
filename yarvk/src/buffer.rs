@@ -7,13 +7,96 @@ use crate::device_features::PhysicalDeviceFeatures::{
 };
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
-use crate::device_memory::{DeviceMemory, MemoryRequirement, State};
-use crate::physical_device::SharingMode;
+use crate::device_memory::{MemoryRequirement};
 
-use crate::device_memory::State::{Bound, Unbound};
-use crate::Handler;
+use std::ops::{Deref, DerefMut};
+
+
 use ash::vk::Handle;
 use std::sync::Arc;
+
+pub mod buffer_view;
+pub mod continuous_buffer;
+pub use buffer_view::*;
+pub use continuous_buffer::*;
+
+pub trait Buffer: Send + Sync {
+    fn raw(&self) -> &RawBuffer;
+    fn raw_mut(&mut self) -> &mut RawBuffer;
+}
+
+pub struct RawBuffer {
+    pub device: Arc<Device>,
+    pub(crate) ash_vk_buffer: ash::vk::Buffer,
+    pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
+    memory_requirements: ash::vk::MemoryRequirements,
+}
+
+impl Buffer for RawBuffer {
+    fn raw(&self) -> &RawBuffer {
+        self
+    }
+    fn raw_mut(&mut self) -> &mut RawBuffer {
+        self
+    }
+}
+
+impl Deref for dyn Buffer {
+    type Target = RawBuffer;
+
+    fn deref(&self) -> &Self::Target {
+        self.raw()
+    }
+}
+
+impl DerefMut for dyn Buffer {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.raw_mut()
+    }
+}
+
+impl crate::Handle for RawBuffer {
+    fn handle(&self) -> u64 {
+        self.ash_vk_buffer.as_raw()
+    }
+}
+
+impl MemoryRequirement for RawBuffer {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+        &self.memory_requirements
+    }
+
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
+        let mut t = T::default();
+        let info = ash::vk::BufferMemoryRequirementsInfo2::builder()
+            .buffer(self.ash_vk_buffer)
+            .build();
+        let mut out = ash::vk::MemoryRequirements2::builder()
+            .push_next(&mut t)
+            .build();
+        unsafe {
+            // Host Synchronization: none
+            self.device
+                .ash_device
+                .get_buffer_memory_requirements2(&info, &mut out);
+        }
+        t
+    }
+}
+
+impl Drop for RawBuffer {
+    fn drop(&mut self) {
+        unsafe {
+            // TODO execution VUID-vkDestroyBuffer-buffer-00922
+            self.device
+                .ash_device
+                .destroy_buffer(self.ash_vk_buffer, None);
+        }
+        if let Some(free_notification) = self.free_notification.take() {
+            free_notification(self);
+        }
+    }
+}
 
 pub enum BufferCreateFlags {
     // DONE VUID-VkBufferCreateInfo-flags-00915
@@ -42,255 +125,6 @@ impl BufferCreateFlags {
     }
 }
 
-pub struct Buffer<const STATE: State = Bound> {
-    pub device: Arc<Device>,
-    pub(crate) ash_vk_buffer: ash::vk::Buffer,
-    pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
-    memory_requirements: ash::vk::MemoryRequirements,
-}
-
-impl<const STATE: State> Handler for Buffer<STATE> {
-    fn handler(&self) -> u64 {
-        self.ash_vk_buffer.as_raw()
-    }
-}
-
-impl<const STATE: State> Drop for Buffer<STATE> {
-    fn drop(&mut self) {
-        unsafe {
-            // TODO execution VUID-vkDestroyBuffer-buffer-00922
-            self.device
-                .ash_device
-                .destroy_buffer(self.ash_vk_buffer, None);
-        }
-        if let Some(free_notification) = self.free_notification.take() {
-            free_notification(self);
-        }
-    }
-}
-
-impl<const STATE: State> MemoryRequirement for Buffer<STATE> {
-    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
-        &self.memory_requirements
-    }
-
-    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
-        let mut t = T::default();
-        let info = ash::vk::BufferMemoryRequirementsInfo2::builder()
-            .buffer(self.ash_vk_buffer)
-            .build();
-        let mut out = ash::vk::MemoryRequirements2::builder()
-            .push_next(&mut t)
-            .build();
-        unsafe {
-            // Host Synchronization: none
-            self.device
-                .ash_device
-                .get_buffer_memory_requirements2(&info, &mut out);
-        }
-        t
-    }
-}
-
-impl Buffer<{ Unbound }> {
-    pub fn bind_memory(
-        self,
-        memory: &DeviceMemory,
-        memory_offset: ash::vk::DeviceSize,
-    ) -> Result<Arc<Buffer<{ Bound }>>, ash::vk::Result> {
-        // TODO why device_memory do not need to be synchronized?
-        // Host Synchronization buffer
-        unsafe {
-            self.device.ash_device.bind_buffer_memory(
-                self.ash_vk_buffer,
-                memory.vk_device_memory,
-                memory_offset,
-            )?;
-        }
-        Ok(Arc::new(unsafe { std::mem::transmute(self) }))
-    }
-
-    pub fn bind_memory_with_free_notification(
-        mut self,
-        memory: &DeviceMemory,
-        memory_offset: ash::vk::DeviceSize,
-        free_notification: Box<dyn FnOnce(&Self) + Sync + Send>,
-    ) -> Result<Arc<Buffer<{ Bound }>>, ash::vk::Result> {
-        self.free_notification = Some(free_notification);
-        self.bind_memory(memory, memory_offset)
-    }
-}
-
-impl Buffer<{ Unbound }> {
-    pub fn builder(device: Arc<Device>) -> BufferBuilder {
-        BufferBuilder {
-            device,
-            flags: Default::default(),
-            size: 0,
-            usage: Default::default(),
-            sharing_mode: Default::default(),
-        }
-    }
-}
-
-pub struct BufferBuilder {
-    device: Arc<Device>,
-    flags: ash::vk::BufferCreateFlags,
-    size: ash::vk::DeviceSize,
-    usage: ash::vk::BufferUsageFlags,
-    sharing_mode: SharingMode,
-}
-
-impl BufferBuilder {
-    pub fn add_flag(mut self, flag: BufferCreateFlags) -> Self {
-        self.flags |= flag.to_ash();
-        self
-    }
-
-    pub fn size(mut self, size: ash::vk::DeviceSize) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn usage(mut self, usage: ash::vk::BufferUsageFlags) -> Self {
-        self.usage = usage;
-        self
-    }
-
-    pub fn sharing_mode(mut self, sharing_mode: SharingMode) -> Self {
-        self.sharing_mode = sharing_mode;
-        self
-    }
-
-    pub fn build(mut self) -> Result<Buffer<{ Unbound }>, ash::vk::Result> {
-        // SILENCE VUID-VkBufferCreateInfo-flags-00918
-        if self
-            .flags
-            .contains(ash::vk::BufferCreateFlags::SPARSE_RESIDENCY)
-            || self
-                .flags
-                .contains(ash::vk::BufferCreateFlags::SPARSE_ALIASED)
-        {
-            if !self
-                .flags
-                .contains(ash::vk::BufferCreateFlags::SPARSE_BINDING)
-            {
-                self.flags |= ash::vk::BufferCreateFlags::SPARSE_BINDING;
-            }
-        }
-        // DONE VUID-VkBufferCreateInfo-sharingMode-00913
-        let mut create_info = ash::vk::BufferCreateInfo::builder()
-            .flags(self.flags)
-            .usage(self.usage)
-            .size(self.size);
-        let family_properties;
-        match self.sharing_mode {
-            SharingMode::EXCLUSIVE => {
-                create_info = create_info.sharing_mode(ash::vk::SharingMode::EXCLUSIVE)
-            }
-            SharingMode::CONCURRENT(queue_families) => {
-                family_properties = queue_families
-                    .into_iter()
-                    .map(|property| property.index)
-                    .collect::<Vec<_>>();
-                create_info = create_info
-                    .sharing_mode(ash::vk::SharingMode::CONCURRENT)
-                    .queue_family_indices(family_properties.as_slice())
-            }
-        }
-        // Host Synchronization: none
-        let ash_vk_buffer = unsafe { self.device.ash_device.create_buffer(&create_info, None)? };
-        let memory_requirements = unsafe {
-            // Host Synchronization: none
-            self.device
-                .ash_device
-                .get_buffer_memory_requirements(ash_vk_buffer)
-        };
-        Ok(Buffer {
-            device: self.device,
-            ash_vk_buffer,
-            free_notification: None,
-            memory_requirements,
-        })
-    }
-}
-
-pub struct BufferView {
-    pub buffer: Arc<Buffer>,
-    pub(crate) ash_vk_buffer_view: ash::vk::BufferView,
-}
-
-impl BufferView {
-    pub fn builder(buffer: Arc<Buffer>) -> BufferViewBuilder {
-        BufferViewBuilder {
-            buffer,
-            flags: Default::default(),
-            format: Default::default(),
-            offset: 0,
-            range: 0,
-        }
-    }
-}
-
-impl Drop for BufferView {
-    fn drop(&mut self) {
-        unsafe {
-            // Host Synchronization: bufferView
-            self.buffer
-                .device
-                .ash_device
-                .destroy_buffer_view(self.ash_vk_buffer_view, None);
-        }
-    }
-}
-
-pub struct BufferViewBuilder {
-    buffer: Arc<Buffer>,
-    pub flags: ash::vk::BufferViewCreateFlags,
-    pub format: ash::vk::Format,
-    pub offset: ash::vk::DeviceSize,
-    pub range: ash::vk::DeviceSize,
-}
-
-impl BufferViewBuilder {
-    pub fn flags(mut self, flags: ash::vk::BufferViewCreateFlags) -> Self {
-        self.flags = flags;
-        self
-    }
-    pub fn format(mut self, format: ash::vk::Format) -> Self {
-        self.format = format;
-        self
-    }
-    pub fn offset(mut self, offset: ash::vk::DeviceSize) -> Self {
-        self.offset = offset;
-        self
-    }
-    pub fn range(mut self, range: ash::vk::DeviceSize) -> Self {
-        self.range = range;
-        self
-    }
-    pub fn build(self) -> Result<Arc<BufferView>, ash::vk::Result> {
-        let create_info = ash::vk::BufferViewCreateInfo::builder()
-            .flags(self.flags)
-            .format(self.format)
-            .offset(self.offset)
-            .range(self.range)
-            .buffer(self.buffer.ash_vk_buffer);
-        unsafe {
-            // Host Synchronization: none
-            let ash_vk_buffer_view = self
-                .buffer
-                .device
-                .ash_device
-                .create_buffer_view(&create_info, None)?;
-            Ok(Arc::new(BufferView {
-                buffer: self.buffer,
-                ash_vk_buffer_view,
-            }))
-        }
-    }
-}
-
 impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
     CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
 {
@@ -298,7 +132,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     pub fn cmd_bind_vertex_buffers(
         &mut self,
         first_binding: u32,
-        buffers: &[Arc<Buffer>],
+        buffers: &[Arc<dyn Buffer>],
         offsets: &[ash::vk::DeviceSize],
     ) {
         let mut ash_vk_buffers = Vec::with_capacity(buffers.len());
@@ -323,7 +157,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     // DONE VUID-vkCmdBindIndexBuffer-commandBuffer-recording
     pub fn cmd_bind_index_buffer(
         &mut self,
-        buffer: Arc<Buffer>,
+        buffer: Arc<dyn Buffer>,
         offset: ash::vk::DeviceSize,
         index_type: ash::vk::IndexType,
     ) {

@@ -4,10 +4,10 @@ use crate::device_features::{
     PhysicalDeviceFragmentDensityMapFeaturesEXT,
 };
 use crate::image::image_subresource_range::ImageSubresourceRange;
-use crate::image::Image;
+use crate::image::{Image};
 use ash::vk::{ComponentMapping, Format};
 use std::sync::Arc;
-use crate::device_memory::State::Bound;
+
 
 pub enum ImageViewType {
     Type1d,
@@ -71,12 +71,12 @@ impl ImageViewCreateFlags {
 }
 
 pub struct ImageView {
-    pub image: Arc<Image<{ Bound }>>,
+    pub image: Arc<dyn Image>,
     pub(crate) ash_vk_image_view: ash::vk::ImageView,
 }
 
 impl ImageView {
-    pub fn builder(image: Arc<Image<{ Bound }>>) -> ImageViewBuilder {
+    pub fn builder(image: Arc<dyn Image>) -> ImageViewBuilder {
         ImageViewBuilder::new(image)
     }
 }
@@ -95,7 +95,7 @@ impl Drop for ImageView {
 
 pub struct ImageViewBuilder {
     device: Arc<Device>,
-    image: Arc<Image<{ Bound }>>,
+    image: Arc<dyn Image>,
     view_type: ash::vk::ImageViewType,
     format: Format,
     flags: ash::vk::ImageViewCreateFlags,
@@ -105,7 +105,7 @@ pub struct ImageViewBuilder {
 }
 
 impl ImageViewBuilder {
-    fn new(image: Arc<Image<{ Bound }>>) -> Self {
+    fn new(image: Arc<dyn Image>) -> Self {
         let device = image.device.clone();
         let view_type =
             ash::vk::ImageViewType::from_raw(image.image_create_info.image_type.as_raw());

@@ -6,7 +6,7 @@ use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEve
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
-use yarvk::buffer::Buffer;
+use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_pool::{CommandPool, CommandPoolCreateFlags};
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
@@ -20,7 +20,7 @@ use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
 use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
-use yarvk::device_memory::{DeviceMemory, MemoryRequirement};
+use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
@@ -29,7 +29,7 @@ use yarvk::fence::{Fence, UnsignaledFence};
 use yarvk::frame_buffer::Framebuffer;
 use yarvk::image::image_subresource_range::ImageSubresourceRange;
 use yarvk::image::image_view::{ImageView, ImageViewType};
-use yarvk::image::Image;
+use yarvk::image::ContinuousImage;
 use yarvk::instance::{ApplicationInfo, Instance};
 use yarvk::physical_device::memory_properties::{MemoryType, PhysicalDeviceMemoryProperties};
 use yarvk::physical_device::SharingMode;
@@ -62,7 +62,7 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
-use yarvk::{read_spv, Handler};
+use yarvk::{read_spv, Handle};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
@@ -74,7 +74,6 @@ use yarvk::{
     SampleCountFlags, SamplerAddressMode, SamplerMipmapMode, StencilOp, StencilOpState,
     SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate, Viewport, SUBPASS_EXTERNAL,
 };
-use yarvk::device_memory::State::Bound;
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -108,7 +107,7 @@ pub fn submit(
     UnsignaledFence,
     CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
 ) {
-    let handler = buffer.handler();
+    let handler = buffer.handle();
     let submit_info = SubmitInfo::builder()
         .add_one_time_submit_command_buffer(buffer)
         .build();
@@ -289,7 +288,7 @@ fn main() {
         .unwrap()
         .allocate_command_buffer::<{ PRIMARY }>()
         .unwrap();
-    let command_buffer_handler = command_buffer.handler();
+    let command_buffer_handler = command_buffer.handle();
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
         .iter()
@@ -317,7 +316,7 @@ fn main() {
         })
         .collect();
     let device_memory_properties = pdevice.memory_properties();
-    let depth_image = Image::builder(device.clone())
+    let depth_image = ContinuousImage::builder(device.clone())
         .image_type(ImageType::TYPE_2D)
         .format(Format::D16_UNORM)
         .extent(surface_resolution.into())
@@ -345,9 +344,9 @@ fn main() {
         })
         .build()
         .unwrap();
-    let depth_image = depth_image
+    let depth_image = Arc::new(depth_image
         .bind_memory(&depth_image_memory, 0)
-        .expect("Unable to bind depth image memory");
+        .expect("Unable to bind depth image memory"));
 
     let fence = Fence::new(device.clone()).unwrap();
 
@@ -439,7 +438,7 @@ fn main() {
             .build(),
     );
     let renderpass = renderpass_builder.build().unwrap();
-    let framebuffers: HashMap<Arc<Image<{ Bound }>>, Arc<Framebuffer>> = present_image_views
+    let framebuffers: HashMap<u64, Arc<Framebuffer>> = present_image_views
         .iter()
         .map(|present_image_view| {
             let framebuffer = Framebuffer::builder(renderpass.clone())
@@ -450,11 +449,11 @@ fn main() {
                 .layers(1)
                 .build(device.clone())
                 .unwrap();
-            (present_image_view.image.clone(), framebuffer)
+            (present_image_view.image.handle(), framebuffer)
         })
         .collect();
     let index_buffer_data = [0u32, 1, 2, 2, 3, 0];
-    let index_buffer = Buffer::builder(device.clone())
+    let index_buffer = ContinuousBuffer::builder(device.clone())
         .size(std::mem::size_of_val(&index_buffer_data) as u64)
         .usage(BufferUsageFlags::INDEX_BUFFER)
         .sharing_mode(SharingMode::EXCLUSIVE)
@@ -481,7 +480,7 @@ fn main() {
             });
         })
         .unwrap();
-    let index_buffer = index_buffer.bind_memory(&index_buffer_memory, 0).unwrap();
+    let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
 
     let vertices = [
         Vertex {
@@ -502,7 +501,7 @@ fn main() {
         },
     ];
 
-    let vertex_input_buffer = Buffer::builder(device.clone())
+    let vertex_input_buffer = ContinuousBuffer::builder(device.clone())
         .size(std::mem::size_of_val(&vertices) as _)
         .usage(BufferUsageFlags::VERTEX_BUFFER)
         .sharing_mode(SharingMode::EXCLUSIVE)
@@ -535,9 +534,9 @@ fn main() {
             });
         })
         .unwrap();
-    let vertex_input_buffer = vertex_input_buffer
+    let vertex_input_buffer = Arc::new(vertex_input_buffer
         .bind_memory(&vertex_input_buffer_memory, 0)
-        .unwrap();
+        .unwrap());
 
     let uniform_color_buffer_data = Vector3 {
         x: 1.0,
@@ -546,7 +545,7 @@ fn main() {
         _pad: 0.0,
     };
 
-    let uniform_color_buffer = Buffer::builder(device.clone())
+    let uniform_color_buffer = ContinuousBuffer::builder(device.clone())
         .size(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
         .usage(BufferUsageFlags::UNIFORM_BUFFER)
         .sharing_mode(SharingMode::EXCLUSIVE)
@@ -578,9 +577,9 @@ fn main() {
         })
         .unwrap();
 
-    let uniform_color_buffer = uniform_color_buffer
+    let uniform_color_buffer = Arc::new(uniform_color_buffer
         .bind_memory(&uniform_color_buffer_memory, 0)
-        .unwrap();
+        .unwrap());
 
     let image = image::load_from_memory(include_bytes!("rust.png"))
         .unwrap()
@@ -589,7 +588,7 @@ fn main() {
     let image_extent = Extent2D { width, height };
     let image_data = image.into_raw();
 
-    let image_buffer = Buffer::builder(device.clone())
+    let image_buffer = ContinuousBuffer::builder(device.clone())
         .size(image_data.len() as _)
         .usage(BufferUsageFlags::TRANSFER_SRC)
         .sharing_mode(SharingMode::EXCLUSIVE)
@@ -612,9 +611,10 @@ fn main() {
             mut_slice[0..image_data.len()].copy_from_slice(image_data.as_slice());
         })
         .unwrap();
-    let image_buffer = image_buffer.bind_memory(&image_buffer_memory, 0).unwrap();
 
-    let texture_image = Image::builder(device.clone())
+    let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
+
+    let texture_image = ContinuousImage::builder(device.clone())
         .image_type(ImageType::TYPE_2D)
         .format(Format::R8G8B8A8_UNORM)
         .extent(image_extent.into())
@@ -638,9 +638,9 @@ fn main() {
         .allocation_size(texture_memory_req.size)
         .build()
         .unwrap();
-    let texture_image = texture_image
+    let texture_image = Arc::new(texture_image
         .bind_memory(&texture_memory, 0)
-        .expect("Unable to bind depth image memory");
+        .expect("Unable to bind depth image memory"));
 
     let command_buffer = setup_command_buffer
         .record(|command_buffer| {
@@ -934,7 +934,7 @@ fn main() {
         .unwrap()
         .allocate_command_buffer::<{ SECONDARY }>()
         .unwrap();
-    let secondary_command_buffer_handler = secondary_command_buffer.handler();
+    let secondary_command_buffer_handler = secondary_command_buffer.handle();
     let mut secondary_command_buffer = Some(secondary_command_buffer);
     let inheritance_info = CommandBufferInheritanceInfo::builder()
         .render_pass(renderpass.clone())
@@ -964,7 +964,7 @@ fn main() {
                 let image = swapchain
                     .acquire_next_image_semaphore_only(u64::MAX, &present_complete_semaphore)
                     .unwrap();
-                let framebuffer = framebuffers.get(&image).unwrap();
+                let framebuffer = framebuffers.get(&image.handle()).unwrap();
                 let render_pass_begin_info =
                     RenderPassBeginInfo::builder(renderpass.clone(), framebuffer.clone())
                         .render_area(surface_resolution.into())

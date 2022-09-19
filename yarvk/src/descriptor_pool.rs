@@ -1,4 +1,4 @@
-use crate::buffer::{Buffer, BufferView};
+use crate::buffer::{BufferView, Buffer};
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device::Device;
@@ -328,7 +328,7 @@ impl DescriptorImageInfo {
 
 #[derive(Clone)]
 pub struct DescriptorBufferInfo {
-    pub buffer: Arc<Buffer>,
+    pub buffer: Arc<dyn Buffer>,
     pub offset: ash::vk::DeviceSize,
     pub range: ash::vk::DeviceSize,
 }

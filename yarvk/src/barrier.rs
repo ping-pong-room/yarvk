@@ -3,7 +3,7 @@ use crate::buffer::Buffer;
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::image::image_subresource_range::ImageSubresourceRange;
-use crate::image::Image;
+use crate::image::{Image};
 use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use ash::vk::Handle;
@@ -11,7 +11,7 @@ use ash::vk::Handle;
 use std::cell::Cell;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::device_memory::State::Bound;
+
 
 pub struct MemoryBarrier {
     pub(crate) ash_vk_memory_barrier: ash::vk::MemoryBarrier,
@@ -46,7 +46,7 @@ impl MemoryBarrierBuilder {
 
 pub struct ImageMemoryBarrier {
     pub(crate) ash_vk_image_memory_barrier: ash::vk::ImageMemoryBarrier,
-    pub image: Arc<Image<{ Bound }>>,
+    pub image: Arc<dyn Image>,
     // src_queue_family: Option<QueueFamilyProperties>,
     // dst_queue_family: Option<QueueFamilyProperties>,
 }
@@ -61,7 +61,7 @@ pub struct ImageMemoryBarrier {
 
 impl ImageMemoryBarrier {
     // DONE VUID-VkImageMemoryBarrier-image-01932
-    pub fn builder(image: Arc<Image<{ Bound }>>) -> ImageMemoryBarrierBuilder {
+    pub fn builder(image: Arc<dyn Image>) -> ImageMemoryBarrierBuilder {
         ImageMemoryBarrierBuilder {
             src_access_mask: Default::default(),
             dst_access_mask: Default::default(),
@@ -82,7 +82,7 @@ pub struct ImageMemoryBarrierBuilder {
     new_layout: ash::vk::ImageLayout,
     src_queue_family: Option<QueueFamilyProperties>,
     dst_queue_family: Option<QueueFamilyProperties>,
-    image: Arc<Image<{ Bound }>>,
+    image: Arc<dyn Image>,
     subresource_range: ImageSubresourceRange,
 }
 
@@ -142,7 +142,7 @@ impl ImageMemoryBarrierBuilder {
 }
 
 pub struct BufferMemoryBarrier {
-    pub(crate) buffer: Arc<Buffer>,
+    pub(crate) buffer: Arc<dyn Buffer>,
     pub(crate) ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier,
     // src_queue_family: Option<QueueFamilyProperties>,
     // dst_queue_family: Option<QueueFamilyProperties>,
@@ -157,7 +157,7 @@ pub struct BufferMemoryBarrier {
 // }
 
 impl BufferMemoryBarrier {
-    pub fn builder(buffer: Arc<Buffer>) -> BufferMemoryBarrierBuilder {
+    pub fn builder(buffer: Arc<dyn Buffer>) -> BufferMemoryBarrierBuilder {
         BufferMemoryBarrierBuilder {
             ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier::builder()
                 .buffer(buffer.ash_vk_buffer)
@@ -171,7 +171,7 @@ impl BufferMemoryBarrier {
 
 pub struct BufferMemoryBarrierBuilder {
     ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier,
-    buffer: Arc<Buffer>,
+    buffer: Arc<dyn Buffer>,
     src_queue_family: Option<QueueFamilyProperties>,
     dst_queue_family: Option<QueueFamilyProperties>,
 }

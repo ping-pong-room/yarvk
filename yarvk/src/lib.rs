@@ -148,6 +148,9 @@ pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
 pub use ash::vk::SUBPASS_EXTERNAL;
 
-pub trait Handler {
-    fn handler(&self) -> u64;
+pub use buffer::*;
+pub use image::*;
+
+pub trait Handle {
+    fn handle(&self) -> u64;
 }

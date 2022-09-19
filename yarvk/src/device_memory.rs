@@ -1,16 +1,24 @@
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
-use crate::Handler;
-use ash::vk::Handle;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use ash::vk::Handle;
 
 pub mod dedicated_memory;
 
 pub trait MemoryRequirement {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements;
     fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
+}
+
+pub trait BindMemory {
+    type BoundType;
+    fn bind_memory(
+        self,
+        memory: &DeviceMemory,
+        memory_offset: ash::vk::DeviceSize,
+    ) -> Result<Self::BoundType, ash::vk::Result>;
 }
 
 #[derive(PartialEq, Eq)]
@@ -38,8 +46,8 @@ impl Drop for DeviceMemory {
     }
 }
 
-impl Handler for DeviceMemory {
-    fn handler(&self) -> u64 {
+impl crate::Handle for DeviceMemory {
+    fn handle(&self) -> u64 {
         self.vk_device_memory.as_raw()
     }
 }
