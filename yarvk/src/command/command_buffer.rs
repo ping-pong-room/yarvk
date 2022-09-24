@@ -169,7 +169,7 @@ pub struct CommandBuffer<
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
     pub(crate) secondary_buffers:
-        Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, false>>,
+        Vec<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, false>>,
 }
 
 impl<
@@ -208,12 +208,7 @@ macro_rules! reset_impls {
         impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool> CommandBuffer<LEVEL, { $stage }, SCOPE, ONE_TIME_SUBMIT> {
             pub fn reset(mut self) -> Result<CommandBuffer<LEVEL, { INITIAL }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result> {
                 self.holding_resources.clear();
-                // Host Synchronization: commandBuffer, VkCommandPool
-                // DONE VUID-vkResetCommandBuffer-commandBuffer-00046
-                // DONE VUID-vkResetCommandBuffer-commandBuffer-00045
-                unsafe {
-                    self.device.ash_device.reset_command_buffer(self.vk_command_buffer, ash::vk::CommandBufferResetFlags::RELEASE_RESOURCES)?
-                }
+                self.command_pool.reset()?;
                 Ok(unsafe { std::mem::transmute(self) })
             }
         }

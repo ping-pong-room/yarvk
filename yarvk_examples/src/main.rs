@@ -8,7 +8,7 @@ use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
-use yarvk::command::command_pool::{CommandPool, CommandPoolCreateFlags};
+use yarvk::command::command_pool::CommandPool;
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_pool::{
     DescriptorBufferInfo, DescriptorImageInfo, DescriptorPool, DescriptorSetLayout,
@@ -281,8 +281,6 @@ fn main() {
         .build()
         .unwrap();
     let command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        // do not need, yarvk enable reset feature by default
-        .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
         .build()
         .unwrap()
         .allocate_command_buffer::<{ PRIMARY }>()
@@ -928,7 +926,6 @@ fn main() {
     let mut draw_commands_reuse_fence = Some(fence);
     let mut draw_command_buffer = Some(command_buffer);
     let secondary_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        .add_flag(CommandPoolCreateFlags::ResetCommandBuffer)
         .build()
         .unwrap()
         .allocate_command_buffer::<{ SECONDARY }>()

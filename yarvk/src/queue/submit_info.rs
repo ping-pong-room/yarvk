@@ -238,7 +238,7 @@ impl SubmitResult {
     pub fn get_invalid_primary_buffers(
         &mut self,
         handler: &u64,
-    ) -> Option<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>> {
+    ) -> Option<CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>> {
         let buffer = self.invalid_command_buffers.remove(handler);
         match buffer {
             None => None,

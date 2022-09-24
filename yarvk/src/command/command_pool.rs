@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 pub enum CommandPoolCreateFlags {
     TRANSIENT,
-    ResetCommandBuffer,
+    /* yarvk use one pool per buffer, and it is suggested not to set RESET_COMMAND_BUFFER_BIT
+     if you only need to free the whole pool. */
+    // ResetCommandBuffer,
     // DONE VUID-VkCommandPoolCreateInfo-flags-02860
     PROTECTED(Feature<{ ProtectedMemory.into() }>),
 }
@@ -15,9 +17,9 @@ impl CommandPoolCreateFlags {
     fn to_ash(&self) -> ash::vk::CommandPoolCreateFlags {
         match self {
             CommandPoolCreateFlags::TRANSIENT => ash::vk::CommandPoolCreateFlags::TRANSIENT,
-            CommandPoolCreateFlags::ResetCommandBuffer => {
-                ash::vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER
-            }
+            // CommandPoolCreateFlags::ResetCommandBuffer => {
+            //     ash::vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER
+            // }
             CommandPoolCreateFlags::PROTECTED(_) => ash::vk::CommandPoolCreateFlags::PROTECTED,
         }
     }
@@ -35,6 +37,13 @@ impl CommandPool {
             flags: Default::default(),
             queue_family_index: queue_family,
         }
+    }
+    pub fn reset(&mut self) -> Result<(), ash::vk::Result> {
+        unsafe {
+            // Host Synchronization: commandPool
+            self.device.ash_device.reset_command_pool(self.vk_command_pool, ash::vk::CommandPoolResetFlags::RELEASE_RESOURCES)?
+        }
+        Ok(())
     }
 }
 
@@ -68,8 +77,7 @@ impl CommandPoolBuilder {
     pub fn build(self) -> Result<CommandPool, ash::vk::Result> {
         let pool_create_info = ash::vk::CommandPoolCreateInfo::builder()
             .queue_family_index(self.queue_family_index.index)
-            // Force using RESET_COMMAND_BUFFER flag
-            .flags(self.flags | ash::vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER)
+            .flags(self.flags)
             .build();
         let vk_command_pool = unsafe {
             self.device
