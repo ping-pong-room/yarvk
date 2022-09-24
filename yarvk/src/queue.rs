@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use crate::device::Device;
+use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 
 pub mod submit_info;
 
@@ -43,7 +44,8 @@ pub mod submit_info;
 pub struct Queue {
     pub(crate) device: Arc<Device>,
     pub(crate) vk_queue: ash::vk::Queue,
-    // pub(crate) queue_family_property: ash::vk::QueueFamilyProperties,
+    pub queue_family_property: QueueFamilyProperties,
+    pub priority: f32,
 }
 
 impl Queue {

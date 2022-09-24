@@ -1,7 +1,7 @@
 use crate::descriptor_pool::{ChangedDescriptorSet, DescriptorSet, UpdateHolder};
 use crate::device_features::{register_features, Feature, FeatureType};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
-use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
+use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
 use crate::queue::Queue;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -150,7 +150,7 @@ impl DeviceBuilder {
                 .priorities
                 .iter()
                 .enumerate()
-                .map(|(index, _)| unsafe {
+                .map(|(index, priority)| unsafe {
                     // Host Synchronization: none
                     let queue = device
                         .ash_device
@@ -158,7 +158,8 @@ impl DeviceBuilder {
                     Queue {
                         device: device.clone(),
                         vk_queue: queue,
-                        // queue_family_property: queue_family.property,
+                        queue_family_property: queue_family.clone(),
+                        priority: *priority,
                     }
                 })
                 .collect();

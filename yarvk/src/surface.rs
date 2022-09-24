@@ -1,5 +1,5 @@
 use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
-use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
+use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
 
 use raw_window_handle::HasRawWindowHandle;

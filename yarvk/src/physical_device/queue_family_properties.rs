@@ -7,8 +7,10 @@ pub struct QueueFamilyProperties {
     pub physical_device: Arc<PhysicalDevice>,
     // Done VUID-vkGetPhysicalDeviceSurfaceSupportKHR-queueFamilyIndex-01269
     pub(crate) index: u32,
-    // TODO merge ash::vk::QueueFamilyProperties into yarvk::QueueFamilyProperties
-    pub property: ash::vk::QueueFamilyProperties,
+    pub queue_flags: ash::vk::QueueFlags,
+    pub queue_count: u32,
+    pub timestamp_valid_bits: u32,
+    pub min_image_transfer_granularity: ash::vk::Extent3D,
 }
 
 impl PartialEq for QueueFamilyProperties {
@@ -43,7 +45,10 @@ impl PhysicalDevice {
         .map(|(index, property)| QueueFamilyProperties {
             physical_device: self.clone(),
             index: index as u32,
-            property,
+            queue_flags: property.queue_flags,
+            queue_count: property.queue_count,
+            timestamp_valid_bits: property.timestamp_valid_bits,
+            min_image_transfer_granularity: property.min_image_transfer_granularity,
         })
         .collect()
     }

@@ -1,7 +1,7 @@
 use crate::device::Device;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
-use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
+use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use std::sync::Arc;
 
 pub enum CommandPoolCreateFlags {

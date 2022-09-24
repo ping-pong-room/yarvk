@@ -2,14 +2,14 @@ use crate::device_features::{PhysicalDeviceFeatures, SubPhysicalFeature, VkDevic
 use crate::extensions::PhysicalDeviceExtensionType;
 use crate::instance::Instance;
 use crate::physical_device::memory_properties::PhysicalDeviceMemoryProperties;
-use crate::physical_device::queue_falmily_properties::QueueFamilyProperties;
+use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use rustc_hash::FxHashSet;
 use std::ffi::CStr;
 use std::sync::Arc;
 
 pub mod memory_properties;
 pub mod physical_device_properties;
-pub mod queue_falmily_properties;
+pub mod queue_family_properties;
 
 #[derive(Clone)]
 pub enum SharingMode {

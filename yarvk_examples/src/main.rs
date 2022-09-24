@@ -206,7 +206,6 @@ fn main() {
                     .unwrap()
                     {
                         if queue_family_properties
-                            .property
                             .queue_flags
                             .contains(QueueFlags::GRAPHICS)
                         {
