@@ -984,13 +984,14 @@ fn main() {
                             SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
                                 let secondary_buffer = secondary_command_buffer.take().unwrap();
-                                let secondary_buffer = secondary_buffer
-                                    .record_render_pass_continue::<true>(
-                                        inheritance_info.clone(),
-                                        |command_buffer| {
-                                            // use thread pool in real cases
-                                            std::thread::scope(|s| {
-                                                s.spawn(|| {
+                                let mut vec = Vec::new();
+                                // use thread pool in real cases
+                                std::thread::scope(|s| {
+                                    s.spawn(|| {
+                                        let secondary_buffer = secondary_buffer
+                                            .record_render_pass_continue::<true>(
+                                                inheritance_info.clone(),
+                                                |command_buffer| {
                                                     command_buffer.cmd_bind_descriptor_sets(
                                                         PipelineBindPoint::GRAPHICS,
                                                         &pipeline_layout,
@@ -1019,15 +1020,16 @@ fn main() {
                                                         0,
                                                         1,
                                                     );
-                                                })
-                                                .join()
-                                                .unwrap();
-                                            });
-                                        },
-                                    )
-                                    .unwrap();
-                                let mut vec = vec![secondary_buffer];
-                                command_buffer.cmd_execute_commands(&mut vec);
+                                                },
+                                            )
+                                            .unwrap();
+                                        vec = vec![secondary_buffer];
+                                    })
+                                        .join()
+                                        .unwrap();
+
+                                });
+                                command_buffer.cmd_execute_commands(vec);
                             },
                         );
                     })

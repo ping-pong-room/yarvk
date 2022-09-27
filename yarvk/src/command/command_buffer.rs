@@ -385,7 +385,7 @@ impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
 {
     pub fn cmd_execute_commands(
         &mut self,
-        secondary_command_buffers: &mut Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>>,
+        mut secondary_command_buffers: Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>>,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
         while !secondary_command_buffers.is_empty() {

@@ -1,14 +1,16 @@
 use crate::command::command_buffer::CommandBuffer;
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
-use crate::command::command_buffer::State::{EXECUTABLE, INVALID};
-use crate::fence::{SignalingFence, UnsignaledFence};
+use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
+use crate::device::Device;
+use crate::fence::{Fence, SignalingFence, UnsignaledFence};
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::Handle;
 use rustc_hash::FxHashMap;
 use std::cell::UnsafeCell;
+use std::sync::Arc;
 
 thread_local! {
     static SUBMIT_INFO_CACHE: UnsafeCell<Vec<SubmitInfo<'static>>> = UnsafeCell::new(Vec::new());
@@ -154,16 +156,11 @@ impl<'a> Submittable<'a> {
         let mut submit_result = SUBMIT_RESULT_CACHE.with(|unsafe_cell| unsafe {
             let vec = &mut *unsafe_cell.get();
             return match vec.pop() {
-                Some(raw) => {
-                    SubmitResult {
-                        invalid_command_buffers: raw.invalid_command_buffers,
-                        invalid_secondary_buffers: raw.invalid_secondary_buffers,
-                    }
-                }
-                None => SubmitResult {
-                    invalid_command_buffers: Default::default(),
-                    invalid_secondary_buffers: Default::default(),
+                Some(raw) => SubmitResult {
+                    invalid_command_buffers: raw.invalid_command_buffers,
+                    invalid_secondary_buffers: raw.invalid_secondary_buffers,
                 },
+                None => SubmitResult::default(),
             };
         });
         // Host Synchronization: queue fence
@@ -228,6 +225,7 @@ impl<'a> Submittable<'a> {
     }
 }
 
+#[derive(Default)]
 pub struct SubmitResult {
     invalid_command_buffers:
         FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
@@ -235,6 +233,20 @@ pub struct SubmitResult {
         FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>>,
 }
 impl SubmitResult {
+    pub fn add_primary_buffer(
+        &mut self,
+        buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
+    ) {
+        self.invalid_command_buffers
+            .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
+    }
+    pub fn add_secondary_buffers(
+        &mut self,
+        buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }, true>,
+    ) {
+        self.invalid_secondary_buffers
+            .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
+    }
     pub fn get_invalid_primary_buffers(
         &mut self,
         handler: &u64,
