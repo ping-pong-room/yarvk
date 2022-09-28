@@ -1,11 +1,11 @@
-use crate::buffer::{Buffer};
+use crate::buffer::Buffer;
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID, RECORDING};
 use crate::command::command_pool::CommandPool;
 use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
-use crate::image::{Image};
+use crate::image::Image;
 
 use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
@@ -13,10 +13,10 @@ use crate::render_pass::RenderPass;
 use lazy_static::lazy_static;
 use rustc_hash::FxHashMap;
 
+use ash::vk::Handle;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
-use ash::vk::Handle;
 lazy_static! {
     pub static ref DEFAULT_INHERITANCE_INFO: Pin<Arc<CommandBufferInheritanceInfo>> =
         CommandBufferInheritanceInfo::builder().build();
@@ -168,8 +168,7 @@ pub struct CommandBuffer<
     pub(crate) vk_command_buffer: ash::vk::CommandBuffer,
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
-    pub(crate) secondary_buffers:
-        Vec<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, false>>,
+    secondary_buffers: FxHashMap<u64, CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>>,
 }
 
 impl<
@@ -338,6 +337,28 @@ macro_rules! secondary_record_impls {
 
 secondary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
+impl<const STATE: State, const SCOPE: RenderPassScope>
+    CommandBuffer<{ PRIMARY }, STATE, SCOPE, true>
+{
+    pub fn take_secondary_buffer(
+        &mut self,
+        handle: &u64,
+    ) -> Option<CommandBuffer<{ SECONDARY }, STATE, {OUTSIDE}, true>> {
+        self.secondary_buffers.remove(&handle)
+    }
+}
+impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE, true> {
+    // use this only in the first loop of rendering
+    pub fn add_secondary_buffer(
+        &mut self,
+        buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }, true>,
+    ) {
+        self.secondary_buffers
+            .insert(buffer.vk_command_buffer.as_raw(), unsafe {
+                std::mem::transmute(buffer)
+            });
+    }
+}
 impl CommandPool {
     // yarvk use one pool per command buffer
     // Why: all vendors suggest that create Use L * T + N pools.
@@ -385,15 +406,17 @@ impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
 {
     pub fn cmd_execute_commands(
         &mut self,
-        mut secondary_command_buffers: Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>>,
+        mut secondary_command_buffers: Vec<
+            CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>,
+        >,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
         while !secondary_command_buffers.is_empty() {
             let buffer = secondary_command_buffers.pop().unwrap();
             vk_buffers.push(buffer.vk_command_buffer);
-            let _handler = buffer.vk_command_buffer.as_raw();
+            let handle = buffer.vk_command_buffer.as_raw();
             let buffer = unsafe { std::mem::transmute(buffer) };
-            self.secondary_buffers.push(buffer);
+            self.secondary_buffers.insert(handle, buffer);
         }
 
         // Host Synchronization: commandBuffer, VkCommandPool

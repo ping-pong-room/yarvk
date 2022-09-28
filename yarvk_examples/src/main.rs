@@ -118,7 +118,7 @@ pub fn submit(
     let (fence, mut invalid_buffers) = fence.wait().unwrap();
     let fence = fence.reset().unwrap();
     let buffer = invalid_buffers
-        .get_invalid_primary_buffers(&handler)
+        .take_invalid_primary_buffer(&handler)
         .unwrap();
     let buffer = buffer.reset().unwrap();
     (fence, buffer)
@@ -1050,13 +1050,11 @@ fn main() {
 
                 let (fence, mut result) = fence.wait().unwrap();
                 let fence = fence.reset().unwrap();
-                let command_buffer = result
-                    .get_invalid_primary_buffers(&command_buffer_handler)
+                let mut command_buffer = result
+                    .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
+                let secondary_buffer = command_buffer.take_secondary_buffer(&secondary_command_buffer_handler).unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
-                let secondary_buffer = result
-                    .get_invalid_secondary_buffers(&secondary_command_buffer_handler)
-                    .unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();
                 draw_command_buffer = Some(command_buffer);
                 draw_commands_reuse_fence = Some(fence);

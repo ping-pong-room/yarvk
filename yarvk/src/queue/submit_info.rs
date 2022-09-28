@@ -158,7 +158,6 @@ impl<'a> Submittable<'a> {
             return match vec.pop() {
                 Some(raw) => SubmitResult {
                     invalid_command_buffers: raw.invalid_command_buffers,
-                    invalid_secondary_buffers: raw.invalid_secondary_buffers,
                 },
                 None => SubmitResult::default(),
             };
@@ -186,17 +185,6 @@ impl<'a> Submittable<'a> {
             while !info.onetime_submit_command_buffers.is_empty() {
                 let mut onetime_submit_command_buffer =
                     info.onetime_submit_command_buffers.pop().unwrap();
-                while !onetime_submit_command_buffer.secondary_buffers.is_empty() {
-                    let secondary_buffer = onetime_submit_command_buffer
-                        .secondary_buffers
-                        .pop()
-                        .unwrap();
-                    submit_result
-                        .invalid_secondary_buffers
-                        .insert(secondary_buffer.handle(), unsafe {
-                            std::mem::transmute(secondary_buffer)
-                        });
-                }
 
                 submit_result
                     .invalid_command_buffers
@@ -229,8 +217,6 @@ impl<'a> Submittable<'a> {
 pub struct SubmitResult {
     invalid_command_buffers:
         FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
-    invalid_secondary_buffers:
-        FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>>,
 }
 impl SubmitResult {
     pub fn add_primary_buffer(
@@ -240,28 +226,11 @@ impl SubmitResult {
         self.invalid_command_buffers
             .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
     }
-    pub fn add_secondary_buffers(
-        &mut self,
-        buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }, true>,
-    ) {
-        self.invalid_secondary_buffers
-            .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
-    }
-    pub fn get_invalid_primary_buffers(
+    pub fn take_invalid_primary_buffer(
         &mut self,
         handler: &u64,
     ) -> Option<CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>> {
         let buffer = self.invalid_command_buffers.remove(handler);
-        match buffer {
-            None => None,
-            Some(buffer) => unsafe { std::mem::transmute(buffer) },
-        }
-    }
-    pub fn get_invalid_secondary_buffers(
-        &mut self,
-        handler: &u64,
-    ) -> Option<CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>> {
-        let buffer = self.invalid_secondary_buffers.remove(handler);
         match buffer {
             None => None,
             Some(buffer) => unsafe { std::mem::transmute(buffer) },
@@ -275,7 +244,6 @@ impl Drop for SubmitResult {
             let vec = &mut *unsafe_cell.get();
             vec.push(SubmitResultRaw {
                 invalid_command_buffers: std::mem::take(&mut self.invalid_command_buffers),
-                invalid_secondary_buffers: std::mem::take(&mut self.invalid_secondary_buffers),
             });
         });
     }
@@ -283,6 +251,4 @@ impl Drop for SubmitResult {
 struct SubmitResultRaw {
     invalid_command_buffers:
         FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
-    invalid_secondary_buffers:
-        FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>>,
 }
