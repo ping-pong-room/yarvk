@@ -2,8 +2,6 @@ use crate::device::Device;
 use crate::render_pass::attachment::{AttachmentDescription, AttachmentIndex};
 use crate::render_pass::subpass::{SubpassDependency, SubpassDescription, SubpassIndex};
 
-
-
 use std::default::Default;
 use std::sync::Arc;
 

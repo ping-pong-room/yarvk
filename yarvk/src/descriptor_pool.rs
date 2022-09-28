@@ -1,4 +1,4 @@
-use crate::buffer::{BufferView, Buffer};
+use crate::buffer::{Buffer, BufferView};
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device::Device;

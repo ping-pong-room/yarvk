@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use crate::buffer::Buffer;
+use std::sync::Arc;
 
 pub struct BufferView {
     pub buffer: Arc<dyn Buffer>,

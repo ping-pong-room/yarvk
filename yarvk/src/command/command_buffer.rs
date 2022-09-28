@@ -343,7 +343,7 @@ impl<const STATE: State, const SCOPE: RenderPassScope>
     pub fn take_secondary_buffer(
         &mut self,
         handle: &u64,
-    ) -> Option<CommandBuffer<{ SECONDARY }, STATE, {OUTSIDE}, true>> {
+    ) -> Option<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>> {
         self.secondary_buffers.remove(&handle)
     }
 }

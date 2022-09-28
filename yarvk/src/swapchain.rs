@@ -8,9 +8,9 @@ use crate::semaphore::Semaphore;
 use crate::surface::Surface;
 use ash::vk::Handle;
 
+use crate::device_memory::State::Bound;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
-use crate::device_memory::State::Bound;
 
 pub struct SwapchainBuilder {
     surface: Arc<Surface>,
@@ -224,8 +224,8 @@ impl SwapchainBuilder {
                         presentable: true,
                         image_create_info: image_create_info.clone(),
                         free_notification: None,
-                        memory_requirements
-                    }
+                        memory_requirements,
+                    },
                 })
             })
             .collect();
@@ -266,7 +266,11 @@ impl<'a> PresentInfoBuilder<'a> {
         self
     }
 
-    pub fn add_swapchain_and_image(mut self, swapchian: &'a mut Swapchain, image: &ContinuousImage) -> Self {
+    pub fn add_swapchain_and_image(
+        mut self,
+        swapchian: &'a mut Swapchain,
+        image: &ContinuousImage,
+    ) -> Self {
         let image_index = swapchian.get_image_index(image)
             .expect("Each element of pImageIndices must be the index of a presentable image acquired from the swapchain specified by the corresponding element of the pSwapchains array");
 
@@ -300,7 +304,7 @@ impl Queue {
             *result = ash::vk::Result::SUCCESS;
         }
         for semaphore in &present_info.wait_semaphores {
-            ash_vk_semaphores.push( semaphore.ash_vk_semaphore);
+            ash_vk_semaphores.push(semaphore.ash_vk_semaphore);
         }
 
         for (swapchain, index) in &present_info.swapchains_and_image_indices {

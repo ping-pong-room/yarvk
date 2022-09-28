@@ -9,7 +9,7 @@ use ash::extensions::ext;
 
 #[cfg(any(target_os = "windows"))]
 use ash::extensions::khr;
- // portability extensions
+// portability extensions
 
 /// Create a surface from a raw surface handle.
 ///

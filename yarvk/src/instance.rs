@@ -1,6 +1,4 @@
-use crate::debug_utils_messenger::{
-    DebugUtilsMessengerCreateInfoEXT,
-};
+use crate::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use crate::entry::Entry;
 use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
 use crate::physical_device::PhysicalDevice;

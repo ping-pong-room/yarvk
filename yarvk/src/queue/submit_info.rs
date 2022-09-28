@@ -1,16 +1,15 @@
 use crate::command::command_buffer::CommandBuffer;
-use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
+use crate::command::command_buffer::Level::PRIMARY;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
-use crate::device::Device;
-use crate::fence::{Fence, SignalingFence, UnsignaledFence};
+
+use crate::fence::{SignalingFence, UnsignaledFence};
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::Handle;
 use rustc_hash::FxHashMap;
 use std::cell::UnsafeCell;
-use std::sync::Arc;
 
 thread_local! {
     static SUBMIT_INFO_CACHE: UnsafeCell<Vec<SubmitInfo<'static>>> = UnsafeCell::new(Vec::new());
@@ -183,7 +182,7 @@ impl<'a> Submittable<'a> {
         while !self.submit_infos.is_empty() {
             let mut info = self.submit_infos.pop().unwrap();
             while !info.onetime_submit_command_buffers.is_empty() {
-                let mut onetime_submit_command_buffer =
+                let onetime_submit_command_buffer =
                     info.onetime_submit_command_buffers.pop().unwrap();
 
                 submit_result

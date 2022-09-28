@@ -1,9 +1,5 @@
 use crate::device_features::Feature;
 
-
-
-
-
 #[derive(PartialEq, Eq)]
 pub enum PrimitiveTopology {
     PointList,

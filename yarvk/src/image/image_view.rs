@@ -4,10 +4,9 @@ use crate::device_features::{
     PhysicalDeviceFragmentDensityMapFeaturesEXT,
 };
 use crate::image::image_subresource_range::ImageSubresourceRange;
-use crate::image::{Image};
+use crate::image::Image;
 use ash::vk::{ComponentMapping, Format};
 use std::sync::Arc;
-
 
 pub enum ImageViewType {
     Type1d,

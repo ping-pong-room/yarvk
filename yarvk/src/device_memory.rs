@@ -1,9 +1,9 @@
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
+use ash::vk::Handle;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use ash::vk::Handle;
 
 pub mod dedicated_memory;
 

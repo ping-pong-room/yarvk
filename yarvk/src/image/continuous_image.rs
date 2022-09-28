@@ -1,12 +1,11 @@
-
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
 use crate::device_memory::{BindMemory, DeviceMemory, MemoryRequirement, State};
 use crate::image::{Image, ImageCreateInfo, RawImage};
 use crate::physical_device::SharingMode;
+use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
 
 pub struct ContinuousImageBuilder {
     device: Arc<Device>,
@@ -150,7 +149,11 @@ impl Image for ContinuousImage<{ Bound }> {
 impl BindMemory for ContinuousImage<{ Unbound }> {
     type BoundType = ContinuousImage<{ Bound }>;
 
-    fn bind_memory(self, memory: &DeviceMemory, memory_offset: DeviceSize) -> Result<Self::BoundType, ash::vk::Result> {
+    fn bind_memory(
+        self,
+        memory: &DeviceMemory,
+        memory_offset: DeviceSize,
+    ) -> Result<Self::BoundType, ash::vk::Result> {
         // DONE VUID-vkBindImageMemory-image-01044
         unsafe {
             // Host Synchronization: image

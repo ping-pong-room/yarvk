@@ -1,11 +1,11 @@
-use std::ops::{Deref, DerefMut};
 use crate::buffer::{Buffer, BufferCreateFlags, RawBuffer};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
 use crate::device_memory::{BindMemory, DeviceMemory, MemoryRequirement, State};
 use crate::physical_device::SharingMode;
-use std::sync::Arc;
 use ash::vk::{ExtendsMemoryRequirements2, MemoryRequirements};
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 
 pub struct ContinuousBuffer<const STATE: State = Bound>(RawBuffer);
 
@@ -47,7 +47,11 @@ impl Buffer for ContinuousBuffer<{ Bound }> {
 impl BindMemory for ContinuousBuffer<{ Unbound }> {
     type BoundType = ContinuousBuffer<{ Bound }>;
 
-    fn bind_memory(self, memory: &DeviceMemory, memory_offset: ash::vk::DeviceSize) -> Result<Self::BoundType, ash::vk::Result> {
+    fn bind_memory(
+        self,
+        memory: &DeviceMemory,
+        memory_offset: ash::vk::DeviceSize,
+    ) -> Result<Self::BoundType, ash::vk::Result> {
         // TODO why device_memory do not need to be synchronized?
         // Host Synchronization buffer
         unsafe {

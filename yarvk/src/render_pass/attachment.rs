@@ -1,6 +1,3 @@
-
-
-
 #[derive(Default)]
 pub struct AttachmentDescriptionBuilder {
     attachment_description: ash::vk::AttachmentDescription,
@@ -98,8 +95,8 @@ pub struct AttachmentReference {
 impl AttachmentReference {
     pub fn builder() -> AttachmentReferenceBuilder {
         AttachmentReferenceBuilder {
-            attachment:  ash::vk::ATTACHMENT_UNUSED,
-            layout:ash::vk::ImageLayout::UNDEFINED,
+            attachment: ash::vk::ATTACHMENT_UNUSED,
+            layout: ash::vk::ImageLayout::UNDEFINED,
         }
     }
     pub(crate) fn to_ash(&self) -> ash::vk::AttachmentReference {

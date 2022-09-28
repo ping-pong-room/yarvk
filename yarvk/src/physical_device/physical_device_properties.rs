@@ -1,4 +1,3 @@
-
 use crate::physical_device::PhysicalDevice;
 use ash::vk::ExtendsPhysicalDeviceProperties2;
 

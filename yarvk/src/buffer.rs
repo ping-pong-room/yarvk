@@ -7,10 +7,9 @@ use crate::device_features::PhysicalDeviceFeatures::{
 };
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
-use crate::device_memory::{MemoryRequirement};
+use crate::device_memory::MemoryRequirement;
 
 use std::ops::{Deref, DerefMut};
-
 
 use ash::vk::Handle;
 use std::sync::Arc;

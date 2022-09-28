@@ -1,6 +1,6 @@
-use std::sync::Arc;
 use crate::device::Device;
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
+use std::sync::Arc;
 
 pub mod submit_info;
 

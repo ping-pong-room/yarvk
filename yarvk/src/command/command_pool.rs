@@ -7,7 +7,7 @@ use std::sync::Arc;
 pub enum CommandPoolCreateFlags {
     TRANSIENT,
     /* yarvk use one pool per buffer, and it is suggested not to set RESET_COMMAND_BUFFER_BIT
-     if you only need to free the whole pool. */
+    if you only need to free the whole pool. */
     // ResetCommandBuffer,
     // DONE VUID-VkCommandPoolCreateInfo-flags-02860
     PROTECTED(Feature<{ ProtectedMemory.into() }>),
@@ -41,7 +41,10 @@ impl CommandPool {
     pub fn reset(&mut self) -> Result<(), ash::vk::Result> {
         unsafe {
             // Host Synchronization: commandPool
-            self.device.ash_device.reset_command_pool(self.vk_command_pool, ash::vk::CommandPoolResetFlags::RELEASE_RESOURCES)?
+            self.device.ash_device.reset_command_pool(
+                self.vk_command_pool,
+                ash::vk::CommandPoolResetFlags::RELEASE_RESOURCES,
+            )?
         }
         Ok(())
     }

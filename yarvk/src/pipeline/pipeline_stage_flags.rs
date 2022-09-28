@@ -1,11 +1,10 @@
-
+use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceFeatures::{GeometryShader, TessellationShader};
 use crate::device_features::PhysicalDeviceFragmentDensityMapFeaturesEXT::FragmentDensityMap;
 use crate::device_features::PhysicalDeviceMeshShaderFeaturesNV::{MeshShader, TaskShader};
 use crate::device_features::PhysicalDeviceShadingRateImageFeaturesNV::ShadingRateImage;
 use crate::device_features::PhysicalDeviceTransformFeedbackFeaturesEXT::TransformFeedback;
 use crate::device_features::PhysicalDeviceVulkan13Features::Synchronization2;
-use crate::device_features::{Feature};
 
 /* DONE
     VUID-VkSubpassDependency-srcStageMask-04091

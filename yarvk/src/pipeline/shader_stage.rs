@@ -1,6 +1,6 @@
+use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceFeatures::{GeometryShader, TessellationShader};
 use crate::device_features::PhysicalDeviceMeshShaderFeaturesNV::{MeshShader, TaskShader};
-use crate::device_features::{Feature};
 use crate::shader_module::ShaderModule;
 use std::sync::Arc;
 /* DONE VUID-VkPipelineShaderStageCreateInfo-stage-00704

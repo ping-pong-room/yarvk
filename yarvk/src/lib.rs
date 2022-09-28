@@ -124,6 +124,7 @@ pub use ash::vk::PhysicalDeviceSubpassShadingPropertiesHUAWEI;
 pub use ash::vk::PhysicalDeviceTexelBufferAlignmentProperties;
 pub use ash::vk::PhysicalDeviceTimelineSemaphoreProperties;
 pub use ash::vk::PhysicalDeviceTransformFeedbackPropertiesEXT;
+pub use ash::vk::PhysicalDeviceType;
 pub use ash::vk::PhysicalDeviceVertexAttributeDivisorPropertiesEXT;
 pub use ash::vk::PhysicalDeviceVulkan11Properties;
 pub use ash::vk::PhysicalDeviceVulkan12Properties;
@@ -147,7 +148,6 @@ pub use ash::vk::SwapchainCreateFlagsKHR;
 pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
 pub use ash::vk::SUBPASS_EXTERNAL;
-pub use ash::vk::PhysicalDeviceType;
 
 pub use buffer::*;
 pub use image::*;

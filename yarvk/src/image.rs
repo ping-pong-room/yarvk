@@ -1,19 +1,19 @@
-use crate::buffer::{Buffer};
+use crate::buffer::Buffer;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
 
-use crate::device_memory::{MemoryRequirement};
+use crate::device_memory::MemoryRequirement;
 use crate::physical_device::SharingMode;
 
+use ash::vk::Handle;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
-use ash::vk::Handle;
 
+pub mod continuous_image;
 pub mod image_subresource_range;
 pub mod image_view;
-pub mod continuous_image;
 
 pub use continuous_image::*;
 

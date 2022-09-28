@@ -341,9 +341,11 @@ fn main() {
         })
         .build()
         .unwrap();
-    let depth_image = Arc::new(depth_image
-        .bind_memory(&depth_image_memory, 0)
-        .expect("Unable to bind depth image memory"));
+    let depth_image = Arc::new(
+        depth_image
+            .bind_memory(&depth_image_memory, 0)
+            .expect("Unable to bind depth image memory"),
+    );
 
     let fence = Fence::new(device.clone()).unwrap();
 
@@ -531,9 +533,11 @@ fn main() {
             });
         })
         .unwrap();
-    let vertex_input_buffer = Arc::new(vertex_input_buffer
-        .bind_memory(&vertex_input_buffer_memory, 0)
-        .unwrap());
+    let vertex_input_buffer = Arc::new(
+        vertex_input_buffer
+            .bind_memory(&vertex_input_buffer_memory, 0)
+            .unwrap(),
+    );
 
     let uniform_color_buffer_data = Vector3 {
         x: 1.0,
@@ -574,9 +578,11 @@ fn main() {
         })
         .unwrap();
 
-    let uniform_color_buffer = Arc::new(uniform_color_buffer
-        .bind_memory(&uniform_color_buffer_memory, 0)
-        .unwrap());
+    let uniform_color_buffer = Arc::new(
+        uniform_color_buffer
+            .bind_memory(&uniform_color_buffer_memory, 0)
+            .unwrap(),
+    );
 
     let image = image::load_from_memory(include_bytes!("rust.png"))
         .unwrap()
@@ -635,9 +641,11 @@ fn main() {
         .allocation_size(texture_memory_req.size)
         .build()
         .unwrap();
-    let texture_image = Arc::new(texture_image
-        .bind_memory(&texture_memory, 0)
-        .expect("Unable to bind depth image memory"));
+    let texture_image = Arc::new(
+        texture_image
+            .bind_memory(&texture_memory, 0)
+            .expect("Unable to bind depth image memory"),
+    );
 
     let command_buffer = setup_command_buffer
         .record(|command_buffer| {
@@ -1025,9 +1033,8 @@ fn main() {
                                             .unwrap();
                                         vec = vec![secondary_buffer];
                                     })
-                                        .join()
-                                        .unwrap();
-
+                                    .join()
+                                    .unwrap();
                                 });
                                 command_buffer.cmd_execute_commands(vec);
                             },
@@ -1053,7 +1060,9 @@ fn main() {
                 let mut command_buffer = result
                     .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
-                let secondary_buffer = command_buffer.take_secondary_buffer(&secondary_command_buffer_handler).unwrap();
+                let secondary_buffer = command_buffer
+                    .take_secondary_buffer(&secondary_command_buffer_handler)
+                    .unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();
                 draw_command_buffer = Some(command_buffer);

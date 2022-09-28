@@ -1,8 +1,6 @@
 use crate::physical_device::PhysicalDevice;
 use crate::Handle;
 
-
-
 #[derive(Clone)]
 pub struct MemoryType {
     pub(crate) index: u32,
@@ -21,11 +19,13 @@ pub struct PhysicalDeviceMemoryProperties {
 }
 
 impl PhysicalDevice {
-    pub(super) fn memory_properties_inner(instance: &ash::Instance, physical_device: ash::vk::PhysicalDevice) -> PhysicalDeviceMemoryProperties {
+    pub(super) fn memory_properties_inner(
+        instance: &ash::Instance,
+        physical_device: ash::vk::PhysicalDevice,
+    ) -> PhysicalDeviceMemoryProperties {
         let vk_physical_device_memory_properties = unsafe {
             // Host Synchronization: none
-            instance
-                .get_physical_device_memory_properties(physical_device)
+            instance.get_physical_device_memory_properties(physical_device)
         };
         let mut memory_properties =
             Vec::with_capacity(vk_physical_device_memory_properties.memory_type_count as _);

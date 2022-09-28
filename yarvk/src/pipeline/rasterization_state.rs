@@ -3,7 +3,6 @@ use crate::device_features::PhysicalDeviceFeatures::{DepthClamp, FillModeNonSoli
 use crate::extensions::DeviceExtension;
 use crate::extensions::PhysicalDeviceExtensionType::NvFillRectangle;
 
-
 pub enum PolygonMode {
     Fill,
     // DONE VUID-VkPipelineRasterizationStateCreateInfo-polygonMode-01507
