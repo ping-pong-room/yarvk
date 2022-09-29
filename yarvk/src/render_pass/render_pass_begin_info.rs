@@ -66,8 +66,11 @@ impl<const ONE_TIME_SUBMIT: bool>
         create_info: &RenderPassBeginInfo,
         contents: ash::vk::SubpassContents,
         f: F,
-    ) where
-        F: FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>),
+    ) -> Result<(), ash::vk::Result>
+    where
+        F: FnOnce(
+            &mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>,
+        ) -> Result<(), ash::vk::Result>,
     {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
@@ -80,12 +83,13 @@ impl<const ONE_TIME_SUBMIT: bool>
         f(unsafe {
             &mut *(self as *mut Self
                 as *mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>)
-        });
+        })?;
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
             self.device
                 .ash_device
                 .cmd_end_render_pass(self.vk_command_buffer);
         }
+        Ok(())
     }
 }

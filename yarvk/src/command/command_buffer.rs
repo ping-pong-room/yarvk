@@ -266,11 +266,11 @@ impl<const STATE: State, const C: bool> CommandBuffer<{ PRIMARY }, STATE, { OUTS
 macro_rules! primary_record_impls {
     ($($stage: expr),*) => {$(
         impl<const C: bool> CommandBuffer<{ PRIMARY }, { $stage }, { OUTSIDE }, C> {
-            pub fn record<const ONE_TIME_SUBMIT: bool>(self, f: impl FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>))
+            pub fn record<const ONE_TIME_SUBMIT: bool>(self, f: impl FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>) -> Result<(), ash::vk::Result>)
                              -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
             {
                 let mut recording_buffer = self.begin()?;
-                f(&mut recording_buffer);
+                f(&mut recording_buffer)?;
                 recording_buffer.end()
             }
         }
@@ -316,19 +316,19 @@ macro_rules! secondary_record_impls {
     ($($stage: expr),*) => {$(
         impl<const C: bool> CommandBuffer<{ SECONDARY }, { $stage },  { OUTSIDE }, C> {
             pub fn record<const ONE_TIME_SUBMIT: bool>(self,
-                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }, ONE_TIME_SUBMIT>))
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }, ONE_TIME_SUBMIT>) -> Result<(), ash::vk::Result>)
                              -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
             {
                 let mut recording_buffer = self.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info)?;
-                f(&mut recording_buffer);
+                f(&mut recording_buffer)?;
                 recording_buffer.end()
             }
             pub fn record_render_pass_continue<const ONE_TIME_SUBMIT: bool>(self,
-                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }, ONE_TIME_SUBMIT>))
+                            inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }, ONE_TIME_SUBMIT>) -> Result<(), ash::vk::Result>)
                              -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { INSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
             {
                 let mut recording_buffer = self.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info)?;
-                f(&mut recording_buffer);
+                f(&mut recording_buffer)?;
                 recording_buffer.end()
             }
         }

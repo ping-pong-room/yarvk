@@ -373,6 +373,7 @@ fn main() {
                     )
                     .build()],
             );
+            Ok(())
         })
         .unwrap();
 
@@ -712,6 +713,7 @@ fn main() {
                 &[],
                 &image_barriers,
             );
+            Ok(())
         })
         .unwrap();
     let (fence, command_buffer) = submit(
@@ -1028,6 +1030,7 @@ fn main() {
                                                         0,
                                                         1,
                                                     );
+                                                    Ok(())
                                                 },
                                             )
                                             .unwrap();
@@ -1037,8 +1040,10 @@ fn main() {
                                     .unwrap();
                                 });
                                 command_buffer.cmd_execute_commands(vec);
+                                Ok(())
                             },
-                        );
+                        )?;
+                        Ok(())
                     })
                     .unwrap();
                 let submit_info = SubmitInfo::builder()
