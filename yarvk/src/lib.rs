@@ -148,6 +148,7 @@ pub use ash::vk::SwapchainCreateFlagsKHR;
 pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
 pub use ash::vk::SUBPASS_EXTERNAL;
+pub use ash::vk::ExtendsMemoryRequirements2;
 
 pub use buffer::*;
 pub use image::*;
