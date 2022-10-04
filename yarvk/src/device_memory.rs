@@ -1,3 +1,4 @@
+use std::ffi::c_void;
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
@@ -31,11 +32,23 @@ pub struct DeviceMemory {
     pub device: Arc<Device>,
     pub(crate) vk_device_memory: ash::vk::DeviceMemory,
     pub size: ash::vk::DeviceSize,
+    host_mapped: Option<(
+        ash::vk::DeviceSize, /*offset*/
+        ash::vk::DeviceSize, /*size*/
+        *mut c_void, /*ptr*/
+    )>,
 }
+
+unsafe impl Sync for DeviceMemory {}
+unsafe impl Send for DeviceMemory {}
 
 impl Drop for DeviceMemory {
     fn drop(&mut self) {
         unsafe {
+            if self.host_mapped.is_some() {
+                // Host Synchronization: memory
+                self.device.ash_device.unmap_memory(self.vk_device_memory);
+            }
             // Host Synchronization: memory
             self.device
                 .ash_device
@@ -61,26 +74,42 @@ impl DeviceMemory {
             dedicated_allocate_info: None,
         }
     }
-    pub fn map_memory<F: FnOnce(&mut [u8])>(
+
+    pub fn map_memory<F: Fn(&mut [u8])>(
         &mut self,
         offset: ash::vk::DeviceSize,
         size: ash::vk::DeviceSize,
         f: F,
     ) -> Result<(), ash::vk::Result> {
-        // DONE VUID-vkMapMemory-memory-00678
-        // Host Synchronization: memory
-        unsafe {
-            let ptr = self.device.ash_device.map_memory(
-                self.vk_device_memory,
-                offset,
-                size,
-                ash::vk::MemoryMapFlags::empty(),
-            )?;
-            let mapped_memory = std::slice::from_raw_parts_mut(ptr as _, size as _);
-            f(mapped_memory);
-            self.device.ash_device.unmap_memory(self.vk_device_memory);
-            Ok(())
-        }
+       unsafe {
+           let ptr = if let Some((current_offset,current_size,ptr)) = self.host_mapped {
+               if offset == current_offset && size <= current_size {
+                   ptr
+               } else {
+                   self.device.ash_device.unmap_memory(self.vk_device_memory);
+                   let ptr = self.device.ash_device.map_memory(
+                       self.vk_device_memory,
+                       offset,
+                       size,
+                       ash::vk::MemoryMapFlags::empty(),
+                   )?;
+                   self.host_mapped = Some((offset, size, ptr));
+                   ptr
+               }
+           } else {
+               let ptr = self.device.ash_device.map_memory(
+                   self.vk_device_memory,
+                   offset,
+                   size,
+                   ash::vk::MemoryMapFlags::empty(),
+               )?;
+               self.host_mapped = Some((offset, size, ptr));
+               ptr
+           };
+           let mapped_memory = std::slice::from_raw_parts_mut(ptr as _, size as _);
+           f(mapped_memory);
+       }
+        Ok(())
     }
 }
 
@@ -141,6 +170,7 @@ impl<'a> DeviceMemoryBuilder<'a> {
             device: self.device,
             vk_device_memory,
             size: self.allocation_size,
+            host_mapped: None,
         })
     }
 }
