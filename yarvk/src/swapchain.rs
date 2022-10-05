@@ -6,7 +6,7 @@ use crate::physical_device::SharingMode;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::surface::Surface;
-use ash::vk::Handle;
+use ash::vk::{Extent2D, Handle};
 
 use crate::device_memory::State::Bound;
 use std::mem::ManuallyDrop;
@@ -234,8 +234,9 @@ impl SwapchainBuilder {
             device: self.device,
             vk_swapchain,
             swapchain_loader,
-            // image_create_info,
+            image_create_info,
             images,
+            image_extent: self.image_extent,
         })
     }
 }
@@ -342,8 +343,9 @@ pub struct Swapchain {
     pub device: Arc<Device>,
     vk_swapchain: ash::vk::SwapchainKHR,
     swapchain_loader: ash::extensions::khr::Swapchain,
-    // image_create_info: Arc<ImageCreateInfo>,
+    pub image_create_info: Arc<ImageCreateInfo>,
     images: Vec<Arc<ContinuousImage<{ Bound }>>>,
+    pub image_extent: Extent2D,
 }
 
 impl Swapchain {
