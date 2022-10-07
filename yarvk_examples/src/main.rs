@@ -393,57 +393,59 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut renderpass_builder = RenderPass::builder(device.clone());
-    let renderpass_attachment0 = renderpass_builder.add_attachment(
-        AttachmentDescription::builder()
-            .format(surface_format.format)
-            .samples(SampleCountFlags::TYPE_1)
-            .load_op(AttachmentLoadOp::CLEAR)
-            .store_op(AttachmentStoreOp::STORE)
-            .final_layout(ImageLayout::PRESENT_SRC_KHR)
-            .build(),
-    );
-    let renderpass_attachment1 = renderpass_builder.add_attachment(
-        AttachmentDescription::builder()
-            .format(Format::D16_UNORM)
-            .samples(SampleCountFlags::TYPE_1)
-            .load_op(AttachmentLoadOp::CLEAR)
-            .initial_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .final_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-            .build(),
-    );
-    let subpass = SubpassDescription::builder()
-        .add_color_attachment(
-            AttachmentReference::builder()
-                .attachment_index(renderpass_attachment0)
-                .layout(ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+    let renderpass = RenderPass::builder(device.clone())
+        .add_attachment(
+            AttachmentDescription::builder()
+                .format(surface_format.format)
+                .samples(SampleCountFlags::TYPE_1)
+                .load_op(AttachmentLoadOp::CLEAR)
+                .store_op(AttachmentStoreOp::STORE)
+                .final_layout(ImageLayout::PRESENT_SRC_KHR)
                 .build(),
         )
-        .depth_stencil_attachment(
-            AttachmentReference::builder()
-                .attachment_index(renderpass_attachment1)
-                .layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        .add_attachment(
+            AttachmentDescription::builder()
+                .format(Format::D16_UNORM)
+                .samples(SampleCountFlags::TYPE_1)
+                .load_op(AttachmentLoadOp::CLEAR)
+                .initial_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                .final_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .build(),
         )
-        .build();
-    let subpass_id0 = renderpass_builder.add_subpass(subpass);
-    renderpass_builder.add_dependency(
-        SubpassDependency::builder()
-            .src_subpass(SUBPASS_EXTERNAL)
-            .add_src_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
-            .add_dst_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
-            .dst_access_mask(
-                AccessFlags::COLOR_ATTACHMENT_READ | AccessFlags::COLOR_ATTACHMENT_WRITE,
-            )
-            .build(),
-    );
-    let renderpass = renderpass_builder.build().unwrap();
+        .add_subpass(
+            SubpassDescription::builder()
+                .add_color_attachment(
+                    AttachmentReference::builder()
+                        .attachment_index(0)
+                        .layout(ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+                        .build(),
+                )
+                .depth_stencil_attachment(
+                    AttachmentReference::builder()
+                        .attachment_index(1)
+                        .layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                        .build(),
+                )
+                .build(),
+        )
+        .add_dependency(
+            SubpassDependency::builder()
+                .src_subpass(SUBPASS_EXTERNAL)
+                .add_src_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
+                .add_dst_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
+                .dst_access_mask(
+                    AccessFlags::COLOR_ATTACHMENT_READ | AccessFlags::COLOR_ATTACHMENT_WRITE,
+                )
+                .build(),
+        )
+        .build()
+        .unwrap();
     let framebuffers: HashMap<u64, Arc<Framebuffer>> = present_image_views
         .iter()
         .map(|present_image_view| {
             let framebuffer = Framebuffer::builder(renderpass.clone())
-                .add_attachment(renderpass_attachment0, present_image_view.clone())
-                .add_attachment(renderpass_attachment1, depth_image_view.clone())
+                .add_attachment(0, present_image_view.clone())
+                .add_attachment(1, depth_image_view.clone())
                 .width(surface_resolution.width)
                 .height(surface_resolution.height)
                 .layers(1)
@@ -928,7 +930,7 @@ fn main() {
                 )
                 .build(),
         )
-        .render_pass(renderpass.clone(), subpass_id0)
+        .render_pass(renderpass.clone(), 0)
         .build()
         .unwrap();
     let present_complete_semaphore = Semaphore::new(device.clone()).unwrap();
@@ -944,7 +946,7 @@ fn main() {
     let mut secondary_command_buffer = Some(secondary_command_buffer);
     let inheritance_info = CommandBufferInheritanceInfo::builder()
         .render_pass(renderpass.clone())
-        .subpass(subpass_id0)
+        .subpass(0)
         .build();
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -993,12 +995,19 @@ fn main() {
                             &render_pass_begin_info,
                             SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
-                                let secondary_buffer  = secondary_command_buffer.take().unwrap();
+                                let secondary_buffer = secondary_command_buffer.take().unwrap();
                                 let vec = vec![secondary_buffer];
-                                let mut vec = CommandBuffer::<{SECONDARY}, {INITIAL}, {OUTSIDE}, true>::record_render_pass_continue_buffers(
-                                    vec, inheritance_info.clone(),
+                                let mut vec = CommandBuffer::<
+                                    { SECONDARY },
+                                    { INITIAL },
+                                    { OUTSIDE },
+                                    true,
+                                >::record_render_pass_continue_buffers(
+                                    vec,
+                                    inheritance_info.clone(),
                                     |command_buffers| {
-                                        let command_buffer = command_buffers.iter_mut().next().unwrap();
+                                        let command_buffer =
+                                            command_buffers.iter_mut().next().unwrap();
                                         // use thread pool in real cases
                                         std::thread::scope(|s| {
                                             s.spawn(|| {
@@ -1030,10 +1039,9 @@ fn main() {
                                                     0,
                                                     1,
                                                 );
-
                                             })
-                                                .join()
-                                                .unwrap();
+                                            .join()
+                                            .unwrap();
                                         });
                                         Ok(())
                                     },
@@ -1065,7 +1073,8 @@ fn main() {
                     .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
                 let secondary_buffer = command_buffer
-                    .secondary_buffers().remove(&secondary_command_buffer_handler)
+                    .secondary_buffers()
+                    .remove(&secondary_command_buffer_handler)
                     .unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();

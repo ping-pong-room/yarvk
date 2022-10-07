@@ -11,7 +11,6 @@ use crate::pipeline::rasterization_state::PipelineRasterizationStateCreateInfo;
 use crate::pipeline::shader_stage::PipelineShaderStageCreateInfo;
 use crate::pipeline::vertex_input_state::PipelineVertexInputStateCreateInfo;
 use crate::pipeline::viewport_state::PipelineViewportStateCreateInfo;
-use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
 
 use crate::shader_module::ShaderModule;
@@ -170,7 +169,7 @@ pub struct PipelineBuilder<'a> {
     color_blend_state: PipelineColorBlendStateCreateInfo,
     layout: Arc<PipelineLayout>,
     dynamic_states: FxHashSet<ash::vk::DynamicState>,
-    render_pass: Option<(Arc<RenderPass>, SubpassIndex)>,
+    render_pass: Option<(Arc<RenderPass>, u32)>,
 }
 
 impl<'a> PipelineBuilder<'a> {
@@ -238,7 +237,7 @@ impl<'a> PipelineBuilder<'a> {
         self.color_blend_state = color_blend_state;
         self
     }
-    pub fn render_pass(mut self, render_pass: Arc<RenderPass>, subpass: SubpassIndex) -> Self {
+    pub fn render_pass(mut self, render_pass: Arc<RenderPass>, subpass: u32) -> Self {
         // DONE VUID-VkGraphicsPipelineCreateInfo-renderPass-06046
         self.render_pass = Some((render_pass, subpass));
         self
@@ -305,7 +304,7 @@ impl<'a> PipelineBuilder<'a> {
         if let Some((render_pass, subpass_index)) = self.render_pass {
             create_info_builder = create_info_builder
                 .render_pass(render_pass.ash_vk_renderpass)
-                .subpass(subpass_index.0);
+                .subpass(subpass_index);
             render_pass_holder = Some(render_pass);
         }
         let create_info = create_info_builder.build();

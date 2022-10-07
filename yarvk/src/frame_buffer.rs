@@ -2,7 +2,6 @@ use crate::device::Device;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceVulkan12Features::ImagelessFramebuffer;
 use crate::image::image_view::ImageView;
-use crate::render_pass::attachment::AttachmentIndex;
 use crate::render_pass::RenderPass;
 use std::collections::btree_map::BTreeMap;
 use std::sync::Arc;
@@ -72,10 +71,10 @@ impl FramebufferBuilder {
     }
     pub fn add_attachment(
         mut self,
-        attachment_index: AttachmentIndex,
+        attachment_index: u32,
         attachment: Arc<ImageView>,
     ) -> Self {
-        self.attachments.insert(attachment_index.0, attachment);
+        self.attachments.insert(attachment_index, attachment);
         self
     }
     pub fn width(mut self, width: u32) -> Self {

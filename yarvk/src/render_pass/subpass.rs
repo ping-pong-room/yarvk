@@ -1,5 +1,5 @@
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
-use crate::render_pass::attachment::{AttachmentIndex, AttachmentReference};
+use crate::render_pass::attachment::AttachmentReference;
 
 #[derive(Default)]
 pub struct SubpassDependencyBuilder {
@@ -104,7 +104,7 @@ pub struct SubpassDescriptionBuilder {
     input_attachments: Vec<AttachmentReference>,
     color_with_resolve_attachments: Vec<(AttachmentReference, AttachmentReference)>,
     depth_stencil_attachment: Option<AttachmentReference>,
-    preserve_attachments: Vec<AttachmentIndex>,
+    preserve_attachments: Vec<usize>,
 }
 
 impl SubpassDescriptionBuilder {
@@ -146,7 +146,7 @@ impl SubpassDescriptionBuilder {
         self.depth_stencil_attachment = Some(depth_stencil_attachment);
         self
     }
-    pub fn add_preserve_attachment(mut self, preserve_attachment_index: AttachmentIndex) -> Self {
+    pub fn add_preserve_attachment(mut self, preserve_attachment_index: usize) -> Self {
         self.preserve_attachments.push(preserve_attachment_index);
         self
     }
@@ -172,7 +172,7 @@ impl SubpassDescriptionBuilder {
         let preserve_attachments: Vec<u32> = self
             .preserve_attachments
             .into_iter()
-            .map(|index| index.0)
+            .map(|index| index as _)
             .collect();
         let depth_stencil_attachment =
             if let Some(depth_stencil_attachment) = self.depth_stencil_attachment {
@@ -192,6 +192,3 @@ impl SubpassDescriptionBuilder {
         }
     }
 }
-
-#[derive(Clone, Copy)]
-pub struct SubpassIndex(pub(crate) u32);

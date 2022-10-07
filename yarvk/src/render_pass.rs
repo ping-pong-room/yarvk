@@ -1,6 +1,6 @@
 use crate::device::Device;
-use crate::render_pass::attachment::{AttachmentDescription, AttachmentIndex};
-use crate::render_pass::subpass::{SubpassDependency, SubpassDescription, SubpassIndex};
+use crate::render_pass::attachment::AttachmentDescription;
+use crate::render_pass::subpass::{SubpassDependency, SubpassDescription};
 
 use std::default::Default;
 use std::sync::Arc;
@@ -18,20 +18,19 @@ pub struct RenderPassBuilder {
 }
 
 impl RenderPassBuilder {
-    pub fn flag(&mut self, flags: ash::vk::RenderPassCreateFlags) {
+    pub fn flag(mut self, flags: ash::vk::RenderPassCreateFlags) -> Self {
         self.flags = flags;
+        self
     }
-    pub fn add_attachment(&mut self, attachment: AttachmentDescription) -> AttachmentIndex {
-        let index = AttachmentIndex(self.attachments.len() as _);
+    pub fn add_attachment(mut self, attachment: AttachmentDescription) -> Self {
         self.attachments.push(attachment);
-        index
+        self
     }
-    pub fn add_subpass(&mut self, subpass_description: SubpassDescription) -> SubpassIndex {
-        let index = self.subpasses.len();
+    pub fn add_subpass(mut self, subpass_description: SubpassDescription) -> Self {
         self.subpasses.push(subpass_description);
-        SubpassIndex { 0: index as _ }
+        self
     }
-    pub fn add_dependency(&mut self, subpass_dependency: SubpassDependency) -> &mut Self {
+    pub fn add_dependency(mut self, subpass_dependency: SubpassDependency) -> Self {
         self.subpass_dependencies.push(subpass_dependency);
         self
     }

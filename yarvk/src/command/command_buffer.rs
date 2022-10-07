@@ -7,7 +7,6 @@ use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
 use crate::image::Image;
 
-use crate::render_pass::subpass::SubpassIndex;
 use crate::render_pass::RenderPass;
 
 use lazy_static::lazy_static;
@@ -58,7 +57,7 @@ impl Level {
 pub struct CommandBufferInheritanceInfo {
     ash_vk_info: ash::vk::CommandBufferInheritanceInfo,
     render_pass: Option<Arc<RenderPass>>,
-    subpass: Option<SubpassIndex>,
+    subpass: Option<u32>,
     framebuffer: Option<Arc<Framebuffer>>,
     _pin: PhantomPinned,
 }
@@ -76,7 +75,7 @@ unsafe impl Send for CommandBufferInheritanceInfo {}
 #[derive(Default)]
 pub struct CommandBufferInheritanceInfoBuilder {
     render_pass: Option<Arc<RenderPass>>,
-    subpass: Option<SubpassIndex>,
+    subpass: Option<u32>,
     framebuffer: Option<Arc<Framebuffer>>,
     occlusion_query_enable: bool,
     query_flags: ash::vk::QueryControlFlags,
@@ -88,7 +87,7 @@ impl CommandBufferInheritanceInfoBuilder {
         self.render_pass = Some(render_pass);
         self
     }
-    pub fn subpass(mut self, subpass: SubpassIndex) -> Self {
+    pub fn subpass(mut self, subpass: u32) -> Self {
         self.subpass = Some(subpass);
         self
     }
@@ -130,7 +129,7 @@ impl CommandBufferInheritanceInfoBuilder {
                 info.ash_vk_info.render_pass = render_pass.ash_vk_renderpass;
             }
             if let Some(subpass_index) = &info.subpass {
-                info.ash_vk_info.subpass = subpass_index.0;
+                info.ash_vk_info.subpass = *subpass_index;
             }
             if let Some(framebuffer) = &info.framebuffer {
                 info.ash_vk_info.framebuffer = framebuffer.ash_vk_framebuffer;

@@ -53,9 +53,6 @@ impl AttachmentDescription {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct AttachmentIndex(pub(crate) u32);
-
 pub struct AttachmentReferenceBuilder {
     attachment: u32,
     layout: ash::vk::ImageLayout,
@@ -71,8 +68,8 @@ impl Default for AttachmentReference {
 }
 
 impl AttachmentReferenceBuilder {
-    pub fn attachment_index(mut self, index: AttachmentIndex) -> Self {
-        self.attachment = index.0;
+    pub fn attachment_index(mut self, index: u32) -> Self {
+        self.attachment = index;
         self
     }
     pub fn layout(mut self, layout: ash::vk::ImageLayout) -> Self {
