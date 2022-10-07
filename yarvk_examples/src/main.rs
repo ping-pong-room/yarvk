@@ -993,53 +993,52 @@ fn main() {
                             &render_pass_begin_info,
                             SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
-                                let secondary_buffer = secondary_command_buffer.take().unwrap();
-                                let mut vec = Vec::new();
-                                // use thread pool in real cases
-                                std::thread::scope(|s| {
-                                    s.spawn(|| {
-                                        let secondary_buffer = secondary_buffer
-                                            .record_render_pass_continue::<true>(
-                                                inheritance_info.clone(),
-                                                |command_buffer| {
-                                                    command_buffer.cmd_bind_descriptor_sets(
-                                                        PipelineBindPoint::GRAPHICS,
-                                                        &pipeline_layout,
-                                                        0,
-                                                        &descriptor_sets[..],
-                                                        &[],
-                                                    );
-                                                    command_buffer.cmd_bind_pipeline(
-                                                        PipelineBindPoint::GRAPHICS,
-                                                        &graphic_pipeline,
-                                                    );
-                                                    command_buffer.cmd_bind_vertex_buffers(
-                                                        0,
-                                                        &[vertex_input_buffer.clone()],
-                                                        &[0],
-                                                    );
-                                                    command_buffer.cmd_bind_index_buffer(
-                                                        index_buffer.clone(),
-                                                        0,
-                                                        IndexType::UINT32,
-                                                    );
-                                                    command_buffer.cmd_draw_indexed(
-                                                        index_buffer_data.len() as u32,
-                                                        1,
-                                                        0,
-                                                        0,
-                                                        1,
-                                                    );
-                                                    Ok(())
-                                                },
-                                            )
-                                            .unwrap();
-                                        vec = vec![secondary_buffer];
-                                    })
-                                    .join()
-                                    .unwrap();
-                                });
-                                command_buffer.cmd_execute_commands(vec);
+                                let secondary_buffer  = secondary_command_buffer.take().unwrap();
+                                let vec = vec![secondary_buffer];
+                                let mut vec = CommandBuffer::<{SECONDARY}, {INITIAL}, {OUTSIDE}, true>::record_render_pass_continue_buffers(
+                                    vec, inheritance_info.clone(),
+                                    |command_buffers| {
+                                        let command_buffer = command_buffers.iter_mut().next().unwrap();
+                                        // use thread pool in real cases
+                                        std::thread::scope(|s| {
+                                            s.spawn(|| {
+                                                command_buffer.cmd_bind_descriptor_sets(
+                                                    PipelineBindPoint::GRAPHICS,
+                                                    &pipeline_layout,
+                                                    0,
+                                                    &descriptor_sets[..],
+                                                    &[],
+                                                );
+                                                command_buffer.cmd_bind_pipeline(
+                                                    PipelineBindPoint::GRAPHICS,
+                                                    &graphic_pipeline,
+                                                );
+                                                command_buffer.cmd_bind_vertex_buffers(
+                                                    0,
+                                                    &[vertex_input_buffer.clone()],
+                                                    &[0],
+                                                );
+                                                command_buffer.cmd_bind_index_buffer(
+                                                    index_buffer.clone(),
+                                                    0,
+                                                    IndexType::UINT32,
+                                                );
+                                                command_buffer.cmd_draw_indexed(
+                                                    index_buffer_data.len() as u32,
+                                                    1,
+                                                    0,
+                                                    0,
+                                                    1,
+                                                );
+
+                                            })
+                                                .join()
+                                                .unwrap();
+                                        });
+                                        Ok(())
+                                    },
+                                )?;
+                                command_buffer.cmd_execute_commands(&mut vec);
                                 Ok(())
                             },
                         )?;
@@ -1066,7 +1065,7 @@ fn main() {
                     .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
                 let secondary_buffer = command_buffer
-                    .take_secondary_buffer(&secondary_command_buffer_handler)
+                    .secondary_buffers().remove(&secondary_command_buffer_handler)
                     .unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();

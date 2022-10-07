@@ -171,6 +171,29 @@ pub struct CommandBuffer<
     secondary_buffers: FxHashMap<u64, CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>>,
 }
 
+unsafe fn vector_transmute<
+    const S1: Level,
+    const S2: State,
+    const S3: RenderPassScope,
+    const S4: bool,
+    const T1: Level,
+    const T2: State,
+    const T3: RenderPassScope,
+    const T4: bool,
+>(
+    source: Vec<CommandBuffer<S1, S2, S3, S4>>,
+    f: impl Fn(CommandBuffer<S1, S2, S3, S4>) -> Result<CommandBuffer<T1, T2, T3, T4>, ash::vk::Result>,
+) -> Result<Vec<CommandBuffer<T1, T2, T3, T4>>, ash::vk::Result> {
+    let mut buffers: Vec<CommandBuffer<T1, T2, T3, T4>> = std::mem::transmute(source);
+    for foo in &mut buffers {
+        let temp = std::ptr::read(foo);
+        let temp: CommandBuffer<S1, S2, S3, S4> = std::mem::transmute(temp);
+        let temp = f(temp)?;
+        std::ptr::write(foo, temp);
+    }
+    Ok(buffers)
+}
+
 impl<
         const LEVEL: Level,
         const STATE: State,
@@ -208,6 +231,7 @@ macro_rules! reset_impls {
             pub fn reset(mut self) -> Result<CommandBuffer<LEVEL, { INITIAL }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result> {
                 self.holding_resources.clear();
                 self.command_pool.reset()?;
+                self.secondary_buffers.clear();
                 Ok(unsafe { std::mem::transmute(self) })
             }
         }
@@ -219,9 +243,10 @@ reset_impls!(INITIAL, RECORDING, EXECUTABLE, INVALID);
 impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
     CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
 {
-    fn end(
+    pub fn end(
         self,
-    ) -> Result<CommandBuffer<LEVEL, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result> {
+    ) -> Result<CommandBuffer<LEVEL, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
+    {
         // Host Synchronization:commandBuffer, VkCommandPool
         unsafe {
             self.device
@@ -234,7 +259,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
 
 impl<const STATE: State, const C: bool> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }, C> {
     // DONE VUID-vkBeginCommandBuffer-commandBuffer-02840
-    fn begin<const ONE_TIME_SUBMIT: bool>(
+    pub fn begin<const ONE_TIME_SUBMIT: bool>(
         mut self,
     ) -> Result<
         CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>,
@@ -280,7 +305,7 @@ macro_rules! primary_record_impls {
 primary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
 impl<const STATE: State, const C: bool> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, C> {
-    fn begin<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>(
+    pub fn begin<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>(
         mut self,
         inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>, ash::vk::Result>
@@ -325,11 +350,45 @@ macro_rules! secondary_record_impls {
             }
             pub fn record_render_pass_continue<const ONE_TIME_SUBMIT: bool>(self,
                             inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { INSIDE }, ONE_TIME_SUBMIT>) -> Result<(), ash::vk::Result>)
-                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { INSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
+                             -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }, ONE_TIME_SUBMIT>, ash::vk::Result>
             {
                 let mut recording_buffer = self.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info)?;
                 f(&mut recording_buffer)?;
                 recording_buffer.end()
+            }
+            pub fn record_buffers<const ONE_TIME_SUBMIT: bool>(
+                buffers: Vec<Self>,
+                inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
+                f: impl FnOnce(
+                    &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>],
+                ) -> Result<(), ash::vk::Result>,
+            ) -> Result<
+                Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>>,
+                ash::vk::Result,
+            > {
+                unsafe {
+                    let mut buffers = vector_transmute(buffers, |buffer| buffer.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                    f(buffers.as_mut_slice())?;
+                    let buffers = vector_transmute(buffers, |buffer| buffer.end())?;
+                    Ok(buffers)
+                }
+            }
+            pub fn record_render_pass_continue_buffers<const ONE_TIME_SUBMIT: bool>(
+                buffers: Vec<Self>,
+                inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
+                f: impl FnOnce(
+                    &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>],
+                ) -> Result<(), ash::vk::Result>,
+            ) -> Result<
+                Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>>,
+                ash::vk::Result,
+            > {
+                unsafe {
+                    let mut buffers = vector_transmute(buffers, |buffer| buffer.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                    f(buffers.as_mut_slice())?;
+                    let buffers = vector_transmute(buffers, |buffer| buffer.end())?;
+                    Ok(buffers)
+                }
             }
         }
     )*};
@@ -337,14 +396,11 @@ macro_rules! secondary_record_impls {
 
 secondary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
-impl<const STATE: State, const SCOPE: RenderPassScope>
-    CommandBuffer<{ PRIMARY }, STATE, SCOPE, true>
-{
-    pub fn take_secondary_buffer(
+impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INVALID }, SCOPE, true> {
+    pub fn secondary_buffers(
         &mut self,
-        handle: &u64,
-    ) -> Option<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>> {
-        self.secondary_buffers.remove(&handle)
+    ) -> &mut FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>> {
+        &mut self.secondary_buffers
     }
 }
 impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE, true> {
@@ -406,8 +462,8 @@ impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
 {
     pub fn cmd_execute_commands(
         &mut self,
-        mut secondary_command_buffers: Vec<
-            CommandBuffer<{ SECONDARY }, { EXECUTABLE }, SCOPE, ONE_TIME_SUBMIT>,
+        secondary_command_buffers: &mut Vec<
+            CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>,
         >,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
