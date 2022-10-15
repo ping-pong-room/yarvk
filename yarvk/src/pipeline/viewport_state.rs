@@ -3,10 +3,22 @@ use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceFeatures::MultiViewport;
 
-#[derive(Default)]
 pub struct PipelineViewportStateCreateInfo {
     viewports: Vec<ash::vk::Viewport>,
+    dynamic_viewports: u32,
     scissors: Vec<ash::vk::Rect2D>,
+    dynamic_scissors: u32,
+}
+
+impl Default for PipelineViewportStateCreateInfo {
+    fn default() -> Self {
+        PipelineViewportStateCreateInfo {
+            viewports: Default::default(),
+            dynamic_viewports: 1,
+            scissors: Default::default(),
+            dynamic_scissors: 1
+        }
+    }
 }
 
 impl PipelineViewportStateCreateInfo {
@@ -19,9 +31,13 @@ impl PipelineViewportStateCreateInfo {
         let mut ash_vk_viewport_state = ash::vk::PipelineViewportStateCreateInfo::builder();
         if !self.viewports.is_empty() {
             ash_vk_viewport_state = ash_vk_viewport_state.viewports(self.viewports.as_slice());
+        } else {
+            ash_vk_viewport_state = ash_vk_viewport_state.viewport_count(self.dynamic_viewports);
         }
         if !self.scissors.is_empty() {
             ash_vk_viewport_state = ash_vk_viewport_state.scissors(self.scissors.as_slice());
+        } else {
+            ash_vk_viewport_state = ash_vk_viewport_state.scissor_count(self.dynamic_scissors);
         }
         ash_vk_viewport_state
     }
@@ -49,6 +65,14 @@ impl PipelineViewportStateCreateInfoBuilder {
         self.inner.viewports.push(viewport);
         self
     }
+    pub fn dynamic_viewports(
+        mut self,
+        counts: u32,
+        _feature: Feature<{ MultiViewport.into() }>,
+    ) -> Self {
+        self.inner.dynamic_viewports = counts;
+        self
+    }
     pub fn scissor(mut self, scissor: ash::vk::Rect2D) -> Self {
         if self.inner.scissors.is_empty() {
             self.inner.scissors.push(scissor);
@@ -64,6 +88,14 @@ impl PipelineViewportStateCreateInfoBuilder {
         _feature: Feature<{ MultiViewport.into() }>,
     ) -> Self {
         self.inner.scissors.push(scissor);
+        self
+    }
+    pub fn dynamic_scissors(
+        mut self,
+        counts: u32,
+        _feature: Feature<{ MultiViewport.into() }>,
+    ) -> Self {
+        self.inner.dynamic_scissors = counts;
         self
     }
     pub fn build(self) -> PipelineViewportStateCreateInfo {

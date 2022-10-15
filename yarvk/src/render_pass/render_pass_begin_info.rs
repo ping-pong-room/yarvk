@@ -26,11 +26,11 @@ impl RenderPassBeginInfoBuilder {
 }
 
 pub struct RenderPassBeginInfo {
-    render_pass: Arc<RenderPass>,
-    framebuffer: Arc<Framebuffer>,
-    render_area: Rect2D,
+    pub render_pass: Arc<RenderPass>,
+    pub framebuffer: Arc<Framebuffer>,
+    pub render_area: Rect2D,
     // DONE VUID-VkRenderPassBeginInfo-clearValueCount-04962
-    clear_values: Vec<ClearValue>,
+    pub clear_values: Vec<ClearValue>,
 }
 
 impl RenderPassBeginInfo {

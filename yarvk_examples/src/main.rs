@@ -48,7 +48,7 @@ use yarvk::pipeline::vertex_input_state::{
     PipelineVertexInputStateCreateInfo, VertexInputAttributeDescription,
     VertexInputBindingDescription,
 };
-use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
+// use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
 use yarvk::queue::Queue;
@@ -871,22 +871,23 @@ fn main() {
                 .build(),
         )
         .vertex_input_state(vertex_input_state_info)
-        .viewport_state(
-            PipelineViewportStateCreateInfo::builder()
-                .viewport(Viewport {
-                    x: 0.0,
-                    y: 0.0,
-                    width: surface_resolution.width as f32,
-                    height: surface_resolution.height as f32,
-                    min_depth: 0.0,
-                    max_depth: 1.0,
-                })
-                .scissor(Rect2D {
-                    extent: surface_resolution,
-                    ..Default::default()
-                })
-                .build(),
-        )
+        // suggest to use dynamic viewport and scissor
+        // .viewport_state(
+        //     PipelineViewportStateCreateInfo::builder()
+        //         .viewport(Viewport {
+        //             x: 0.0,
+        //             y: 0.0,
+        //             width: surface_resolution.width as f32,
+        //             height: surface_resolution.height as f32,
+        //             min_depth: 0.0,
+        //             max_depth: 1.0,
+        //         })
+        //         .scissor(Rect2D {
+        //             extent: surface_resolution,
+        //             ..Default::default()
+        //         })
+        //         .build(),
+        // )
         .input_assembly_state(
             PipelineInputAssemblyStateCreateInfo::builder()
                 .topology::<{ PrimitiveTopology::TriangleList }>()
@@ -1011,6 +1012,18 @@ fn main() {
                                         // use thread pool in real cases
                                         std::thread::scope(|s| {
                                             s.spawn(|| {
+                                                command_buffer.cmd_set_viewport(&Viewport {
+                                                    x: 0.0,
+                                                    y: 0.0,
+                                                    width: surface_resolution.width as f32,
+                                                    height: surface_resolution.height as f32,
+                                                    min_depth: 0.0,
+                                                    max_depth: 1.0,
+                                                });
+                                                command_buffer.cmd_set_scissor(&Rect2D {
+                                                    extent: surface_resolution,
+                                                    ..Default::default()
+                                                });
                                                 command_buffer.cmd_bind_descriptor_sets(
                                                     PipelineBindPoint::GRAPHICS,
                                                     &pipeline_layout,

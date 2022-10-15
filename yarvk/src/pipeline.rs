@@ -273,6 +273,20 @@ impl<'a> PipelineBuilder<'a> {
         let ash_vk_tessellation_state = self.tessellation_state.ash_builder().build();
         // view port
         let ash_vk_viewport_state = self.viewport_state.ash_builder().build();
+        if ash_vk_viewport_state.p_viewports == std::ptr::null() {
+            if ash_vk_viewport_state.viewport_count > 1 {
+                self.dynamic_states.insert(ash::vk::DynamicState::VIEWPORT_WITH_COUNT);
+            } else {
+                self.dynamic_states.insert(ash::vk::DynamicState::VIEWPORT);
+            }
+        }
+        if ash_vk_viewport_state.p_scissors == std::ptr::null() {
+            if ash_vk_viewport_state.scissor_count > 1 {
+                self.dynamic_states.insert(ash::vk::DynamicState::SCISSOR_WITH_COUNT);
+            } else {
+                self.dynamic_states.insert(ash::vk::DynamicState::SCISSOR);
+            }
+        }
         // rasterization
         let ash_vk_rasterization_state = self.rasterization_state.ash_builder().build();
         // multisample
