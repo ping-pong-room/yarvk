@@ -5,7 +5,7 @@ use crate::device::Device;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceMutableDescriptorTypeFeaturesVALVE::MutableDescriptorType;
 use crate::image::image_view::ImageView;
-use crate::pipeline::shader_stage::ShaderStageFlags;
+use crate::pipeline::shader_stage::ShaderStage;
 use crate::pipeline::PipelineLayout;
 use crate::sampler::Sampler;
 
@@ -189,7 +189,7 @@ impl DescriptorSetLayoutBindingBuilder {
         self.inner.descriptor_count = descriptor_count;
         self
     }
-    pub fn add_stage_flag(mut self, stage_flag: ShaderStageFlags) -> Self {
+    pub fn add_stage_flag(mut self, stage_flag: ShaderStage) -> Self {
         self.inner.stage_flags |= stage_flag.to_ash();
         self
     }

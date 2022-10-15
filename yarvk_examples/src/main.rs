@@ -43,7 +43,7 @@ use yarvk::pipeline::input_assembly_state::{
 use yarvk::pipeline::multisample_state::PipelineMultisampleStateCreateInfo;
 use yarvk::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use yarvk::pipeline::rasterization_state::{PipelineRasterizationStateCreateInfo, PolygonMode};
-use yarvk::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStageFlags};
+use yarvk::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStage};
 use yarvk::pipeline::vertex_input_state::{
     PipelineVertexInputStateCreateInfo, VertexInputAttributeDescription,
     VertexInputBindingDescription,
@@ -775,7 +775,7 @@ fn main() {
                 .binding(0)
                 .descriptor_type(DescriptorType::UNIFORM_BUFFER)
                 .descriptor_count(1)
-                .add_stage_flag(ShaderStageFlags::Fragment)
+                .add_stage_flag(ShaderStage::Fragment)
                 .build(),
         )
         .add_binding(
@@ -783,7 +783,7 @@ fn main() {
                 .binding(1)
                 .descriptor_type(DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .descriptor_count(1)
-                .add_stage_flag(ShaderStageFlags::Fragment)
+                .add_stage_flag(ShaderStage::Fragment)
                 .build(),
         )
         .build()
@@ -862,12 +862,12 @@ fn main() {
     let graphic_pipeline = Pipeline::builder(pipeline_layout.clone())
         .add_stage(
             PipelineShaderStageCreateInfo::builder(vertex_shader_module, entry_name)
-                .stage(ShaderStageFlags::Vertex)
+                .stage(ShaderStage::Vertex)
                 .build(),
         )
         .add_stage(
             PipelineShaderStageCreateInfo::builder(fragment_shader_module, entry_name)
-                .stage(ShaderStageFlags::Fragment)
+                .stage(ShaderStage::Fragment)
                 .build(),
         )
         .vertex_input_state(vertex_input_state_info)

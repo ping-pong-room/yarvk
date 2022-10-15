@@ -9,7 +9,7 @@ use std::sync::Arc;
     VUID-VkPipelineShaderStageCreateInfo-stage-02092
     VUID-VkPipelineShaderStageCreateInfo-stage-00706
 */
-pub enum ShaderStageFlags {
+pub enum ShaderStage {
     Vertex,
     TessellationControl(Feature<{ TessellationShader.into() }>),
     TessellationEvaluation(Feature<{ TessellationShader.into() }>),
@@ -30,28 +30,28 @@ pub enum ShaderStageFlags {
     SubpassShadingHuawei,
 }
 
-impl ShaderStageFlags {
+impl ShaderStage {
     pub(crate) fn to_ash(&self) -> ash::vk::ShaderStageFlags {
         match self {
-            ShaderStageFlags::Vertex => ash::vk::ShaderStageFlags::VERTEX,
-            ShaderStageFlags::TessellationControl(_) => {
+            ShaderStage::Vertex => ash::vk::ShaderStageFlags::VERTEX,
+            ShaderStage::TessellationControl(_) => {
                 ash::vk::ShaderStageFlags::TESSELLATION_CONTROL
             }
-            ShaderStageFlags::TessellationEvaluation(_) => {
+            ShaderStage::TessellationEvaluation(_) => {
                 ash::vk::ShaderStageFlags::TESSELLATION_EVALUATION
             }
-            ShaderStageFlags::Geometry(_) => ash::vk::ShaderStageFlags::GEOMETRY,
-            ShaderStageFlags::Fragment => ash::vk::ShaderStageFlags::FRAGMENT,
-            ShaderStageFlags::Compute => ash::vk::ShaderStageFlags::COMPUTE,
-            ShaderStageFlags::RaygenKhr => ash::vk::ShaderStageFlags::RAYGEN_KHR,
-            ShaderStageFlags::AnyHitKhr => ash::vk::ShaderStageFlags::ANY_HIT_KHR,
-            ShaderStageFlags::ClosestHitKhr => ash::vk::ShaderStageFlags::CLOSEST_HIT_KHR,
-            ShaderStageFlags::MissKhr => ash::vk::ShaderStageFlags::MISS_KHR,
-            ShaderStageFlags::IntersectionKhr => ash::vk::ShaderStageFlags::INTERSECTION_KHR,
-            ShaderStageFlags::CallableKhr => ash::vk::ShaderStageFlags::CALLABLE_KHR,
-            ShaderStageFlags::TaskNv(_) => ash::vk::ShaderStageFlags::TASK_NV,
-            ShaderStageFlags::MeshNv(_) => ash::vk::ShaderStageFlags::MESH_NV,
-            ShaderStageFlags::SubpassShadingHuawei => {
+            ShaderStage::Geometry(_) => ash::vk::ShaderStageFlags::GEOMETRY,
+            ShaderStage::Fragment => ash::vk::ShaderStageFlags::FRAGMENT,
+            ShaderStage::Compute => ash::vk::ShaderStageFlags::COMPUTE,
+            ShaderStage::RaygenKhr => ash::vk::ShaderStageFlags::RAYGEN_KHR,
+            ShaderStage::AnyHitKhr => ash::vk::ShaderStageFlags::ANY_HIT_KHR,
+            ShaderStage::ClosestHitKhr => ash::vk::ShaderStageFlags::CLOSEST_HIT_KHR,
+            ShaderStage::MissKhr => ash::vk::ShaderStageFlags::MISS_KHR,
+            ShaderStage::IntersectionKhr => ash::vk::ShaderStageFlags::INTERSECTION_KHR,
+            ShaderStage::CallableKhr => ash::vk::ShaderStageFlags::CALLABLE_KHR,
+            ShaderStage::TaskNv(_) => ash::vk::ShaderStageFlags::TASK_NV,
+            ShaderStage::MeshNv(_) => ash::vk::ShaderStageFlags::MESH_NV,
+            ShaderStage::SubpassShadingHuawei => {
                 ash::vk::ShaderStageFlags::SUBPASS_SHADING_HUAWEI
             }
         }
@@ -98,7 +98,7 @@ impl<'a> PipelineShaderStageCreateInfoBuilder<'a> {
         self.inner.flags = flags;
         self
     }
-    pub fn stage(mut self, stage: ShaderStageFlags) -> Self {
+    pub fn stage(mut self, stage: ShaderStage) -> Self {
         self.inner.stage = stage.to_ash();
         self
     }
