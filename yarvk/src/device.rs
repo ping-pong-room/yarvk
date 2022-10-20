@@ -1,11 +1,10 @@
-use crate::descriptor_pool::{ChangedDescriptorSet, DescriptorSet, UpdateHolder};
+use crate::descriptor_pool::{ChangedDescriptorSet, UpdateHolder};
 use crate::device_features::{register_features, Feature, FeatureType};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
 use crate::queue::Queue;
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::mem::ManuallyDrop;
 #[cfg(feature = "max_memory_allocation_count_check")]
 use std::sync::atomic::AtomicU32;
 use std::sync::Arc;
@@ -250,19 +249,6 @@ impl Device {
             //  pDescriptorWrites[i].dstSet pDescriptorCopies[i].dstSet
             self.ash_device
                 .update_descriptor_sets(holder.vk_write_descriptor_sets.as_slice(), &[]);
-        }
-    }
-
-    pub fn free_descriptor_sets(&self, ds: Vec<DescriptorSet>) -> Result<(), ash::vk::Result> {
-        let ash_vk_descriptor_sets: Vec<_> = ds.iter().map(|ds| ds.ash_vk_descriptor_set).collect();
-        let descriptor_pool = ds.first().unwrap().descriptor_pool.clone();
-        unsafe {
-            let _ = ManuallyDrop::new(ds);
-            // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
-            // Host Synchronization descriptorPool, pDescriptorSets
-            let ash_vk_descriptor_pool = descriptor_pool.ash_vk_descriptor_pool.write();
-            self.ash_device
-                .free_descriptor_sets(*ash_vk_descriptor_pool, ash_vk_descriptor_sets.as_slice())
         }
     }
 

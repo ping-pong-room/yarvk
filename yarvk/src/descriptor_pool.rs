@@ -8,91 +8,165 @@ use crate::image::image_view::ImageView;
 use crate::pipeline::shader_stage::ShaderStage;
 use crate::pipeline::PipelineLayout;
 use crate::sampler::Sampler;
+use std::collections::hash_map::Entry;
 
-use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
-pub enum DescriptorPoolCreateFlags {
+pub enum DescriptorPoolCreateFlag {
     DescriptorPoolCreateFreeDescriptorSet,
     VkDescriptorPoolCreateUpdateAfterBind,
     // DONE VUID-VkDescriptorPoolCreateInfo-flags-04609
     VkDescriptorPoolCreateHostOnlyValve(Feature<{ MutableDescriptorType.into() }>),
 }
 
-impl DescriptorPoolCreateFlags {
+impl DescriptorPoolCreateFlag {
     pub fn to_ash(&self) -> ash::vk::DescriptorPoolCreateFlags {
         match self {
-            DescriptorPoolCreateFlags::DescriptorPoolCreateFreeDescriptorSet => {
+            DescriptorPoolCreateFlag::DescriptorPoolCreateFreeDescriptorSet => {
                 ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET
             }
-            DescriptorPoolCreateFlags::VkDescriptorPoolCreateUpdateAfterBind => {
+            DescriptorPoolCreateFlag::VkDescriptorPoolCreateUpdateAfterBind => {
                 ash::vk::DescriptorPoolCreateFlags::UPDATE_AFTER_BIND
             }
-            DescriptorPoolCreateFlags::VkDescriptorPoolCreateHostOnlyValve(_) => {
+            DescriptorPoolCreateFlag::VkDescriptorPoolCreateHostOnlyValve(_) => {
                 ash::vk::DescriptorPoolCreateFlags::HOST_ONLY_VALVE
             }
         }
     }
 }
 
-pub struct DescriptorPool {
-    pub device: Arc<Device>,
-    pub(crate) ash_vk_descriptor_pool: RwLock<ash::vk::DescriptorPool>,
+pub struct Allocatable<'a> {
+    descriptor_pool: &'a mut DescriptorPool,
+    descriptor_set_layouts: FxHashMap<usize, Arc<DescriptorSetLayout>>,
 }
 
-impl DescriptorPool {
-    pub fn builder(device: Arc<Device>) -> DescriptorPoolBuilder {
-        DescriptorPoolBuilder {
-            device,
-            // TODO Allow individually free for now
-            flags: ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET,
-            max_sets: 1,
-            descriptor_pool_sizes: Default::default(),
-        }
+impl<'a> Allocatable<'a> {
+    pub fn add_descriptor_set_layout(
+        mut self,
+        index: usize,
+        descriptor_set_layout: Arc<DescriptorSetLayout>,
+    ) -> Self {
+        self.descriptor_set_layouts
+            .insert(index, descriptor_set_layout);
+        self
     }
-
-    pub fn allocate_descriptor_sets(
-        self: &Arc<Self>,
-        layouts: &[Arc<DescriptorSetLayout>],
-    ) -> Result<Vec<DescriptorSet>, ash::vk::Result> {
-        let vk_layouts = layouts
+    pub fn allocate(self) -> Result<(), ash::vk::Result> {
+        let vk_layouts = self
+            .descriptor_set_layouts
             .iter()
-            .map(|layout| layout.ash_vk_descriptor_set_layout)
+            .map(|(_, layout)| layout.ash_vk_descriptor_set_layout)
             .collect::<Vec<_>>();
-        let ash_vk_descriptor_pool = self.ash_vk_descriptor_pool.write();
         let create_info = ash::vk::DescriptorSetAllocateInfo::builder()
-            .descriptor_pool(*ash_vk_descriptor_pool)
+            .descriptor_pool(self.descriptor_pool.ash_vk_descriptor_pool)
             .set_layouts(vk_layouts.as_slice())
             .build();
         let ash_vk_descriptor_sets = unsafe {
             // Host Synchronization: pAllocateInfo->descriptorPool
-            self.device
+            self.descriptor_pool
+                .device
                 .ash_device
                 .allocate_descriptor_sets(&create_info)?
         };
-        drop(ash_vk_descriptor_pool);
-        Ok(ash_vk_descriptor_sets
-            .into_iter()
+
+        self.descriptor_set_layouts
+            .iter()
             .enumerate()
-            .map(|(i, ash_vk_descriptor_set)| DescriptorSet {
-                descriptor_pool: self.clone(),
-                ash_vk_descriptor_set,
-                descriptor_set_layout: layouts[i].clone(),
-            })
-            .collect())
+            .for_each(|(i, (index, layout))| {
+                self.descriptor_pool.allocated_descriptor_sets.insert(
+                    *index,
+                    DescriptorSet {
+                        ash_vk_descriptor_set: ash_vk_descriptor_sets[i],
+                        descriptor_set_layout: layout.clone(),
+                    },
+                );
+            });
+        Ok(())
+    }
+}
+
+pub struct DescriptorPool {
+    pub device: Arc<Device>,
+    allocated_descriptor_sets: FxHashMap<usize, DescriptorSet>,
+    pub(crate) ash_vk_descriptor_pool: ash::vk::DescriptorPool,
+    free_descriptor_set: bool,
+}
+
+impl DescriptorPool {
+    pub fn can_free_descriptor_set(&self) -> bool {
+        self.free_descriptor_set
+    }
+    pub fn builder(device: Arc<Device>) -> DescriptorPoolBuilder {
+        DescriptorPoolBuilder {
+            device,
+            flags: Default::default(),
+            max_sets: 1,
+            descriptor_pool_sizes: Default::default(),
+            descriptor_set_layouts: Default::default(),
+        }
+    }
+
+    pub fn get_mut_descriptor_set(&mut self, index: &usize) -> Option<&mut DescriptorSet> {
+        self.allocated_descriptor_sets.get_mut(index)
+    }
+
+    pub fn get_descriptor_set(&mut self, index: &usize) -> Option<&DescriptorSet> {
+        self.allocated_descriptor_sets.get(index)
+    }
+
+    pub fn allocatable(&mut self) -> Allocatable {
+        Allocatable {
+            descriptor_pool: self,
+            descriptor_set_layouts: Default::default(),
+        }
+    }
+
+    pub fn free_descriptor_sets(
+        &mut self,
+        descriptor_sets: &[usize],
+    ) -> Result<(), ash::vk::Result> {
+        if self.free_descriptor_set {
+            let ash_vk_descriptor_sets = descriptor_sets
+                .iter()
+                .filter_map(|index| match self.allocated_descriptor_sets.remove(index) {
+                    None => None,
+                    Some(descriptor_set) => Some(descriptor_set.ash_vk_descriptor_set)
+
+                })
+                .collect::<Vec<_>>();
+            unsafe {
+                // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
+                // Host Synchronization descriptorPool, pDescriptorSets
+
+                self.device.ash_device.free_descriptor_sets(
+                    self.ash_vk_descriptor_pool,
+                    ash_vk_descriptor_sets.as_slice(),
+                )
+            }
+        } else {
+            // MUST VUID-vkFreeDescriptorSets-descriptorPool-00312
+            panic!("descriptorPool must have been created with the VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag")
+        }
     }
 }
 
 impl Drop for DescriptorPool {
     fn drop(&mut self) {
+        if self.free_descriptor_set {
+            let _result = self.free_descriptor_sets(
+                self.allocated_descriptor_sets
+                    .iter()
+                    .map(|(index, _)| *index)
+                    .collect::<Vec<_>>()
+                    .as_slice(),
+            );
+        }
         unsafe {
             // DONE VUID-vkDestroyDescriptorPool-descriptorPool-00303
             // Host Synchronization: descriptorPool
-            let ash_vk_descriptor_pool = self.ash_vk_descriptor_pool.write();
             self.device
                 .ash_device
-                .destroy_descriptor_pool(*ash_vk_descriptor_pool, None);
+                .destroy_descriptor_pool(self.ash_vk_descriptor_pool, None);
         }
     }
 }
@@ -102,15 +176,16 @@ pub struct DescriptorPoolBuilder {
     flags: ash::vk::DescriptorPoolCreateFlags,
     max_sets: u32,
     descriptor_pool_sizes: Vec<ash::vk::DescriptorPoolSize>,
+    descriptor_set_layouts: FxHashMap<usize, Arc<DescriptorSetLayout>>,
 }
 
 impl DescriptorPoolBuilder {
-    pub fn add_flag(mut self, flag: DescriptorPoolCreateFlags) -> Self {
+    pub fn add_flag(mut self, flag: DescriptorPoolCreateFlag) -> Self {
         self.flags |= flag.to_ash();
         self
     }
     pub fn max_sets(mut self, max_sets: u32) -> Self {
-        self.max_sets = max_sets;
+        self.max_sets += max_sets;
         self
     }
     pub fn add_descriptor_pool_size(
@@ -121,7 +196,29 @@ impl DescriptorPoolBuilder {
         self
     }
 
-    pub fn build(self) -> Result<Arc<DescriptorPool>, ash::vk::Result> {
+    pub fn build(self) -> Result<DescriptorPool, ash::vk::Result> {
+        let free_descriptor_set = self
+            .flags
+            .contains(ash::vk::DescriptorPoolCreateFlags::FREE_DESCRIPTOR_SET);
+        let mut descriptor_remains = FxHashMap::default();
+        for descriptor_pool_size in &self.descriptor_pool_sizes {
+            match descriptor_remains.entry(descriptor_pool_size.ty) {
+                Entry::Occupied(mut entry) => {
+                    let (current, max) = entry.get_mut();
+                    *current += descriptor_pool_size.descriptor_count;
+                    *max += descriptor_pool_size.descriptor_count;
+                }
+                Entry::Vacant(_) => {
+                    descriptor_remains.insert(
+                        descriptor_pool_size.ty,
+                        (
+                            descriptor_pool_size.descriptor_count,
+                            descriptor_pool_size.descriptor_count,
+                        ),
+                    );
+                }
+            }
+        }
         let info = ash::vk::DescriptorPoolCreateInfo::builder()
             .flags(self.flags)
             .max_sets(self.max_sets)
@@ -131,10 +228,20 @@ impl DescriptorPoolBuilder {
             // Host Synchronization: none
             let ash_vk_descriptor_pool =
                 self.device.ash_device.create_descriptor_pool(&info, None)?;
-            Ok(Arc::new(DescriptorPool {
+
+            let mut descriptor_pool = DescriptorPool {
                 device: self.device,
-                ash_vk_descriptor_pool: RwLock::new(ash_vk_descriptor_pool),
-            }))
+                allocated_descriptor_sets: Default::default(),
+                ash_vk_descriptor_pool,
+                free_descriptor_set,
+            };
+            // if there are descriptor set layouts pending, we allocate them as well.
+            if !self.descriptor_set_layouts.is_empty() {
+                let mut allocatable = descriptor_pool.allocatable();
+                allocatable.descriptor_set_layouts = self.descriptor_set_layouts;
+                allocatable.allocate()?;
+            }
+            Ok(descriptor_pool)
         }
     }
 }
@@ -288,7 +395,6 @@ impl Drop for DescriptorSetLayout {
 }
 
 pub struct DescriptorSet {
-    pub descriptor_pool: Arc<DescriptorPool>,
     pub descriptor_set_layout: Arc<DescriptorSetLayout>,
     pub(crate) ash_vk_descriptor_set: ash::vk::DescriptorSet,
 }
@@ -301,22 +407,6 @@ impl DescriptorSet {
             images_counts: 0,
             buffers_counts: 0,
             buffer_views_counts: 0,
-        }
-    }
-}
-
-// TODO VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
-impl Drop for DescriptorSet {
-    fn drop(&mut self) {
-        unsafe {
-            // TODO VUID-vkFreeDescriptorSets-pDescriptorSets-00309
-            // Host Synchronization descriptorPool, pDescriptorSets
-            let ash_vk_descriptor_pool = self.descriptor_pool.ash_vk_descriptor_pool.write();
-            self.descriptor_pool
-                .device
-                .ash_device
-                .free_descriptor_sets(*ash_vk_descriptor_pool, &[self.ash_vk_descriptor_set])
-                .unwrap();
         }
     }
 }
@@ -523,7 +613,7 @@ impl<'a> ChangedDescriptorSet<'a> {
             // Host Synchronization: VUID-vkUpdateDescriptorSets-pDescriptorWrites-06993
             //  pDescriptorWrites[i].dstSet pDescriptorCopies[i].dstSet
             self.descriptor_set
-                .descriptor_pool
+                .descriptor_set_layout
                 .device
                 .ash_device
                 .update_descriptor_sets(holder.vk_write_descriptor_sets.as_slice(), &[]);
@@ -540,7 +630,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
         pipeline_bind_point: ash::vk::PipelineBindPoint,
         layout: &PipelineLayout,
         first_set: u32,
-        descriptor_sets: &[DescriptorSet],
+        descriptor_sets: &[&DescriptorSet],
         dynamic_offsets: &[u32],
     ) {
         let vk_descriptor_sets: Vec<_> = descriptor_sets

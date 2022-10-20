@@ -756,7 +756,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let descriptor_pool = DescriptorPool::builder(device.clone())
+    let mut descriptor_pool = DescriptorPool::builder(device.clone())
         .max_sets(1)
         .add_descriptor_pool_size(DescriptorPoolSize {
             ty: DescriptorType::UNIFORM_BUFFER,
@@ -789,9 +789,11 @@ fn main() {
         )
         .build()
         .unwrap();
-
-    let mut descriptor_sets = descriptor_pool
-        .allocate_descriptor_sets(&[desc_set_layout.clone()])
+    let descriptor_set_index = 0;
+    descriptor_pool
+        .allocatable()
+        .add_descriptor_set_layout(descriptor_set_index, desc_set_layout.clone())
+        .allocate()
         .unwrap();
     let uniform_color_buffer_descriptor = DescriptorBufferInfo {
         buffer: uniform_color_buffer.clone(),
@@ -805,7 +807,10 @@ fn main() {
         sampler: sampler.clone(),
     };
 
-    let mut changed_descriptor_set = descriptor_sets.get_mut(0).unwrap().change();
+    let mut changed_descriptor_set = descriptor_pool
+        .get_mut_descriptor_set(&descriptor_set_index)
+        .unwrap()
+        .change();
     let buffers = &[uniform_color_buffer_descriptor];
     let images = &[tex_descriptor];
     changed_descriptor_set.update_buffer(0, 0, buffers);
@@ -1029,7 +1034,9 @@ fn main() {
                                                     PipelineBindPoint::GRAPHICS,
                                                     &pipeline_layout,
                                                     0,
-                                                    &descriptor_sets[..],
+                                                    &[descriptor_pool
+                                                        .get_descriptor_set(&descriptor_set_index)
+                                                        .unwrap()],
                                                     &[],
                                                 );
                                                 command_buffer.cmd_bind_pipeline(
