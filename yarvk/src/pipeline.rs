@@ -8,7 +8,7 @@ use crate::pipeline::input_assembly_state::PipelineInputAssemblyStateCreateInfo;
 use crate::pipeline::multisample_state::PipelineMultisampleStateCreateInfo;
 
 use crate::pipeline::rasterization_state::PipelineRasterizationStateCreateInfo;
-use crate::pipeline::shader_stage::PipelineShaderStageCreateInfo;
+use crate::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStage};
 use crate::pipeline::vertex_input_state::PipelineVertexInputStateCreateInfo;
 use crate::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use crate::render_pass::RenderPass;
@@ -55,6 +55,39 @@ impl Drop for PipelineLayout {
     }
 }
 
+pub struct PushConstantRange {
+    inner: ash::vk::PushConstantRange,
+}
+impl PushConstantRange {
+    pub fn builder() -> PushConstantRangeBuilder {
+        PushConstantRangeBuilder::default()
+    }
+    fn to_ash(&self) -> ash::vk::PushConstantRange {
+        self.inner
+    }
+}
+#[derive(Default)]
+pub struct PushConstantRangeBuilder {
+    inner: ash::vk::PushConstantRange,
+}
+impl PushConstantRangeBuilder {
+    pub fn add_stage(mut self, stage: ShaderStage) -> Self {
+        self.inner.stage_flags |= stage.to_ash();
+        self
+    }
+    pub fn offset(mut self, offset: u32) -> Self {
+        self.inner.offset = offset;
+        self
+    }
+    pub fn size(mut self, size: u32) -> Self {
+        self.inner.size = size;
+        self
+    }
+    pub fn build(self) -> PushConstantRange {
+        PushConstantRange { inner: self.inner }
+    }
+}
+
 pub struct PipelineLayoutBuilder {
     device: Arc<Device>,
     set_layouts: Vec<Arc<DescriptorSetLayout>>,
@@ -68,9 +101,9 @@ impl PipelineLayoutBuilder {
     }
     pub fn add_push_constant_range(
         mut self,
-        push_constant_range: ash::vk::PushConstantRange,
+        push_constant_range: PushConstantRange,
     ) -> Self {
-        self.push_constant_ranges.push(push_constant_range);
+        self.push_constant_ranges.push(push_constant_range.to_ash());
         self
     }
     pub fn build(self) -> Result<Arc<PipelineLayout>, ash::vk::Result> {
@@ -275,14 +308,16 @@ impl<'a> PipelineBuilder<'a> {
         let ash_vk_viewport_state = self.viewport_state.ash_builder().build();
         if ash_vk_viewport_state.p_viewports == std::ptr::null() {
             if ash_vk_viewport_state.viewport_count > 1 {
-                self.dynamic_states.insert(ash::vk::DynamicState::VIEWPORT_WITH_COUNT);
+                self.dynamic_states
+                    .insert(ash::vk::DynamicState::VIEWPORT_WITH_COUNT);
             } else {
                 self.dynamic_states.insert(ash::vk::DynamicState::VIEWPORT);
             }
         }
         if ash_vk_viewport_state.p_scissors == std::ptr::null() {
             if ash_vk_viewport_state.scissor_count > 1 {
-                self.dynamic_states.insert(ash::vk::DynamicState::SCISSOR_WITH_COUNT);
+                self.dynamic_states
+                    .insert(ash::vk::DynamicState::SCISSOR_WITH_COUNT);
             } else {
                 self.dynamic_states.insert(ash::vk::DynamicState::SCISSOR);
             }
@@ -372,6 +407,25 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
                 pipeline_bind_point,
                 pipeline.ash_vk_pipeline,
             );
+        }
+    }
+
+    pub fn cmd_push_constants(
+        &mut self,
+        layout: &PipelineLayout,
+        stage: &ShaderStage,
+        offset: u32,
+        constants: &[u8],
+    ) {
+        unsafe {
+            // Host Synchronization: commandBuffer, VkCommandPool
+            self.device.ash_device.cmd_push_constants(
+                self.vk_command_buffer,
+                layout.ash_vk_pipeline_layout,
+                stage.to_ash(),
+                offset,
+                constants,
+            )
         }
     }
 }
