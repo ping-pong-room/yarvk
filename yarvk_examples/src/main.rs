@@ -784,6 +784,7 @@ fn main() {
                 .descriptor_type(DescriptorType::COMBINED_IMAGE_SAMPLER)
                 .descriptor_count(1)
                 .add_stage_flag(ShaderStage::Fragment)
+                .immutable_sampler(&[sampler.clone()])
                 .build(),
         )
         .build()

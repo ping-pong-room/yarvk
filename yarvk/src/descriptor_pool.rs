@@ -145,7 +145,7 @@ pub struct DescriptorSetLayoutBinding {
     descriptor_type: ash::vk::DescriptorType,
     descriptor_count: u32,
     stage_flags: ash::vk::ShaderStageFlags,
-    p_immutable_samplers: Vec<Arc<Sampler>>,
+    immutable_samplers: Vec<Arc<Sampler>>,
     ash_vk_samplers: Vec<ash::vk::Sampler>,
 }
 
@@ -163,7 +163,7 @@ impl DescriptorSetLayoutBinding {
             .stage_flags(self.stage_flags);
         return if self.descriptor_type == ash::vk::DescriptorType::SAMPLER
             || self.descriptor_type == ash::vk::DescriptorType::COMBINED_IMAGE_SAMPLER
-                && !self.p_immutable_samplers.is_empty()
+                && !self.immutable_samplers.is_empty()
         {
             builder.immutable_samplers(self.ash_vk_samplers.as_slice())
         } else {
@@ -195,9 +195,14 @@ impl DescriptorSetLayoutBindingBuilder {
     }
     pub fn immutable_sampler(mut self, immutable_samplers: &[Arc<Sampler>]) -> Self {
         self.inner.descriptor_count = immutable_samplers.len() as _;
+        self.inner.immutable_samplers.clear();
         self.inner
-            .p_immutable_samplers
+            .immutable_samplers
             .extend_from_slice(immutable_samplers);
+        self.inner.ash_vk_samplers = immutable_samplers
+            .iter()
+            .map(|sampler| sampler.ash_vk_sampler)
+            .collect();
         self
     }
     pub fn build(self) -> DescriptorSetLayoutBinding {
@@ -209,6 +214,7 @@ pub struct DescriptorSetLayout {
     pub device: Arc<Device>,
     pub(crate) ash_vk_descriptor_set_layout: ash::vk::DescriptorSetLayout,
     bindings: FxHashMap<u32, DescriptorSetLayoutBinding>,
+    _immutable_samplers: Vec<Arc<Sampler>>,
 }
 
 impl DescriptorSetLayout {
@@ -241,10 +247,14 @@ impl DescriptorSetLayoutBuilder {
         self
     }
     pub fn build(self) -> Result<Arc<DescriptorSetLayout>, ash::vk::Result> {
+        let mut immutable_samplers = Vec::new();
         let bindings = self
             .bindings
             .iter()
-            .map(|(_, binding)| binding.ash_builder().build())
+            .map(|(_, binding)| {
+                immutable_samplers.extend_from_slice(binding.immutable_samplers.as_slice());
+                binding.ash_builder().build()
+            })
             .collect::<Vec<_>>();
         let create_info = ash::vk::DescriptorSetLayoutCreateInfo::builder()
             .flags(self.flags)
@@ -260,6 +270,7 @@ impl DescriptorSetLayoutBuilder {
                 device: self.device,
                 ash_vk_descriptor_set_layout,
                 bindings: self.bindings,
+                _immutable_samplers: immutable_samplers,
             }))
         }
     }
