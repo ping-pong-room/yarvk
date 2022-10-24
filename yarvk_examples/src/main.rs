@@ -10,10 +10,6 @@ use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_pool::CommandPool;
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
-use yarvk::descriptor_pool::{
-    DescriptorBufferInfo, DescriptorImageInfo, DescriptorPool, DescriptorSetLayout,
-    DescriptorSetLayoutBinding,
-};
 use yarvk::device::{Device, DeviceQueueCreateInfo};
 
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
@@ -49,6 +45,10 @@ use yarvk::pipeline::vertex_input_state::{
     VertexInputBindingDescription,
 };
 // use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
+use yarvk::descriptor::descriptor_pool::DescriptorPool;
+use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding};
+use yarvk::descriptor::write_descriptor_sets::{DescriptorBufferInfo, DescriptorImageInfo};
+use yarvk::descriptor::DescriptorType;
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
 use yarvk::queue::Queue;
@@ -67,12 +67,12 @@ use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
     CompareOp, ComponentMapping, ComponentSwizzle, CompositeAlphaFlagsKHR,
-    DebugUtilsMessageSeverityFlagsEXT, DependencyFlags, DescriptorPoolSize, DescriptorType,
-    Extent2D, Extent3D, Filter, Format, FrontFace, ImageAspectFlags, ImageLayout,
-    ImageSubresourceLayers, ImageTiling, ImageType, ImageUsageFlags, IndexType,
-    MemoryPropertyFlags, MemoryRequirements, PipelineBindPoint, PresentModeKHR, QueueFlags, Rect2D,
-    SampleCountFlags, SamplerAddressMode, SamplerMipmapMode, StencilOp, StencilOpState,
-    SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate, Viewport, SUBPASS_EXTERNAL,
+    DebugUtilsMessageSeverityFlagsEXT, DependencyFlags, Extent2D, Extent3D, Filter, Format,
+    FrontFace, ImageAspectFlags, ImageLayout, ImageSubresourceLayers, ImageTiling, ImageType,
+    ImageUsageFlags, IndexType, MemoryPropertyFlags, MemoryRequirements, PipelineBindPoint,
+    PresentModeKHR, QueueFlags, Rect2D, SampleCountFlags, SamplerAddressMode, SamplerMipmapMode,
+    StencilOp, StencilOpState, SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate,
+    Viewport, SUBPASS_EXTERNAL,
 };
 #[macro_export]
 macro_rules! offset_of {
@@ -758,14 +758,8 @@ fn main() {
 
     let mut descriptor_pool = DescriptorPool::builder(device.clone())
         .max_sets(1)
-        .add_descriptor_pool_size(DescriptorPoolSize {
-            ty: DescriptorType::UNIFORM_BUFFER,
-            descriptor_count: 1,
-        })
-        .add_descriptor_pool_size(DescriptorPoolSize {
-            ty: DescriptorType::COMBINED_IMAGE_SAMPLER,
-            descriptor_count: 1,
-        })
+        .add_descriptor_pool_size(&DescriptorType::UniformBuffer, 1)
+        .add_descriptor_pool_size(&DescriptorType::CombinedImageSampler, 1)
         .build()
         .unwrap();
 
@@ -773,7 +767,7 @@ fn main() {
         .add_binding(
             DescriptorSetLayoutBinding::builder()
                 .binding(0)
-                .descriptor_type(DescriptorType::UNIFORM_BUFFER)
+                .descriptor_type(DescriptorType::UniformBuffer)
                 .descriptor_count(1)
                 .add_stage_flag(ShaderStage::Fragment)
                 .build(),
@@ -781,10 +775,11 @@ fn main() {
         .add_binding(
             DescriptorSetLayoutBinding::builder()
                 .binding(1)
-                .descriptor_type(DescriptorType::COMBINED_IMAGE_SAMPLER)
+                .descriptor_type(DescriptorType::CombinedImageSamplerImmutable(vec![
+                    sampler.clone()
+                ]))
                 .descriptor_count(1)
                 .add_stage_flag(ShaderStage::Fragment)
-                .immutable_sampler(&[sampler.clone()])
                 .build(),
         )
         .build()
@@ -795,27 +790,24 @@ fn main() {
         .add_descriptor_set_layout(descriptor_set_index, desc_set_layout.clone())
         .allocate()
         .unwrap();
-    let uniform_color_buffer_descriptor = DescriptorBufferInfo {
-        buffer: uniform_color_buffer.clone(),
-        offset: 0,
-        range: std::mem::size_of_val(&uniform_color_buffer_data) as u64,
-    };
+    let uniform_color_buffer_descriptor = DescriptorBufferInfo::builder()
+        .buffer(uniform_color_buffer.clone())
+        // .range(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
+        .build();
 
-    let tex_descriptor = DescriptorImageInfo {
-        image_layout: ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        image_view: tex_image_view.clone(),
-        sampler: sampler.clone(),
-    };
+    let tex_descriptor = DescriptorImageInfo::builder()
+        .image_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+        .image_view(tex_image_view.clone())
+        .build();
 
-    let mut changed_descriptor_set = descriptor_pool
-        .get_mut_descriptor_set(&descriptor_set_index)
-        .unwrap()
-        .change();
     let buffers = &[uniform_color_buffer_descriptor];
     let images = &[tex_descriptor];
-    changed_descriptor_set.update_buffer(0, 0, buffers);
-    changed_descriptor_set.update_image(1, 0, images);
-    device.update_descriptor_sets(&mut [changed_descriptor_set]);
+
+    let mut write_descriptor_sets = descriptor_pool.write_descriptor_sets();
+    write_descriptor_sets.update_buffer(0, 0, 0, buffers);
+    write_descriptor_sets.update_image(0, 1, 0, images);
+    write_descriptor_sets.par_update();
+
     let mut vertex_spv_file = Cursor::new(&include_bytes!("vert.spv")[..]);
     let mut frag_spv_file = Cursor::new(&include_bytes!("frag.spv")[..]);
 

@@ -26,7 +26,7 @@ pub mod swapchain;
 pub mod window;
 
 pub mod barrier;
-pub mod descriptor_pool;
+pub mod descriptor;
 pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
@@ -55,7 +55,6 @@ pub use ash::vk::DebugUtilsMessageSeverityFlagsEXT;
 pub use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 pub use ash::vk::DependencyFlags;
 pub use ash::vk::DescriptorPoolSize;
-pub use ash::vk::DescriptorType;
 pub use ash::vk::DeviceSize;
 pub use ash::vk::Extent2D;
 pub use ash::vk::Extent3D;

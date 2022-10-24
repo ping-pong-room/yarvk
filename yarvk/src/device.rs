@@ -1,4 +1,3 @@
-use crate::descriptor_pool::{ChangedDescriptorSet, UpdateHolder};
 use crate::device_features::{register_features, Feature, FeatureType};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
@@ -215,40 +214,6 @@ impl Device {
             })
         } else {
             None
-        }
-    }
-    // TODO implement copy
-    // TODO VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
-    pub fn update_descriptor_sets(
-        &self,
-        descriptor_writes: &mut [ChangedDescriptorSet],
-        // descriptor_copies: &[CopyDescriptorSet],
-    ) {
-        let mut images_counts = 0;
-        let mut buffers_counts = 0;
-        let mut buffer_views_counts = 0;
-
-        for ds in descriptor_writes.iter_mut() {
-            images_counts += ds.images_counts;
-            buffers_counts += ds.buffers_counts;
-            buffer_views_counts += ds.buffer_views_counts;
-        }
-        let mut holder = UpdateHolder {
-            vk_image_infos: Vec::with_capacity(images_counts),
-            vk_buffer_infos: Vec::with_capacity(buffers_counts),
-            vk_texel_buffer_views: Vec::with_capacity(buffer_views_counts),
-            vk_write_descriptor_sets: Vec::with_capacity(
-                images_counts + buffers_counts + buffer_views_counts,
-            ),
-        };
-        for ds in descriptor_writes.iter_mut() {
-            ds.to_ash(&mut holder);
-        }
-        unsafe {
-            // Host Synchronization: VUID-vkUpdateDescriptorSets-pDescriptorWrites-06993
-            //  pDescriptorWrites[i].dstSet pDescriptorCopies[i].dstSet
-            self.ash_device
-                .update_descriptor_sets(holder.vk_write_descriptor_sets.as_slice(), &[]);
         }
     }
 

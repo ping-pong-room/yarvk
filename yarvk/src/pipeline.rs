@@ -1,6 +1,5 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
-use crate::descriptor_pool::DescriptorSetLayout;
 use crate::device::Device;
 use crate::pipeline::color_blend_state::PipelineColorBlendStateCreateInfo;
 use crate::pipeline::depth_stencil_state::PipelineDepthStencilStateCreateInfo;
@@ -16,6 +15,7 @@ use crate::render_pass::RenderPass;
 use crate::shader_module::ShaderModule;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::Arc;
+use crate::descriptor::descriptor_set_layout::DescriptorSetLayout;
 
 pub mod color_blend_state;
 pub mod depth_stencil_state;
