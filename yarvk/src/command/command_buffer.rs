@@ -6,6 +6,7 @@ use crate::command::command_pool::CommandPool;
 use crate::device::Device;
 use crate::frame_buffer::Framebuffer;
 use crate::image::Image;
+use rayon::iter::ParallelIterator;
 
 use crate::render_pass::RenderPass;
 
@@ -13,6 +14,7 @@ use lazy_static::lazy_static;
 use rustc_hash::FxHashMap;
 
 use ash::vk::Handle;
+use rayon::iter::IntoParallelRefMutIterator;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -170,7 +172,7 @@ pub struct CommandBuffer<
     secondary_buffers: FxHashMap<u64, CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>>,
 }
 
-unsafe fn vector_transmute<
+unsafe fn par_vector_transmute<
     const S1: Level,
     const S2: State,
     const S3: RenderPassScope,
@@ -181,14 +183,27 @@ unsafe fn vector_transmute<
     const T4: bool,
 >(
     source: Vec<CommandBuffer<S1, S2, S3, S4>>,
-    f: impl Fn(CommandBuffer<S1, S2, S3, S4>) -> Result<CommandBuffer<T1, T2, T3, T4>, ash::vk::Result>,
+    f: impl Fn(CommandBuffer<S1, S2, S3, S4>) -> Result<CommandBuffer<T1, T2, T3, T4>, ash::vk::Result> + Sync,
 ) -> Result<Vec<CommandBuffer<T1, T2, T3, T4>>, ash::vk::Result> {
     let mut buffers: Vec<CommandBuffer<T1, T2, T3, T4>> = std::mem::transmute(source);
-    for foo in &mut buffers {
-        let temp = std::ptr::read(foo);
-        let temp: CommandBuffer<S1, S2, S3, S4> = std::mem::transmute(temp);
-        let temp = f(temp)?;
-        std::ptr::write(foo, temp);
+    let results = buffers
+        .par_iter_mut()
+        .map(|foo| {
+            let temp = std::ptr::read(foo);
+            let temp: CommandBuffer<S1, S2, S3, S4> = std::mem::transmute(temp);
+            match f(temp) {
+                Ok(temp) => {
+                    std::ptr::write(foo, temp);
+                    ash::vk::Result::SUCCESS
+                }
+                Err(err) => err,
+            }
+        })
+        .collect::<Vec<ash::vk::Result>>();
+    for result in &results {
+        if *result != ash::vk::Result::SUCCESS {
+            return Err(*result)
+        }
     }
     Ok(buffers)
 }
@@ -366,9 +381,9 @@ macro_rules! secondary_record_impls {
                 ash::vk::Result,
             > {
                 unsafe {
-                    let mut buffers = vector_transmute(buffers, |buffer| buffer.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                    let mut buffers = par_vector_transmute(buffers, |buffer| buffer.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
                     f(buffers.as_mut_slice())?;
-                    let buffers = vector_transmute(buffers, |buffer| buffer.end())?;
+                    let buffers = par_vector_transmute(buffers, |buffer| buffer.end())?;
                     Ok(buffers)
                 }
             }
@@ -383,9 +398,9 @@ macro_rules! secondary_record_impls {
                 ash::vk::Result,
             > {
                 unsafe {
-                    let mut buffers = vector_transmute(buffers, |buffer| buffer.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                    let mut buffers = par_vector_transmute(buffers, |buffer| buffer.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
                     f(buffers.as_mut_slice())?;
-                    let buffers = vector_transmute(buffers, |buffer| buffer.end())?;
+                    let buffers = par_vector_transmute(buffers, |buffer| buffer.end())?;
                     Ok(buffers)
                 }
             }
