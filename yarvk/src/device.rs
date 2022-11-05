@@ -1,4 +1,4 @@
-use crate::device_features::{register_features, Feature, FeatureType};
+use crate::device_features::{register_features, Feature, FeatureType, DeviceFeatureTrait};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
@@ -60,25 +60,29 @@ impl DeviceBuilder {
         self
     }
 
-    pub fn add_feature<T: Into<FeatureType>>(mut self, feature: T) -> Self {
-        self.enabled_features.insert(feature.into());
+    pub fn add_feature<T: DeviceFeatureTrait>(mut self, feature: T) -> Self {
+        if let Some(extension) = &feature.required_extension() {
+            self.add_extension_inner(extension)
+        }
+        let feature = feature.to_physical();
+        let feature : FeatureType = feature.into();
+        self.enabled_features.insert(feature);
         self
     }
 
-    fn add_extension_inner(&mut self, extension: &DeviceExtensionType) {
-        let physical_ext_ty = extension.into();
-        self.enabled_extensions.insert(physical_ext_ty);
+    fn add_extension_inner(&mut self, extension: &PhysicalDeviceExtensionType) {
+        self.enabled_extensions.insert(*extension);
         //SILENCE VUID-vkCreateDevice-ppEnabledExtensionNames-01387
         // It's safe to do this, the instance extension required for dependencies is also need by
         // the extension it self.
-        let deps = physical_ext_ty.get_dependencies();
+        let deps = extension.get_dependencies();
         for dep in deps {
             self.enabled_extensions.insert(*dep);
         }
     }
 
     pub fn add_extension(mut self, extension: &DeviceExtensionType) -> Self {
-        self.add_extension_inner(extension);
+        self.add_extension_inner(&extension.into());
         self
     }
 
@@ -91,7 +95,7 @@ impl DeviceBuilder {
             .supported_extensions
             .contains(&PhysicalDeviceExtensionType::KhrPortabilitySubset)
         {
-            self.add_extension_inner(&DeviceExtensionType::KhrPortabilitySubset);
+            self.add_extension_inner(&PhysicalDeviceExtensionType::KhrPortabilitySubset);
         }
 
         //TODO VUID-VkDeviceCreateInfo-pNext-pNext

@@ -1,4 +1,4 @@
-use crate::generate_extensions::{ExtensionInfo, ExtensionType};
+use crate::generate_extensions::{DependencyInfo, ExtensionInfo, ExtensionMap, ExtensionType};
 use heck::ToSnakeCase;
 use heck::ToUpperCamelCase;
 use quote::__private::TokenStream;
@@ -12,42 +12,36 @@ use vk_parse::{Registry, Type, TypeMemberMarkup, TypesChild};
 struct FeatureDetail<'a> {
     struct_type: Option<&'a str>,
     feature_members: Vec<&'a str>,
-    required_extension: Option<&'a ExtensionInfo<'a>>,
+    required_extension: Option<&'a ExtensionInfo>,
 }
 
-fn required_extension<'a>(
-    extensions: &'a FxHashMap<String, ExtensionInfo<'a>>,
-    ty: &Type,
-) -> Option<&'a ExtensionInfo<'a>> {
-    for (vk_name, ext_info) in extensions {
+fn required_extension<'a>(extensions: &'a ExtensionMap, ty: &Type) -> Option<&'a ExtensionInfo> {
+    for (_, ext_info) in &extensions.0 {
         if let Some(target_name) = &ty.name {
-            if !ext_info.promoted && vk_name == target_name {
-                return Some(&ext_info);
+            for required_struct in &ext_info.required_structs {
+                if !ext_info.promoted && required_struct == target_name {
+                    return Some(&ext_info);
+                }
             }
         }
     }
     None
 }
 
-fn get_enum_item_tuple(extension: Option<&ExtensionInfo>) -> TokenStream {
+fn get_enum_variant_tuple(extension: Option<&ExtensionInfo>) -> Vec<&Ident> {
     if let Some(extension) = extension {
-        let ident = &extension.name;
-        return match &extension.extension_type {
-            ExtensionType::Instance => {
-                quote!((crate::extensions::InstanceExtension<{ crate::extensions::PhysicalInstanceExtensionType::#ident}>))
-            }
-            ExtensionType::Device => {
-                quote!((crate::extensions::DeviceExtension<{ crate::extensions::PhysicalDeviceExtensionType::#ident}>))
-            }
-        };
+        if let ExtensionType::Device = &extension.extension_type {
+            let mut idents = DependencyInfo::default();
+            extension.get_all_dependencies(&mut idents);
+            return idents.top_level_instance
+                .into_iter()
+                .collect();
+        }
     }
-    return quote!();
+    Vec::default()
 }
 
-fn handle_feature_member<'a>(
-    ty: &'a Type,
-    extensions: &'a FxHashMap<String, ExtensionInfo<'a>>,
-) -> FeatureDetail<'a> {
+fn handle_feature_member<'a>(ty: &'a Type, extensions: &'a ExtensionMap) -> FeatureDetail<'a> {
     let mut feature_members = Vec::new();
     let mut struct_type: Option<&str> = None;
     if let Members(members) = &ty.spec {
@@ -84,10 +78,7 @@ fn handle_feature_member<'a>(
     }
 }
 
-pub fn generate_device_features(
-    spec2: &Registry,
-    extensions: &FxHashMap<String, ExtensionInfo>,
-) -> TokenStream {
+pub fn generate_device_features(spec2: &Registry, extensions: &ExtensionMap) -> TokenStream {
     let mut total_features: FxHashMap<&str, FeatureDetail> = FxHashMap::default();
 
     spec2.0.iter().for_each(|item| {
@@ -140,14 +131,16 @@ pub fn generate_device_features(
             .iter()
             .map(|feature| format_ident!("{}", feature.to_upper_camel_case()))
             .collect();
-        let feature_member_tuple = get_enum_item_tuple(feature_detail.required_extension);
-        let pattern = match feature_detail.required_extension {
-            None => {
-                quote!()
-            }
-            Some(_) => {
-                quote!((..))
-            }
+        let feature_variant_idents = get_enum_variant_tuple(feature_detail.required_extension);
+        let feature_variant_tuple = if !feature_variant_idents.is_empty() {
+            quote!((#(crate::extensions::InstanceExtension<{ crate::extensions::PhysicalInstanceExtensionType::#feature_variant_idents}>)*))
+        } else {
+            quote!()
+        };
+        let pattern = if feature_variant_idents.is_empty() {
+            quote!()
+        } else {
+            quote!((..))
         };
         let rust_style_feature_idents: Vec<Ident> = feature_detail
             .feature_members
@@ -155,6 +148,12 @@ pub fn generate_device_features(
             .map(|feature| format_ident!("{}", feature.to_snake_case()))
             .collect();
         let feature_name_ident_lower_case = format_ident!("{}", feature_name.to_snake_case());
+        let required_extension = if let Some(extension_info) = feature_detail.required_extension {
+            let required_extension_name = &extension_info.name;
+            quote!(Some(crate::extensions::PhysicalDeviceExtensionType::#required_extension_name))
+        } else {
+            quote!(None)
+        };
         let mut sub_feature_enum_definition = quote! {
             #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
             pub enum #feature_name_ident {
@@ -165,21 +164,18 @@ pub fn generate_device_features(
                     FeatureType::#feature_name_ident_logical(feature)
                 }
             }
-            #[derive(Clone, PartialEq, Eq)]
             pub enum #feature_name_ident_logical {
-                #(#feature_variants #feature_member_tuple, )*
+                #(#feature_variants #feature_variant_tuple, )*
             }
-            impl ToPhysicalFeature for #feature_name_ident_logical {
+            impl DeviceFeatureTrait for #feature_name_ident_logical {
                 type PhysicalDeviceFeatureTy = #feature_name_ident;
                 fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
                     match self {
                         #(#feature_name_ident_logical::#feature_variants #pattern => #feature_name_ident::#feature_variants, )*
                     }
                 }
-            }
-            impl From<#feature_name_ident_logical> for DeviceFeature {
-                fn from(feature: #feature_name_ident_logical) -> Self {
-                    DeviceFeature::#feature_name_ident_logical(feature)
+                fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+                    #required_extension
                 }
             }
             impl VkDeviceFeature for ash::vk::#ash_ty_name {
@@ -256,18 +252,15 @@ pub fn generate_device_features(
             type VkStruct: Default + ash::vk::ExtendsPhysicalDeviceFeatures2 + VkDeviceFeature;
             fn register(&self, vk_struct: &mut Self::VkStruct);
         }
-        pub trait ToPhysicalFeature {
-            type PhysicalDeviceFeatureTy;
+        pub trait DeviceFeatureTrait {
+            type PhysicalDeviceFeatureTy: Into<FeatureType>;
             fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy;
+            fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType>;
         }
         #(#sub_feature_enum_definitions)*
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
         pub enum FeatureType {
             #(#sub_feature_logical_enum_names(#sub_feature_enum_names),)*
-        }
-        #[derive(Clone, PartialEq, Eq)]
-        pub enum DeviceFeature {
-            #(#sub_feature_logical_enum_names(#sub_feature_logical_enum_names),)*
         }
         #[allow(dead_code)]
         pub(crate) union VkFeatureUnion {
@@ -279,6 +272,7 @@ pub fn generate_device_features(
             pub(crate) _p: std::marker::PhantomData<usize>,
         }
         pub(crate) fn register_features(features: &rustc_hash::FxHashSet<FeatureType>) -> ash::vk::PhysicalDeviceFeatures2 {
+            #[repr(C)]
             struct VkStructHeader {
                 pub _s_type: ash::vk::StructureType,
                 pub p_next: *mut std::ffi::c_void,

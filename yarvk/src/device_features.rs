@@ -6,9 +6,10 @@ pub trait SubPhysicalFeature {
     type VkStruct: Default + ash::vk::ExtendsPhysicalDeviceFeatures2 + VkDeviceFeature;
     fn register(&self, vk_struct: &mut Self::VkStruct);
 }
-pub trait ToPhysicalFeature {
-    type PhysicalDeviceFeatureTy;
+pub trait DeviceFeatureTrait {
+    type PhysicalDeviceFeatureTy: Into<FeatureType>;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy;
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType>;
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum PhysicalDeviceShaderAtomicFloat2FeaturesEXT {
@@ -30,7 +31,6 @@ impl const From<PhysicalDeviceShaderAtomicFloat2FeaturesEXT> for FeatureType {
         FeatureType::DeviceShaderAtomicFloat2FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderAtomicFloat2FeaturesEXT {
     ShaderBufferFloat16Atomics,
     ShaderBufferFloat16AtomicAdd,
@@ -45,7 +45,7 @@ pub enum DeviceShaderAtomicFloat2FeaturesEXT {
     ShaderImageFloat32AtomicMinMax,
     SparseImageFloat32AtomicMinMax,
 }
-impl ToPhysicalFeature for DeviceShaderAtomicFloat2FeaturesEXT {
+impl DeviceFeatureTrait for DeviceShaderAtomicFloat2FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderAtomicFloat2FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -87,10 +87,8 @@ impl ToPhysicalFeature for DeviceShaderAtomicFloat2FeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceShaderAtomicFloat2FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceShaderAtomicFloat2FeaturesEXT) -> Self {
-        DeviceFeature::DeviceShaderAtomicFloat2FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtShaderAtomicFloat2)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderAtomicFloat2FeaturesEXT {
@@ -192,11 +190,10 @@ impl const From<PhysicalDeviceCoverageReductionModeFeaturesNV> for FeatureType {
         FeatureType::DeviceCoverageReductionModeFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceCoverageReductionModeFeaturesNV {
     CoverageReductionMode,
 }
-impl ToPhysicalFeature for DeviceCoverageReductionModeFeaturesNV {
+impl DeviceFeatureTrait for DeviceCoverageReductionModeFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceCoverageReductionModeFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -205,10 +202,8 @@ impl ToPhysicalFeature for DeviceCoverageReductionModeFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceCoverageReductionModeFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceCoverageReductionModeFeaturesNV) -> Self {
-        DeviceFeature::DeviceCoverageReductionModeFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvCoverageReductionMode)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceCoverageReductionModeFeaturesNV {
@@ -238,11 +233,10 @@ impl const From<PhysicalDeviceSynchronization2Features> for FeatureType {
         FeatureType::DeviceSynchronization2Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceSynchronization2Features {
     Synchronization2,
 }
-impl ToPhysicalFeature for DeviceSynchronization2Features {
+impl DeviceFeatureTrait for DeviceSynchronization2Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceSynchronization2Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -251,10 +245,8 @@ impl ToPhysicalFeature for DeviceSynchronization2Features {
             }
         }
     }
-}
-impl From<DeviceSynchronization2Features> for DeviceFeature {
-    fn from(feature: DeviceSynchronization2Features) -> Self {
-        DeviceFeature::DeviceSynchronization2Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceSynchronization2Features {
@@ -284,11 +276,10 @@ impl const From<PhysicalDeviceVertexInputDynamicStateFeaturesEXT> for FeatureTyp
         FeatureType::DeviceVertexInputDynamicStateFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVertexInputDynamicStateFeaturesEXT {
     VertexInputDynamicState,
 }
-impl ToPhysicalFeature for DeviceVertexInputDynamicStateFeaturesEXT {
+impl DeviceFeatureTrait for DeviceVertexInputDynamicStateFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVertexInputDynamicStateFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -297,10 +288,8 @@ impl ToPhysicalFeature for DeviceVertexInputDynamicStateFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceVertexInputDynamicStateFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceVertexInputDynamicStateFeaturesEXT) -> Self {
-        DeviceFeature::DeviceVertexInputDynamicStateFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtVertexInputDynamicState)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVertexInputDynamicStateFeaturesEXT {
@@ -332,13 +321,12 @@ impl const From<PhysicalDeviceMultiviewFeatures> for FeatureType {
         FeatureType::DeviceMultiviewFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMultiviewFeatures {
     Multiview,
     MultiviewGeometryShader,
     MultiviewTessellationShader,
 }
-impl ToPhysicalFeature for DeviceMultiviewFeatures {
+impl DeviceFeatureTrait for DeviceMultiviewFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMultiviewFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -351,10 +339,8 @@ impl ToPhysicalFeature for DeviceMultiviewFeatures {
             }
         }
     }
-}
-impl From<DeviceMultiviewFeatures> for DeviceFeature {
-    fn from(feature: DeviceMultiviewFeatures) -> Self {
-        DeviceFeature::DeviceMultiviewFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMultiviewFeatures {
@@ -392,11 +378,10 @@ impl const From<PhysicalDeviceShaderIntegerFunctions2FeaturesINTEL> for FeatureT
         FeatureType::DeviceShaderIntegerFunctions2FeaturesINTEL(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderIntegerFunctions2FeaturesINTEL {
     ShaderIntegerFunctions2,
 }
-impl ToPhysicalFeature for DeviceShaderIntegerFunctions2FeaturesINTEL {
+impl DeviceFeatureTrait for DeviceShaderIntegerFunctions2FeaturesINTEL {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderIntegerFunctions2FeaturesINTEL;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -405,10 +390,8 @@ impl ToPhysicalFeature for DeviceShaderIntegerFunctions2FeaturesINTEL {
             }
         }
     }
-}
-impl From<DeviceShaderIntegerFunctions2FeaturesINTEL> for DeviceFeature {
-    fn from(feature: DeviceShaderIntegerFunctions2FeaturesINTEL) -> Self {
-        DeviceFeature::DeviceShaderIntegerFunctions2FeaturesINTEL(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::IntelShaderIntegerFunctions2)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderIntegerFunctions2FeaturesINTEL {
@@ -438,11 +421,10 @@ impl const From<PhysicalDevicePrivateDataFeatures> for FeatureType {
         FeatureType::DevicePrivateDataFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePrivateDataFeatures {
     PrivateData,
 }
-impl ToPhysicalFeature for DevicePrivateDataFeatures {
+impl DeviceFeatureTrait for DevicePrivateDataFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDevicePrivateDataFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -451,10 +433,8 @@ impl ToPhysicalFeature for DevicePrivateDataFeatures {
             }
         }
     }
-}
-impl From<DevicePrivateDataFeatures> for DeviceFeature {
-    fn from(feature: DevicePrivateDataFeatures) -> Self {
-        DeviceFeature::DevicePrivateDataFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePrivateDataFeatures {
@@ -484,11 +464,10 @@ impl const From<PhysicalDevicePipelineCreationCacheControlFeatures> for FeatureT
         FeatureType::DevicePipelineCreationCacheControlFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePipelineCreationCacheControlFeatures {
     PipelineCreationCacheControl,
 }
-impl ToPhysicalFeature for DevicePipelineCreationCacheControlFeatures {
+impl DeviceFeatureTrait for DevicePipelineCreationCacheControlFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDevicePipelineCreationCacheControlFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -497,10 +476,8 @@ impl ToPhysicalFeature for DevicePipelineCreationCacheControlFeatures {
             }
         }
     }
-}
-impl From<DevicePipelineCreationCacheControlFeatures> for DeviceFeature {
-    fn from(feature: DevicePipelineCreationCacheControlFeatures) -> Self {
-        DeviceFeature::DevicePipelineCreationCacheControlFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePipelineCreationCacheControlFeatures {
@@ -532,11 +509,10 @@ impl const From<PhysicalDeviceMutableDescriptorTypeFeaturesVALVE> for FeatureTyp
         FeatureType::DeviceMutableDescriptorTypeFeaturesVALVE(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMutableDescriptorTypeFeaturesVALVE {
     MutableDescriptorType,
 }
-impl ToPhysicalFeature for DeviceMutableDescriptorTypeFeaturesVALVE {
+impl DeviceFeatureTrait for DeviceMutableDescriptorTypeFeaturesVALVE {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMutableDescriptorTypeFeaturesVALVE;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -545,10 +521,8 @@ impl ToPhysicalFeature for DeviceMutableDescriptorTypeFeaturesVALVE {
             }
         }
     }
-}
-impl From<DeviceMutableDescriptorTypeFeaturesVALVE> for DeviceFeature {
-    fn from(feature: DeviceMutableDescriptorTypeFeaturesVALVE) -> Self {
-        DeviceFeature::DeviceMutableDescriptorTypeFeaturesVALVE(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ValveMutableDescriptorType)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMutableDescriptorTypeFeaturesVALVE {
@@ -578,11 +552,10 @@ impl const From<PhysicalDeviceTimelineSemaphoreFeatures> for FeatureType {
         FeatureType::DeviceTimelineSemaphoreFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceTimelineSemaphoreFeatures {
     TimelineSemaphore,
 }
-impl ToPhysicalFeature for DeviceTimelineSemaphoreFeatures {
+impl DeviceFeatureTrait for DeviceTimelineSemaphoreFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceTimelineSemaphoreFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -591,10 +564,8 @@ impl ToPhysicalFeature for DeviceTimelineSemaphoreFeatures {
             }
         }
     }
-}
-impl From<DeviceTimelineSemaphoreFeatures> for DeviceFeature {
-    fn from(feature: DeviceTimelineSemaphoreFeatures) -> Self {
-        DeviceFeature::DeviceTimelineSemaphoreFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceTimelineSemaphoreFeatures {
@@ -628,7 +599,6 @@ impl const From<PhysicalDeviceRayTracingPipelineFeaturesKHR> for FeatureType {
         FeatureType::DeviceRayTracingPipelineFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRayTracingPipelineFeaturesKHR {
     RayTracingPipeline,
     RayTracingPipelineShaderGroupHandleCaptureReplay,
@@ -636,15 +606,13 @@ pub enum DeviceRayTracingPipelineFeaturesKHR {
     RayTracingPipelineTraceRaysIndirect,
     RayTraversalPrimitiveCulling,
 }
-impl ToPhysicalFeature for DeviceRayTracingPipelineFeaturesKHR {
+impl DeviceFeatureTrait for DeviceRayTracingPipelineFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRayTracingPipelineFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceRayTracingPipelineFeaturesKHR :: RayTracingPipeline => PhysicalDeviceRayTracingPipelineFeaturesKHR :: RayTracingPipeline , DeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineShaderGroupHandleCaptureReplay => PhysicalDeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineShaderGroupHandleCaptureReplay , DeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineShaderGroupHandleCaptureReplayMixed => PhysicalDeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineShaderGroupHandleCaptureReplayMixed , DeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineTraceRaysIndirect => PhysicalDeviceRayTracingPipelineFeaturesKHR :: RayTracingPipelineTraceRaysIndirect , DeviceRayTracingPipelineFeaturesKHR :: RayTraversalPrimitiveCulling => PhysicalDeviceRayTracingPipelineFeaturesKHR :: RayTraversalPrimitiveCulling , }
     }
-}
-impl From<DeviceRayTracingPipelineFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceRayTracingPipelineFeaturesKHR) -> Self {
-        DeviceFeature::DeviceRayTracingPipelineFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrRayTracingPipeline)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRayTracingPipelineFeaturesKHR {
@@ -700,21 +668,18 @@ impl const From<PhysicalDeviceVulkanMemoryModelFeatures> for FeatureType {
         FeatureType::DeviceVulkanMemoryModelFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVulkanMemoryModelFeatures {
     VulkanMemoryModel,
     VulkanMemoryModelDeviceScope,
     VulkanMemoryModelAvailabilityVisibilityChains,
 }
-impl ToPhysicalFeature for DeviceVulkanMemoryModelFeatures {
+impl DeviceFeatureTrait for DeviceVulkanMemoryModelFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVulkanMemoryModelFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceVulkanMemoryModelFeatures :: VulkanMemoryModel => PhysicalDeviceVulkanMemoryModelFeatures :: VulkanMemoryModel , DeviceVulkanMemoryModelFeatures :: VulkanMemoryModelDeviceScope => PhysicalDeviceVulkanMemoryModelFeatures :: VulkanMemoryModelDeviceScope , DeviceVulkanMemoryModelFeatures :: VulkanMemoryModelAvailabilityVisibilityChains => PhysicalDeviceVulkanMemoryModelFeatures :: VulkanMemoryModelAvailabilityVisibilityChains , }
     }
-}
-impl From<DeviceVulkanMemoryModelFeatures> for DeviceFeature {
-    fn from(feature: DeviceVulkanMemoryModelFeatures) -> Self {
-        DeviceFeature::DeviceVulkanMemoryModelFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVulkanMemoryModelFeatures {
@@ -756,21 +721,18 @@ impl const From<PhysicalDeviceExtendedDynamicState2FeaturesEXT> for FeatureType 
         FeatureType::DeviceExtendedDynamicState2FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceExtendedDynamicState2FeaturesEXT {
     ExtendedDynamicState2,
     ExtendedDynamicState2LogicOp,
     ExtendedDynamicState2PatchControlPoints,
 }
-impl ToPhysicalFeature for DeviceExtendedDynamicState2FeaturesEXT {
+impl DeviceFeatureTrait for DeviceExtendedDynamicState2FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceExtendedDynamicState2FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2 => PhysicalDeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2 , DeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2LogicOp => PhysicalDeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2LogicOp , DeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2PatchControlPoints => PhysicalDeviceExtendedDynamicState2FeaturesEXT :: ExtendedDynamicState2PatchControlPoints , }
     }
-}
-impl From<DeviceExtendedDynamicState2FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceExtendedDynamicState2FeaturesEXT) -> Self {
-        DeviceFeature::DeviceExtendedDynamicState2FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceExtendedDynamicState2FeaturesEXT {
@@ -813,12 +775,11 @@ impl const From<PhysicalDeviceShaderImageAtomicInt64FeaturesEXT> for FeatureType
         FeatureType::DeviceShaderImageAtomicInt64FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderImageAtomicInt64FeaturesEXT {
     ShaderImageInt64Atomics,
     SparseImageInt64Atomics,
 }
-impl ToPhysicalFeature for DeviceShaderImageAtomicInt64FeaturesEXT {
+impl DeviceFeatureTrait for DeviceShaderImageAtomicInt64FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderImageAtomicInt64FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -830,10 +791,8 @@ impl ToPhysicalFeature for DeviceShaderImageAtomicInt64FeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceShaderImageAtomicInt64FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceShaderImageAtomicInt64FeaturesEXT) -> Self {
-        DeviceFeature::DeviceShaderImageAtomicInt64FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtShaderImageAtomicInt64)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderImageAtomicInt64FeaturesEXT {
@@ -867,11 +826,10 @@ impl const From<PhysicalDeviceInheritedViewportScissorFeaturesNV> for FeatureTyp
         FeatureType::DeviceInheritedViewportScissorFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceInheritedViewportScissorFeaturesNV {
     InheritedViewportScissor2D,
 }
-impl ToPhysicalFeature for DeviceInheritedViewportScissorFeaturesNV {
+impl DeviceFeatureTrait for DeviceInheritedViewportScissorFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceInheritedViewportScissorFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -880,10 +838,8 @@ impl ToPhysicalFeature for DeviceInheritedViewportScissorFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceInheritedViewportScissorFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceInheritedViewportScissorFeaturesNV) -> Self {
-        DeviceFeature::DeviceInheritedViewportScissorFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvInheritedViewportScissor)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceInheritedViewportScissorFeaturesNV {
@@ -915,11 +871,10 @@ impl const From<PhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT> for FeatureType 
         FeatureType::DeviceYcbcr2Plane444FormatsFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceYcbcr2Plane444FormatsFeaturesEXT {
     Ycbcr2plane444Formats,
 }
-impl ToPhysicalFeature for DeviceYcbcr2Plane444FormatsFeaturesEXT {
+impl DeviceFeatureTrait for DeviceYcbcr2Plane444FormatsFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -928,10 +883,8 @@ impl ToPhysicalFeature for DeviceYcbcr2Plane444FormatsFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceYcbcr2Plane444FormatsFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceYcbcr2Plane444FormatsFeaturesEXT) -> Self {
-        DeviceFeature::DeviceYcbcr2Plane444FormatsFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT {
@@ -961,23 +914,24 @@ impl const From<PhysicalDevicePresentWaitFeaturesKHR> for FeatureType {
         FeatureType::DevicePresentWaitFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePresentWaitFeaturesKHR {
-    PresentWait,
+    PresentWait(
+        crate::extensions::InstanceExtension<
+            { crate::extensions::PhysicalInstanceExtensionType::KhrSurface },
+        >,
+    ),
 }
-impl ToPhysicalFeature for DevicePresentWaitFeaturesKHR {
+impl DeviceFeatureTrait for DevicePresentWaitFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDevicePresentWaitFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
-            DevicePresentWaitFeaturesKHR::PresentWait => {
+            DevicePresentWaitFeaturesKHR::PresentWait(..) => {
                 PhysicalDevicePresentWaitFeaturesKHR::PresentWait
             }
         }
     }
-}
-impl From<DevicePresentWaitFeaturesKHR> for DeviceFeature {
-    fn from(feature: DevicePresentWaitFeaturesKHR) -> Self {
-        DeviceFeature::DevicePresentWaitFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrPresentWait)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePresentWaitFeaturesKHR {
@@ -1008,12 +962,11 @@ impl const From<PhysicalDeviceComputeShaderDerivativesFeaturesNV> for FeatureTyp
         FeatureType::DeviceComputeShaderDerivativesFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceComputeShaderDerivativesFeaturesNV {
     ComputeDerivativeGroupQuads,
     ComputeDerivativeGroupLinear,
 }
-impl ToPhysicalFeature for DeviceComputeShaderDerivativesFeaturesNV {
+impl DeviceFeatureTrait for DeviceComputeShaderDerivativesFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceComputeShaderDerivativesFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1025,10 +978,8 @@ impl ToPhysicalFeature for DeviceComputeShaderDerivativesFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceComputeShaderDerivativesFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceComputeShaderDerivativesFeaturesNV) -> Self {
-        DeviceFeature::DeviceComputeShaderDerivativesFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvComputeShaderDerivatives)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceComputeShaderDerivativesFeaturesNV {
@@ -1080,7 +1031,6 @@ impl const From<PhysicalDeviceVulkan13Features> for FeatureType {
         FeatureType::DeviceVulkan13Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVulkan13Features {
     RobustImageAccess,
     InlineUniformBlock,
@@ -1098,7 +1048,7 @@ pub enum DeviceVulkan13Features {
     ShaderIntegerDotProduct,
     Maintenance4,
 }
-impl ToPhysicalFeature for DeviceVulkan13Features {
+impl DeviceFeatureTrait for DeviceVulkan13Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVulkan13Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1145,10 +1095,8 @@ impl ToPhysicalFeature for DeviceVulkan13Features {
             DeviceVulkan13Features::Maintenance4 => PhysicalDeviceVulkan13Features::Maintenance4,
         }
     }
-}
-impl From<DeviceVulkan13Features> for DeviceFeature {
-    fn from(feature: DeviceVulkan13Features) -> Self {
-        DeviceFeature::DeviceVulkan13Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVulkan13Features {
@@ -1242,11 +1190,10 @@ impl const From<PhysicalDeviceExternalMemoryRDMAFeaturesNV> for FeatureType {
         FeatureType::DeviceExternalMemoryRDMAFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceExternalMemoryRDMAFeaturesNV {
     ExternalMemoryRdma,
 }
-impl ToPhysicalFeature for DeviceExternalMemoryRDMAFeaturesNV {
+impl DeviceFeatureTrait for DeviceExternalMemoryRDMAFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceExternalMemoryRDMAFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1255,10 +1202,8 @@ impl ToPhysicalFeature for DeviceExternalMemoryRDMAFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceExternalMemoryRDMAFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceExternalMemoryRDMAFeaturesNV) -> Self {
-        DeviceFeature::DeviceExternalMemoryRDMAFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvExternalMemoryRdma)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceExternalMemoryRDMAFeaturesNV {
@@ -1288,11 +1233,10 @@ impl const From<PhysicalDeviceProtectedMemoryFeatures> for FeatureType {
         FeatureType::DeviceProtectedMemoryFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceProtectedMemoryFeatures {
     ProtectedMemory,
 }
-impl ToPhysicalFeature for DeviceProtectedMemoryFeatures {
+impl DeviceFeatureTrait for DeviceProtectedMemoryFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceProtectedMemoryFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1301,10 +1245,8 @@ impl ToPhysicalFeature for DeviceProtectedMemoryFeatures {
             }
         }
     }
-}
-impl From<DeviceProtectedMemoryFeatures> for DeviceFeature {
-    fn from(feature: DeviceProtectedMemoryFeatures) -> Self {
-        DeviceFeature::DeviceProtectedMemoryFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceProtectedMemoryFeatures {
@@ -1334,11 +1276,10 @@ impl const From<PhysicalDeviceDynamicRenderingFeatures> for FeatureType {
         FeatureType::DeviceDynamicRenderingFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDynamicRenderingFeatures {
     DynamicRendering,
 }
-impl ToPhysicalFeature for DeviceDynamicRenderingFeatures {
+impl DeviceFeatureTrait for DeviceDynamicRenderingFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDynamicRenderingFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1347,10 +1288,8 @@ impl ToPhysicalFeature for DeviceDynamicRenderingFeatures {
             }
         }
     }
-}
-impl From<DeviceDynamicRenderingFeatures> for DeviceFeature {
-    fn from(feature: DeviceDynamicRenderingFeatures) -> Self {
-        DeviceFeature::DeviceDynamicRenderingFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDynamicRenderingFeatures {
@@ -1382,13 +1321,12 @@ impl const From<PhysicalDeviceFragmentDensityMapFeaturesEXT> for FeatureType {
         FeatureType::DeviceFragmentDensityMapFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentDensityMapFeaturesEXT {
     FragmentDensityMap,
     FragmentDensityMapDynamic,
     FragmentDensityMapNonSubsampledImages,
 }
-impl ToPhysicalFeature for DeviceFragmentDensityMapFeaturesEXT {
+impl DeviceFeatureTrait for DeviceFragmentDensityMapFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentDensityMapFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1403,10 +1341,8 @@ impl ToPhysicalFeature for DeviceFragmentDensityMapFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceFragmentDensityMapFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceFragmentDensityMapFeaturesEXT) -> Self {
-        DeviceFeature::DeviceFragmentDensityMapFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtFragmentDensityMap)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentDensityMapFeaturesEXT {
@@ -1449,12 +1385,11 @@ impl const From<PhysicalDeviceShaderFloat16Int8Features> for FeatureType {
         FeatureType::DeviceShaderFloat16Int8Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderFloat16Int8Features {
     ShaderFloat16,
     ShaderInt8,
 }
-impl ToPhysicalFeature for DeviceShaderFloat16Int8Features {
+impl DeviceFeatureTrait for DeviceShaderFloat16Int8Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderFloat16Int8Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1466,10 +1401,8 @@ impl ToPhysicalFeature for DeviceShaderFloat16Int8Features {
             }
         }
     }
-}
-impl From<DeviceShaderFloat16Int8Features> for DeviceFeature {
-    fn from(feature: DeviceShaderFloat16Int8Features) -> Self {
-        DeviceFeature::DeviceShaderFloat16Int8Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderFloat16Int8Features {
@@ -1503,11 +1436,10 @@ impl const From<PhysicalDeviceInvocationMaskFeaturesHUAWEI> for FeatureType {
         FeatureType::DeviceInvocationMaskFeaturesHUAWEI(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceInvocationMaskFeaturesHUAWEI {
     InvocationMask,
 }
-impl ToPhysicalFeature for DeviceInvocationMaskFeaturesHUAWEI {
+impl DeviceFeatureTrait for DeviceInvocationMaskFeaturesHUAWEI {
     type PhysicalDeviceFeatureTy = PhysicalDeviceInvocationMaskFeaturesHUAWEI;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1516,10 +1448,8 @@ impl ToPhysicalFeature for DeviceInvocationMaskFeaturesHUAWEI {
             }
         }
     }
-}
-impl From<DeviceInvocationMaskFeaturesHUAWEI> for DeviceFeature {
-    fn from(feature: DeviceInvocationMaskFeaturesHUAWEI) -> Self {
-        DeviceFeature::DeviceInvocationMaskFeaturesHUAWEI(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::HuaweiInvocationMask)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceInvocationMaskFeaturesHUAWEI {
@@ -1549,21 +1479,18 @@ impl const From<PhysicalDeviceRayQueryFeaturesKHR> for FeatureType {
         FeatureType::DeviceRayQueryFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRayQueryFeaturesKHR {
     RayQuery,
 }
-impl ToPhysicalFeature for DeviceRayQueryFeaturesKHR {
+impl DeviceFeatureTrait for DeviceRayQueryFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRayQueryFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
             DeviceRayQueryFeaturesKHR::RayQuery => PhysicalDeviceRayQueryFeaturesKHR::RayQuery,
         }
     }
-}
-impl From<DeviceRayQueryFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceRayQueryFeaturesKHR) -> Self {
-        DeviceFeature::DeviceRayQueryFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrRayQuery)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRayQueryFeaturesKHR {
@@ -1593,11 +1520,10 @@ impl const From<PhysicalDeviceSubpassShadingFeaturesHUAWEI> for FeatureType {
         FeatureType::DeviceSubpassShadingFeaturesHUAWEI(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceSubpassShadingFeaturesHUAWEI {
     SubpassShading,
 }
-impl ToPhysicalFeature for DeviceSubpassShadingFeaturesHUAWEI {
+impl DeviceFeatureTrait for DeviceSubpassShadingFeaturesHUAWEI {
     type PhysicalDeviceFeatureTy = PhysicalDeviceSubpassShadingFeaturesHUAWEI;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1606,10 +1532,8 @@ impl ToPhysicalFeature for DeviceSubpassShadingFeaturesHUAWEI {
             }
         }
     }
-}
-impl From<DeviceSubpassShadingFeaturesHUAWEI> for DeviceFeature {
-    fn from(feature: DeviceSubpassShadingFeaturesHUAWEI) -> Self {
-        DeviceFeature::DeviceSubpassShadingFeaturesHUAWEI(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::HuaweiSubpassShading)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceSubpassShadingFeaturesHUAWEI {
@@ -1639,11 +1563,10 @@ impl const From<PhysicalDeviceShaderSubgroupExtendedTypesFeatures> for FeatureTy
         FeatureType::DeviceShaderSubgroupExtendedTypesFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderSubgroupExtendedTypesFeatures {
     ShaderSubgroupExtendedTypes,
 }
-impl ToPhysicalFeature for DeviceShaderSubgroupExtendedTypesFeatures {
+impl DeviceFeatureTrait for DeviceShaderSubgroupExtendedTypesFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderSubgroupExtendedTypesFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1652,10 +1575,8 @@ impl ToPhysicalFeature for DeviceShaderSubgroupExtendedTypesFeatures {
             }
         }
     }
-}
-impl From<DeviceShaderSubgroupExtendedTypesFeatures> for DeviceFeature {
-    fn from(feature: DeviceShaderSubgroupExtendedTypesFeatures) -> Self {
-        DeviceFeature::DeviceShaderSubgroupExtendedTypesFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderSubgroupExtendedTypesFeatures {
@@ -1690,22 +1611,19 @@ impl const From<PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR> for Feat
         FeatureType::DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR {
     WorkgroupMemoryExplicitLayout,
     WorkgroupMemoryExplicitLayoutScalarBlockLayout,
     WorkgroupMemoryExplicitLayout8BitAccess,
     WorkgroupMemoryExplicitLayout16BitAccess,
 }
-impl ToPhysicalFeature for DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR {
+impl DeviceFeatureTrait for DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout => PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout , DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayoutScalarBlockLayout => PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayoutScalarBlockLayout , DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout8BitAccess => PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout8BitAccess , DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout16BitAccess => PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR :: WorkgroupMemoryExplicitLayout16BitAccess , }
     }
-}
-impl From<DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR) -> Self {
-        DeviceFeature::DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrWorkgroupMemoryExplicitLayout)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR {
@@ -1754,20 +1672,17 @@ impl const From<PhysicalDeviceRayTracingMotionBlurFeaturesNV> for FeatureType {
         FeatureType::DeviceRayTracingMotionBlurFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRayTracingMotionBlurFeaturesNV {
     RayTracingMotionBlur,
     RayTracingMotionBlurPipelineTraceRaysIndirect,
 }
-impl ToPhysicalFeature for DeviceRayTracingMotionBlurFeaturesNV {
+impl DeviceFeatureTrait for DeviceRayTracingMotionBlurFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRayTracingMotionBlurFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceRayTracingMotionBlurFeaturesNV :: RayTracingMotionBlur => PhysicalDeviceRayTracingMotionBlurFeaturesNV :: RayTracingMotionBlur , DeviceRayTracingMotionBlurFeaturesNV :: RayTracingMotionBlurPipelineTraceRaysIndirect => PhysicalDeviceRayTracingMotionBlurFeaturesNV :: RayTracingMotionBlurPipelineTraceRaysIndirect , }
     }
-}
-impl From<DeviceRayTracingMotionBlurFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceRayTracingMotionBlurFeaturesNV) -> Self {
-        DeviceFeature::DeviceRayTracingMotionBlurFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvRayTracingMotionBlur)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRayTracingMotionBlurFeaturesNV {
@@ -1803,11 +1718,10 @@ impl const From<PhysicalDeviceMaintenance4Features> for FeatureType {
         FeatureType::DeviceMaintenance4Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMaintenance4Features {
     Maintenance4,
 }
-impl ToPhysicalFeature for DeviceMaintenance4Features {
+impl DeviceFeatureTrait for DeviceMaintenance4Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMaintenance4Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1816,10 +1730,8 @@ impl ToPhysicalFeature for DeviceMaintenance4Features {
             }
         }
     }
-}
-impl From<DeviceMaintenance4Features> for DeviceFeature {
-    fn from(feature: DeviceMaintenance4Features) -> Self {
-        DeviceFeature::DeviceMaintenance4Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMaintenance4Features {
@@ -1850,12 +1762,11 @@ impl const From<PhysicalDevice4444FormatsFeaturesEXT> for FeatureType {
         FeatureType::Device4444FormatsFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum Device4444FormatsFeaturesEXT {
     FormatA4r4g4b4,
     FormatA4b4g4r4,
 }
-impl ToPhysicalFeature for Device4444FormatsFeaturesEXT {
+impl DeviceFeatureTrait for Device4444FormatsFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDevice4444FormatsFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1867,10 +1778,8 @@ impl ToPhysicalFeature for Device4444FormatsFeaturesEXT {
             }
         }
     }
-}
-impl From<Device4444FormatsFeaturesEXT> for DeviceFeature {
-    fn from(feature: Device4444FormatsFeaturesEXT) -> Self {
-        DeviceFeature::Device4444FormatsFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevice4444FormatsFeaturesEXT {
@@ -1905,20 +1814,17 @@ impl const From<PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT> for Featu
         FeatureType::DevicePrimitiveTopologyListRestartFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePrimitiveTopologyListRestartFeaturesEXT {
     PrimitiveTopologyListRestart,
     PrimitiveTopologyPatchListRestart,
 }
-impl ToPhysicalFeature for DevicePrimitiveTopologyListRestartFeaturesEXT {
+impl DeviceFeatureTrait for DevicePrimitiveTopologyListRestartFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DevicePrimitiveTopologyListRestartFeaturesEXT :: PrimitiveTopologyListRestart => PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT :: PrimitiveTopologyListRestart , DevicePrimitiveTopologyListRestartFeaturesEXT :: PrimitiveTopologyPatchListRestart => PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT :: PrimitiveTopologyPatchListRestart , }
     }
-}
-impl From<DevicePrimitiveTopologyListRestartFeaturesEXT> for DeviceFeature {
-    fn from(feature: DevicePrimitiveTopologyListRestartFeaturesEXT) -> Self {
-        DeviceFeature::DevicePrimitiveTopologyListRestartFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtPrimitiveTopologyListRestart)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT {
@@ -1956,11 +1862,10 @@ impl const From<PhysicalDeviceShaderIntegerDotProductFeatures> for FeatureType {
         FeatureType::DeviceShaderIntegerDotProductFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderIntegerDotProductFeatures {
     ShaderIntegerDotProduct,
 }
-impl ToPhysicalFeature for DeviceShaderIntegerDotProductFeatures {
+impl DeviceFeatureTrait for DeviceShaderIntegerDotProductFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderIntegerDotProductFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -1969,10 +1874,8 @@ impl ToPhysicalFeature for DeviceShaderIntegerDotProductFeatures {
             }
         }
     }
-}
-impl From<DeviceShaderIntegerDotProductFeatures> for DeviceFeature {
-    fn from(feature: DeviceShaderIntegerDotProductFeatures) -> Self {
-        DeviceFeature::DeviceShaderIntegerDotProductFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderIntegerDotProductFeatures {
@@ -2003,20 +1906,17 @@ impl const From<PhysicalDeviceInlineUniformBlockFeatures> for FeatureType {
         FeatureType::DeviceInlineUniformBlockFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceInlineUniformBlockFeatures {
     InlineUniformBlock,
     DescriptorBindingInlineUniformBlockUpdateAfterBind,
 }
-impl ToPhysicalFeature for DeviceInlineUniformBlockFeatures {
+impl DeviceFeatureTrait for DeviceInlineUniformBlockFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceInlineUniformBlockFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceInlineUniformBlockFeatures :: InlineUniformBlock => PhysicalDeviceInlineUniformBlockFeatures :: InlineUniformBlock , DeviceInlineUniformBlockFeatures :: DescriptorBindingInlineUniformBlockUpdateAfterBind => PhysicalDeviceInlineUniformBlockFeatures :: DescriptorBindingInlineUniformBlockUpdateAfterBind , }
     }
-}
-impl From<DeviceInlineUniformBlockFeatures> for DeviceFeature {
-    fn from(feature: DeviceInlineUniformBlockFeatures) -> Self {
-        DeviceFeature::DeviceInlineUniformBlockFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceInlineUniformBlockFeatures {
@@ -2052,11 +1952,10 @@ impl const From<PhysicalDeviceSeparateDepthStencilLayoutsFeatures> for FeatureTy
         FeatureType::DeviceSeparateDepthStencilLayoutsFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceSeparateDepthStencilLayoutsFeatures {
     SeparateDepthStencilLayouts,
 }
-impl ToPhysicalFeature for DeviceSeparateDepthStencilLayoutsFeatures {
+impl DeviceFeatureTrait for DeviceSeparateDepthStencilLayoutsFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceSeparateDepthStencilLayoutsFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2065,10 +1964,8 @@ impl ToPhysicalFeature for DeviceSeparateDepthStencilLayoutsFeatures {
             }
         }
     }
-}
-impl From<DeviceSeparateDepthStencilLayoutsFeatures> for DeviceFeature {
-    fn from(feature: DeviceSeparateDepthStencilLayoutsFeatures) -> Self {
-        DeviceFeature::DeviceSeparateDepthStencilLayoutsFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceSeparateDepthStencilLayoutsFeatures {
@@ -2100,11 +1997,10 @@ impl const From<PhysicalDeviceRGBA10X6FormatsFeaturesEXT> for FeatureType {
         FeatureType::DeviceRGBA10X6FormatsFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRGBA10X6FormatsFeaturesEXT {
     FormatRgba10x6WithoutYCbCrSampler,
 }
-impl ToPhysicalFeature for DeviceRGBA10X6FormatsFeaturesEXT {
+impl DeviceFeatureTrait for DeviceRGBA10X6FormatsFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRGBA10X6FormatsFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2113,10 +2009,8 @@ impl ToPhysicalFeature for DeviceRGBA10X6FormatsFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceRGBA10X6FormatsFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceRGBA10X6FormatsFeaturesEXT) -> Self {
-        DeviceFeature::DeviceRGBA10X6FormatsFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtRgba10x6Formats)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRGBA10X6FormatsFeaturesEXT {
@@ -2149,12 +2043,11 @@ impl const From<PhysicalDeviceShadingRateImageFeaturesNV> for FeatureType {
         FeatureType::DeviceShadingRateImageFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShadingRateImageFeaturesNV {
     ShadingRateImage,
     ShadingRateCoarseSampleOrder,
 }
-impl ToPhysicalFeature for DeviceShadingRateImageFeaturesNV {
+impl DeviceFeatureTrait for DeviceShadingRateImageFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShadingRateImageFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2166,10 +2059,8 @@ impl ToPhysicalFeature for DeviceShadingRateImageFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceShadingRateImageFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceShadingRateImageFeaturesNV) -> Self {
-        DeviceFeature::DeviceShadingRateImageFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvShadingRateImage)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShadingRateImageFeaturesNV {
@@ -2203,11 +2094,10 @@ impl const From<PhysicalDeviceDescriptorSetHostMappingFeaturesVALVE> for Feature
         FeatureType::DeviceDescriptorSetHostMappingFeaturesVALVE(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDescriptorSetHostMappingFeaturesVALVE {
     DescriptorSetHostMapping,
 }
-impl ToPhysicalFeature for DeviceDescriptorSetHostMappingFeaturesVALVE {
+impl DeviceFeatureTrait for DeviceDescriptorSetHostMappingFeaturesVALVE {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDescriptorSetHostMappingFeaturesVALVE;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2216,10 +2106,8 @@ impl ToPhysicalFeature for DeviceDescriptorSetHostMappingFeaturesVALVE {
             }
         }
     }
-}
-impl From<DeviceDescriptorSetHostMappingFeaturesVALVE> for DeviceFeature {
-    fn from(feature: DeviceDescriptorSetHostMappingFeaturesVALVE) -> Self {
-        DeviceFeature::DeviceDescriptorSetHostMappingFeaturesVALVE(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ValveDescriptorSetHostMapping)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDescriptorSetHostMappingFeaturesVALVE {
@@ -2253,13 +2141,12 @@ impl const From<PhysicalDeviceBufferDeviceAddressFeaturesEXT> for FeatureType {
         FeatureType::DeviceBufferDeviceAddressFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceBufferDeviceAddressFeaturesEXT {
     BufferDeviceAddress,
     BufferDeviceAddressCaptureReplay,
     BufferDeviceAddressMultiDevice,
 }
-impl ToPhysicalFeature for DeviceBufferDeviceAddressFeaturesEXT {
+impl DeviceFeatureTrait for DeviceBufferDeviceAddressFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceBufferDeviceAddressFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2274,10 +2161,8 @@ impl ToPhysicalFeature for DeviceBufferDeviceAddressFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceBufferDeviceAddressFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceBufferDeviceAddressFeaturesEXT) -> Self {
-        DeviceFeature::DeviceBufferDeviceAddressFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtBufferDeviceAddress)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceBufferDeviceAddressFeaturesEXT {
@@ -2323,11 +2208,10 @@ impl const From<PhysicalDevicePipelineExecutablePropertiesFeaturesKHR> for Featu
         FeatureType::DevicePipelineExecutablePropertiesFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePipelineExecutablePropertiesFeaturesKHR {
     PipelineExecutableInfo,
 }
-impl ToPhysicalFeature for DevicePipelineExecutablePropertiesFeaturesKHR {
+impl DeviceFeatureTrait for DevicePipelineExecutablePropertiesFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDevicePipelineExecutablePropertiesFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2336,10 +2220,8 @@ impl ToPhysicalFeature for DevicePipelineExecutablePropertiesFeaturesKHR {
             }
         }
     }
-}
-impl From<DevicePipelineExecutablePropertiesFeaturesKHR> for DeviceFeature {
-    fn from(feature: DevicePipelineExecutablePropertiesFeaturesKHR) -> Self {
-        DeviceFeature::DevicePipelineExecutablePropertiesFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrPipelineExecutableProperties)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePipelineExecutablePropertiesFeaturesKHR {
@@ -2371,11 +2253,10 @@ impl const From<PhysicalDeviceHostQueryResetFeatures> for FeatureType {
         FeatureType::DeviceHostQueryResetFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceHostQueryResetFeatures {
     HostQueryReset,
 }
-impl ToPhysicalFeature for DeviceHostQueryResetFeatures {
+impl DeviceFeatureTrait for DeviceHostQueryResetFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceHostQueryResetFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2384,10 +2265,8 @@ impl ToPhysicalFeature for DeviceHostQueryResetFeatures {
             }
         }
     }
-}
-impl From<DeviceHostQueryResetFeatures> for DeviceFeature {
-    fn from(feature: DeviceHostQueryResetFeatures) -> Self {
-        DeviceFeature::DeviceHostQueryResetFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceHostQueryResetFeatures {
@@ -2419,21 +2298,18 @@ impl const From<PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM> for
         FeatureType::DeviceRasterizationOrderAttachmentAccessFeaturesARM(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRasterizationOrderAttachmentAccessFeaturesARM {
     RasterizationOrderColorAttachmentAccess,
     RasterizationOrderDepthAttachmentAccess,
     RasterizationOrderStencilAttachmentAccess,
 }
-impl ToPhysicalFeature for DeviceRasterizationOrderAttachmentAccessFeaturesARM {
+impl DeviceFeatureTrait for DeviceRasterizationOrderAttachmentAccessFeaturesARM {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderColorAttachmentAccess => PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderColorAttachmentAccess , DeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderDepthAttachmentAccess => PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderDepthAttachmentAccess , DeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderStencilAttachmentAccess => PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM :: RasterizationOrderStencilAttachmentAccess , }
     }
-}
-impl From<DeviceRasterizationOrderAttachmentAccessFeaturesARM> for DeviceFeature {
-    fn from(feature: DeviceRasterizationOrderAttachmentAccessFeaturesARM) -> Self {
-        DeviceFeature::DeviceRasterizationOrderAttachmentAccessFeaturesARM(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ArmRasterizationOrderAttachmentAccess)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM {
@@ -2477,11 +2353,10 @@ impl const From<PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM> for FeatureT
         FeatureType::DeviceFragmentDensityMapOffsetFeaturesQCOM(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentDensityMapOffsetFeaturesQCOM {
     FragmentDensityMapOffset,
 }
-impl ToPhysicalFeature for DeviceFragmentDensityMapOffsetFeaturesQCOM {
+impl DeviceFeatureTrait for DeviceFragmentDensityMapOffsetFeaturesQCOM {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2490,10 +2365,8 @@ impl ToPhysicalFeature for DeviceFragmentDensityMapOffsetFeaturesQCOM {
             }
         }
     }
-}
-impl From<DeviceFragmentDensityMapOffsetFeaturesQCOM> for DeviceFeature {
-    fn from(feature: DeviceFragmentDensityMapOffsetFeaturesQCOM) -> Self {
-        DeviceFeature::DeviceFragmentDensityMapOffsetFeaturesQCOM(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::QcomFragmentDensityMapOffset)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM {
@@ -2526,12 +2399,11 @@ impl const From<PhysicalDeviceTransformFeedbackFeaturesEXT> for FeatureType {
         FeatureType::DeviceTransformFeedbackFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceTransformFeedbackFeaturesEXT {
     TransformFeedback,
     GeometryStreams,
 }
-impl ToPhysicalFeature for DeviceTransformFeedbackFeaturesEXT {
+impl DeviceFeatureTrait for DeviceTransformFeedbackFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceTransformFeedbackFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2543,10 +2415,8 @@ impl ToPhysicalFeature for DeviceTransformFeedbackFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceTransformFeedbackFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceTransformFeedbackFeaturesEXT) -> Self {
-        DeviceFeature::DeviceTransformFeedbackFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtTransformFeedback)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceTransformFeedbackFeaturesEXT {
@@ -2581,12 +2451,11 @@ impl const From<PhysicalDevicePerformanceQueryFeaturesKHR> for FeatureType {
         FeatureType::DevicePerformanceQueryFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePerformanceQueryFeaturesKHR {
     PerformanceCounterQueryPools,
     PerformanceCounterMultipleQueryPools,
 }
-impl ToPhysicalFeature for DevicePerformanceQueryFeaturesKHR {
+impl DeviceFeatureTrait for DevicePerformanceQueryFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDevicePerformanceQueryFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2598,10 +2467,8 @@ impl ToPhysicalFeature for DevicePerformanceQueryFeaturesKHR {
             }
         }
     }
-}
-impl From<DevicePerformanceQueryFeaturesKHR> for DeviceFeature {
-    fn from(feature: DevicePerformanceQueryFeaturesKHR) -> Self {
-        DeviceFeature::DevicePerformanceQueryFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrPerformanceQuery)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePerformanceQueryFeaturesKHR {
@@ -2639,19 +2506,16 @@ impl const From<PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV> for Fe
         FeatureType::DeviceDedicatedAllocationImageAliasingFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDedicatedAllocationImageAliasingFeaturesNV {
     DedicatedAllocationImageAliasing,
 }
-impl ToPhysicalFeature for DeviceDedicatedAllocationImageAliasingFeaturesNV {
+impl DeviceFeatureTrait for DeviceDedicatedAllocationImageAliasingFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceDedicatedAllocationImageAliasingFeaturesNV :: DedicatedAllocationImageAliasing => PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV :: DedicatedAllocationImageAliasing , }
     }
-}
-impl From<DeviceDedicatedAllocationImageAliasingFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceDedicatedAllocationImageAliasingFeaturesNV) -> Self {
-        DeviceFeature::DeviceDedicatedAllocationImageAliasingFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvDedicatedAllocationImageAliasing)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV {
@@ -2683,11 +2547,10 @@ impl const From<PhysicalDeviceImageViewMinLodFeaturesEXT> for FeatureType {
         FeatureType::DeviceImageViewMinLodFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceImageViewMinLodFeaturesEXT {
     MinLod,
 }
-impl ToPhysicalFeature for DeviceImageViewMinLodFeaturesEXT {
+impl DeviceFeatureTrait for DeviceImageViewMinLodFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceImageViewMinLodFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2696,10 +2559,8 @@ impl ToPhysicalFeature for DeviceImageViewMinLodFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceImageViewMinLodFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceImageViewMinLodFeaturesEXT) -> Self {
-        DeviceFeature::DeviceImageViewMinLodFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtImageViewMinLod)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceImageViewMinLodFeaturesEXT {
@@ -2729,19 +2590,16 @@ impl const From<PhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR> for F
         FeatureType::DeviceShaderSubgroupUniformControlFlowFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderSubgroupUniformControlFlowFeaturesKHR {
     ShaderSubgroupUniformControlFlow,
 }
-impl ToPhysicalFeature for DeviceShaderSubgroupUniformControlFlowFeaturesKHR {
+impl DeviceFeatureTrait for DeviceShaderSubgroupUniformControlFlowFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceShaderSubgroupUniformControlFlowFeaturesKHR :: ShaderSubgroupUniformControlFlow => PhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR :: ShaderSubgroupUniformControlFlow , }
     }
-}
-impl From<DeviceShaderSubgroupUniformControlFlowFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceShaderSubgroupUniformControlFlowFeaturesKHR) -> Self {
-        DeviceFeature::DeviceShaderSubgroupUniformControlFlowFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrShaderSubgroupUniformControlFlow)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR {
@@ -2827,7 +2685,6 @@ impl const From<PhysicalDeviceFeatures> for FeatureType {
         FeatureType::DeviceFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFeatures {
     RobustBufferAccess,
     FullDrawIndexUint32,
@@ -2885,7 +2742,7 @@ pub enum DeviceFeatures {
     VariableMultisampleRate,
     InheritedQueries,
 }
-impl ToPhysicalFeature for DeviceFeatures {
+impl DeviceFeatureTrait for DeviceFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -2996,10 +2853,8 @@ impl ToPhysicalFeature for DeviceFeatures {
             DeviceFeatures::InheritedQueries => PhysicalDeviceFeatures::InheritedQueries,
         }
     }
-}
-impl From<DeviceFeatures> for DeviceFeature {
-    fn from(feature: DeviceFeatures) -> Self {
-        DeviceFeature::DeviceFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFeatures {
@@ -3262,11 +3117,10 @@ impl const From<PhysicalDeviceIndexTypeUint8FeaturesEXT> for FeatureType {
         FeatureType::DeviceIndexTypeUint8FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceIndexTypeUint8FeaturesEXT {
     IndexTypeUint8,
 }
-impl ToPhysicalFeature for DeviceIndexTypeUint8FeaturesEXT {
+impl DeviceFeatureTrait for DeviceIndexTypeUint8FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceIndexTypeUint8FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -3275,10 +3129,8 @@ impl ToPhysicalFeature for DeviceIndexTypeUint8FeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceIndexTypeUint8FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceIndexTypeUint8FeaturesEXT) -> Self {
-        DeviceFeature::DeviceIndexTypeUint8FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtIndexTypeUint8)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceIndexTypeUint8FeaturesEXT {
@@ -3354,7 +3206,6 @@ impl const From<PhysicalDeviceVulkan12Features> for FeatureType {
         FeatureType::DeviceVulkan12Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVulkan12Features {
     SamplerMirrorClampToEdge,
     DrawIndirectCount,
@@ -3404,7 +3255,7 @@ pub enum DeviceVulkan12Features {
     ShaderOutputLayer,
     SubgroupBroadcastDynamicId,
 }
-impl ToPhysicalFeature for DeviceVulkan12Features {
+impl DeviceFeatureTrait for DeviceVulkan12Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVulkan12Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -3547,10 +3398,8 @@ impl ToPhysicalFeature for DeviceVulkan12Features {
             }
         }
     }
-}
-impl From<DeviceVulkan12Features> for DeviceFeature {
-    fn from(feature: DeviceVulkan12Features) -> Self {
-        DeviceFeature::DeviceVulkan12Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVulkan12Features {
@@ -3834,11 +3683,10 @@ impl const From<PhysicalDeviceDiagnosticsConfigFeaturesNV> for FeatureType {
         FeatureType::DeviceDiagnosticsConfigFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDiagnosticsConfigFeaturesNV {
     DiagnosticsConfig,
 }
-impl ToPhysicalFeature for DeviceDiagnosticsConfigFeaturesNV {
+impl DeviceFeatureTrait for DeviceDiagnosticsConfigFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDiagnosticsConfigFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -3847,10 +3695,8 @@ impl ToPhysicalFeature for DeviceDiagnosticsConfigFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceDiagnosticsConfigFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceDiagnosticsConfigFeaturesNV) -> Self {
-        DeviceFeature::DeviceDiagnosticsConfigFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvDeviceDiagnosticsConfig)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDiagnosticsConfigFeaturesNV {
@@ -3882,13 +3728,12 @@ impl const From<PhysicalDeviceFragmentShadingRateFeaturesKHR> for FeatureType {
         FeatureType::DeviceFragmentShadingRateFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentShadingRateFeaturesKHR {
     PipelineFragmentShadingRate,
     PrimitiveFragmentShadingRate,
     AttachmentFragmentShadingRate,
 }
-impl ToPhysicalFeature for DeviceFragmentShadingRateFeaturesKHR {
+impl DeviceFeatureTrait for DeviceFragmentShadingRateFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentShadingRateFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -3903,10 +3748,8 @@ impl ToPhysicalFeature for DeviceFragmentShadingRateFeaturesKHR {
             }
         }
     }
-}
-impl From<DeviceFragmentShadingRateFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceFragmentShadingRateFeaturesKHR) -> Self {
-        DeviceFeature::DeviceFragmentShadingRateFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrFragmentShadingRate)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentShadingRateFeaturesKHR {
@@ -3949,7 +3792,6 @@ impl const From<PhysicalDeviceLineRasterizationFeaturesEXT> for FeatureType {
         FeatureType::DeviceLineRasterizationFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceLineRasterizationFeaturesEXT {
     RectangularLines,
     BresenhamLines,
@@ -3958,7 +3800,7 @@ pub enum DeviceLineRasterizationFeaturesEXT {
     StippledBresenhamLines,
     StippledSmoothLines,
 }
-impl ToPhysicalFeature for DeviceLineRasterizationFeaturesEXT {
+impl DeviceFeatureTrait for DeviceLineRasterizationFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceLineRasterizationFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -3982,10 +3824,8 @@ impl ToPhysicalFeature for DeviceLineRasterizationFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceLineRasterizationFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceLineRasterizationFeaturesEXT) -> Self {
-        DeviceFeature::DeviceLineRasterizationFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtLineRasterization)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceLineRasterizationFeaturesEXT {
@@ -4036,12 +3876,11 @@ impl const From<PhysicalDeviceProvokingVertexFeaturesEXT> for FeatureType {
         FeatureType::DeviceProvokingVertexFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceProvokingVertexFeaturesEXT {
     ProvokingVertexLast,
     TransformFeedbackPreservesProvokingVertex,
 }
-impl ToPhysicalFeature for DeviceProvokingVertexFeaturesEXT {
+impl DeviceFeatureTrait for DeviceProvokingVertexFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceProvokingVertexFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4053,10 +3892,8 @@ impl ToPhysicalFeature for DeviceProvokingVertexFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceProvokingVertexFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceProvokingVertexFeaturesEXT) -> Self {
-        DeviceFeature::DeviceProvokingVertexFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtProvokingVertex)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceProvokingVertexFeaturesEXT {
@@ -4094,11 +3931,10 @@ impl const From<PhysicalDeviceExtendedDynamicStateFeaturesEXT> for FeatureType {
         FeatureType::DeviceExtendedDynamicStateFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceExtendedDynamicStateFeaturesEXT {
     ExtendedDynamicState,
 }
-impl ToPhysicalFeature for DeviceExtendedDynamicStateFeaturesEXT {
+impl DeviceFeatureTrait for DeviceExtendedDynamicStateFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceExtendedDynamicStateFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4107,10 +3943,8 @@ impl ToPhysicalFeature for DeviceExtendedDynamicStateFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceExtendedDynamicStateFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceExtendedDynamicStateFeaturesEXT) -> Self {
-        DeviceFeature::DeviceExtendedDynamicStateFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT {
@@ -4140,21 +3974,24 @@ impl const From<PhysicalDevicePresentIdFeaturesKHR> for FeatureType {
         FeatureType::DevicePresentIdFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePresentIdFeaturesKHR {
-    PresentId,
+    PresentId(
+        crate::extensions::InstanceExtension<
+            { crate::extensions::PhysicalInstanceExtensionType::KhrSurface },
+        >,
+    ),
 }
-impl ToPhysicalFeature for DevicePresentIdFeaturesKHR {
+impl DeviceFeatureTrait for DevicePresentIdFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDevicePresentIdFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
-            DevicePresentIdFeaturesKHR::PresentId => PhysicalDevicePresentIdFeaturesKHR::PresentId,
+            DevicePresentIdFeaturesKHR::PresentId(..) => {
+                PhysicalDevicePresentIdFeaturesKHR::PresentId
+            }
         }
     }
-}
-impl From<DevicePresentIdFeaturesKHR> for DeviceFeature {
-    fn from(feature: DevicePresentIdFeaturesKHR) -> Self {
-        DeviceFeature::DevicePresentIdFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrPresentId)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePresentIdFeaturesKHR {
@@ -4184,11 +4021,10 @@ impl const From<PhysicalDeviceDeviceMemoryReportFeaturesEXT> for FeatureType {
         FeatureType::DeviceDeviceMemoryReportFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDeviceMemoryReportFeaturesEXT {
     DeviceMemoryReport,
 }
-impl ToPhysicalFeature for DeviceDeviceMemoryReportFeaturesEXT {
+impl DeviceFeatureTrait for DeviceDeviceMemoryReportFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDeviceMemoryReportFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4197,10 +4033,8 @@ impl ToPhysicalFeature for DeviceDeviceMemoryReportFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceDeviceMemoryReportFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceDeviceMemoryReportFeaturesEXT) -> Self {
-        DeviceFeature::DeviceDeviceMemoryReportFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtDeviceMemoryReport)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDeviceMemoryReportFeaturesEXT {
@@ -4233,14 +4067,13 @@ impl const From<PhysicalDevice16BitStorageFeatures> for FeatureType {
         FeatureType::Device16BitStorageFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum Device16BitStorageFeatures {
     StorageBuffer16BitAccess,
     UniformAndStorageBuffer16BitAccess,
     StoragePushConstant16,
     StorageInputOutput16,
 }
-impl ToPhysicalFeature for Device16BitStorageFeatures {
+impl DeviceFeatureTrait for Device16BitStorageFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDevice16BitStorageFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4258,10 +4091,8 @@ impl ToPhysicalFeature for Device16BitStorageFeatures {
             }
         }
     }
-}
-impl From<Device16BitStorageFeatures> for DeviceFeature {
-    fn from(feature: Device16BitStorageFeatures) -> Self {
-        DeviceFeature::Device16BitStorageFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevice16BitStorageFeatures {
@@ -4307,13 +4138,12 @@ impl const From<PhysicalDeviceBufferDeviceAddressFeatures> for FeatureType {
         FeatureType::DeviceBufferDeviceAddressFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceBufferDeviceAddressFeatures {
     BufferDeviceAddress,
     BufferDeviceAddressCaptureReplay,
     BufferDeviceAddressMultiDevice,
 }
-impl ToPhysicalFeature for DeviceBufferDeviceAddressFeatures {
+impl DeviceFeatureTrait for DeviceBufferDeviceAddressFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceBufferDeviceAddressFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4328,10 +4158,8 @@ impl ToPhysicalFeature for DeviceBufferDeviceAddressFeatures {
             }
         }
     }
-}
-impl From<DeviceBufferDeviceAddressFeatures> for DeviceFeature {
-    fn from(feature: DeviceBufferDeviceAddressFeatures) -> Self {
-        DeviceFeature::DeviceBufferDeviceAddressFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceBufferDeviceAddressFeatures {
@@ -4373,11 +4201,10 @@ impl const From<PhysicalDeviceCoherentMemoryFeaturesAMD> for FeatureType {
         FeatureType::DeviceCoherentMemoryFeaturesAMD(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceCoherentMemoryFeaturesAMD {
     DeviceCoherentMemory,
 }
-impl ToPhysicalFeature for DeviceCoherentMemoryFeaturesAMD {
+impl DeviceFeatureTrait for DeviceCoherentMemoryFeaturesAMD {
     type PhysicalDeviceFeatureTy = PhysicalDeviceCoherentMemoryFeaturesAMD;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4386,10 +4213,8 @@ impl ToPhysicalFeature for DeviceCoherentMemoryFeaturesAMD {
             }
         }
     }
-}
-impl From<DeviceCoherentMemoryFeaturesAMD> for DeviceFeature {
-    fn from(feature: DeviceCoherentMemoryFeaturesAMD) -> Self {
-        DeviceFeature::DeviceCoherentMemoryFeaturesAMD(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::AmdDeviceCoherentMemory)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceCoherentMemoryFeaturesAMD {
@@ -4419,11 +4244,10 @@ impl const From<PhysicalDeviceColorWriteEnableFeaturesEXT> for FeatureType {
         FeatureType::DeviceColorWriteEnableFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceColorWriteEnableFeaturesEXT {
     ColorWriteEnable,
 }
-impl ToPhysicalFeature for DeviceColorWriteEnableFeaturesEXT {
+impl DeviceFeatureTrait for DeviceColorWriteEnableFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceColorWriteEnableFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4432,10 +4256,8 @@ impl ToPhysicalFeature for DeviceColorWriteEnableFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceColorWriteEnableFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceColorWriteEnableFeaturesEXT) -> Self {
-        DeviceFeature::DeviceColorWriteEnableFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtColorWriteEnable)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceColorWriteEnableFeaturesEXT {
@@ -4465,21 +4287,18 @@ impl const From<PhysicalDeviceMultiDrawFeaturesEXT> for FeatureType {
         FeatureType::DeviceMultiDrawFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMultiDrawFeaturesEXT {
     MultiDraw,
 }
-impl ToPhysicalFeature for DeviceMultiDrawFeaturesEXT {
+impl DeviceFeatureTrait for DeviceMultiDrawFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMultiDrawFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
             DeviceMultiDrawFeaturesEXT::MultiDraw => PhysicalDeviceMultiDrawFeaturesEXT::MultiDraw,
         }
     }
-}
-impl From<DeviceMultiDrawFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceMultiDrawFeaturesEXT) -> Self {
-        DeviceFeature::DeviceMultiDrawFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtMultiDraw)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMultiDrawFeaturesEXT {
@@ -4509,11 +4328,10 @@ impl const From<PhysicalDeviceSamplerYcbcrConversionFeatures> for FeatureType {
         FeatureType::DeviceSamplerYcbcrConversionFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceSamplerYcbcrConversionFeatures {
     SamplerYcbcrConversion,
 }
-impl ToPhysicalFeature for DeviceSamplerYcbcrConversionFeatures {
+impl DeviceFeatureTrait for DeviceSamplerYcbcrConversionFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceSamplerYcbcrConversionFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4522,10 +4340,8 @@ impl ToPhysicalFeature for DeviceSamplerYcbcrConversionFeatures {
             }
         }
     }
-}
-impl From<DeviceSamplerYcbcrConversionFeatures> for DeviceFeature {
-    fn from(feature: DeviceSamplerYcbcrConversionFeatures) -> Self {
-        DeviceFeature::DeviceSamplerYcbcrConversionFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceSamplerYcbcrConversionFeatures {
@@ -4556,12 +4372,11 @@ impl const From<PhysicalDeviceCustomBorderColorFeaturesEXT> for FeatureType {
         FeatureType::DeviceCustomBorderColorFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceCustomBorderColorFeaturesEXT {
     CustomBorderColors,
     CustomBorderColorWithoutFormat,
 }
-impl ToPhysicalFeature for DeviceCustomBorderColorFeaturesEXT {
+impl DeviceFeatureTrait for DeviceCustomBorderColorFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceCustomBorderColorFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4573,10 +4388,8 @@ impl ToPhysicalFeature for DeviceCustomBorderColorFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceCustomBorderColorFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceCustomBorderColorFeaturesEXT) -> Self {
-        DeviceFeature::DeviceCustomBorderColorFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtCustomBorderColor)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceCustomBorderColorFeaturesEXT {
@@ -4613,12 +4426,11 @@ impl const From<PhysicalDeviceBorderColorSwizzleFeaturesEXT> for FeatureType {
         FeatureType::DeviceBorderColorSwizzleFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceBorderColorSwizzleFeaturesEXT {
     BorderColorSwizzle,
     BorderColorSwizzleFromImage,
 }
-impl ToPhysicalFeature for DeviceBorderColorSwizzleFeaturesEXT {
+impl DeviceFeatureTrait for DeviceBorderColorSwizzleFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceBorderColorSwizzleFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4630,10 +4442,8 @@ impl ToPhysicalFeature for DeviceBorderColorSwizzleFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceBorderColorSwizzleFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceBorderColorSwizzleFeaturesEXT) -> Self {
-        DeviceFeature::DeviceBorderColorSwizzleFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtBorderColorSwizzle)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceBorderColorSwizzleFeaturesEXT {
@@ -4671,7 +4481,6 @@ impl const From<PhysicalDeviceAccelerationStructureFeaturesKHR> for FeatureType 
         FeatureType::DeviceAccelerationStructureFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceAccelerationStructureFeaturesKHR {
     AccelerationStructure,
     AccelerationStructureCaptureReplay,
@@ -4679,15 +4488,13 @@ pub enum DeviceAccelerationStructureFeaturesKHR {
     AccelerationStructureHostCommands,
     DescriptorBindingAccelerationStructureUpdateAfterBind,
 }
-impl ToPhysicalFeature for DeviceAccelerationStructureFeaturesKHR {
+impl DeviceFeatureTrait for DeviceAccelerationStructureFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceAccelerationStructureFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceAccelerationStructureFeaturesKHR :: AccelerationStructure => PhysicalDeviceAccelerationStructureFeaturesKHR :: AccelerationStructure , DeviceAccelerationStructureFeaturesKHR :: AccelerationStructureCaptureReplay => PhysicalDeviceAccelerationStructureFeaturesKHR :: AccelerationStructureCaptureReplay , DeviceAccelerationStructureFeaturesKHR :: AccelerationStructureIndirectBuild => PhysicalDeviceAccelerationStructureFeaturesKHR :: AccelerationStructureIndirectBuild , DeviceAccelerationStructureFeaturesKHR :: AccelerationStructureHostCommands => PhysicalDeviceAccelerationStructureFeaturesKHR :: AccelerationStructureHostCommands , DeviceAccelerationStructureFeaturesKHR :: DescriptorBindingAccelerationStructureUpdateAfterBind => PhysicalDeviceAccelerationStructureFeaturesKHR :: DescriptorBindingAccelerationStructureUpdateAfterBind , }
     }
-}
-impl From<DeviceAccelerationStructureFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceAccelerationStructureFeaturesKHR) -> Self {
-        DeviceFeature::DeviceAccelerationStructureFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrAccelerationStructure)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceAccelerationStructureFeaturesKHR {
@@ -4747,11 +4554,10 @@ impl const From<PhysicalDeviceBlendOperationAdvancedFeaturesEXT> for FeatureType
         FeatureType::DeviceBlendOperationAdvancedFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceBlendOperationAdvancedFeaturesEXT {
     AdvancedBlendCoherentOperations,
 }
-impl ToPhysicalFeature for DeviceBlendOperationAdvancedFeaturesEXT {
+impl DeviceFeatureTrait for DeviceBlendOperationAdvancedFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceBlendOperationAdvancedFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4760,10 +4566,8 @@ impl ToPhysicalFeature for DeviceBlendOperationAdvancedFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceBlendOperationAdvancedFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceBlendOperationAdvancedFeaturesEXT) -> Self {
-        DeviceFeature::DeviceBlendOperationAdvancedFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtBlendOperationAdvanced)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceBlendOperationAdvancedFeaturesEXT {
@@ -4797,11 +4601,10 @@ impl const From<PhysicalDeviceLinearColorAttachmentFeaturesNV> for FeatureType {
         FeatureType::DeviceLinearColorAttachmentFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceLinearColorAttachmentFeaturesNV {
     LinearColorAttachment,
 }
-impl ToPhysicalFeature for DeviceLinearColorAttachmentFeaturesNV {
+impl DeviceFeatureTrait for DeviceLinearColorAttachmentFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceLinearColorAttachmentFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4810,10 +4613,8 @@ impl ToPhysicalFeature for DeviceLinearColorAttachmentFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceLinearColorAttachmentFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceLinearColorAttachmentFeaturesNV) -> Self {
-        DeviceFeature::DeviceLinearColorAttachmentFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvLinearColorAttachment)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceLinearColorAttachmentFeaturesNV {
@@ -4844,12 +4645,11 @@ impl const From<PhysicalDeviceConditionalRenderingFeaturesEXT> for FeatureType {
         FeatureType::DeviceConditionalRenderingFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceConditionalRenderingFeaturesEXT {
     ConditionalRendering,
     InheritedConditionalRendering,
 }
-impl ToPhysicalFeature for DeviceConditionalRenderingFeaturesEXT {
+impl DeviceFeatureTrait for DeviceConditionalRenderingFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceConditionalRenderingFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4861,10 +4661,8 @@ impl ToPhysicalFeature for DeviceConditionalRenderingFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceConditionalRenderingFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceConditionalRenderingFeaturesEXT) -> Self {
-        DeviceFeature::DeviceConditionalRenderingFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtConditionalRendering)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceConditionalRenderingFeaturesEXT {
@@ -4900,11 +4698,10 @@ impl const From<PhysicalDeviceYcbcrImageArraysFeaturesEXT> for FeatureType {
         FeatureType::DeviceYcbcrImageArraysFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceYcbcrImageArraysFeaturesEXT {
     YcbcrImageArrays,
 }
-impl ToPhysicalFeature for DeviceYcbcrImageArraysFeaturesEXT {
+impl DeviceFeatureTrait for DeviceYcbcrImageArraysFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceYcbcrImageArraysFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4913,10 +4710,8 @@ impl ToPhysicalFeature for DeviceYcbcrImageArraysFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceYcbcrImageArraysFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceYcbcrImageArraysFeaturesEXT) -> Self {
-        DeviceFeature::DeviceYcbcrImageArraysFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtYcbcrImageArrays)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceYcbcrImageArraysFeaturesEXT {
@@ -4946,11 +4741,10 @@ impl const From<PhysicalDeviceImageRobustnessFeatures> for FeatureType {
         FeatureType::DeviceImageRobustnessFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceImageRobustnessFeatures {
     RobustImageAccess,
 }
-impl ToPhysicalFeature for DeviceImageRobustnessFeatures {
+impl DeviceFeatureTrait for DeviceImageRobustnessFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceImageRobustnessFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -4959,10 +4753,8 @@ impl ToPhysicalFeature for DeviceImageRobustnessFeatures {
             }
         }
     }
-}
-impl From<DeviceImageRobustnessFeatures> for DeviceFeature {
-    fn from(feature: DeviceImageRobustnessFeatures) -> Self {
-        DeviceFeature::DeviceImageRobustnessFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceImageRobustnessFeatures {
@@ -4994,13 +4786,12 @@ impl const From<PhysicalDevice8BitStorageFeatures> for FeatureType {
         FeatureType::Device8BitStorageFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum Device8BitStorageFeatures {
     StorageBuffer8BitAccess,
     UniformAndStorageBuffer8BitAccess,
     StoragePushConstant8,
 }
-impl ToPhysicalFeature for Device8BitStorageFeatures {
+impl DeviceFeatureTrait for Device8BitStorageFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDevice8BitStorageFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5015,10 +4806,8 @@ impl ToPhysicalFeature for Device8BitStorageFeatures {
             }
         }
     }
-}
-impl From<Device8BitStorageFeatures> for DeviceFeature {
-    fn from(feature: Device8BitStorageFeatures) -> Self {
-        DeviceFeature::Device8BitStorageFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevice8BitStorageFeatures {
@@ -5069,7 +4858,6 @@ impl const From<PhysicalDeviceVulkan11Features> for FeatureType {
         FeatureType::DeviceVulkan11Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVulkan11Features {
     StorageBuffer16BitAccess,
     UniformAndStorageBuffer16BitAccess,
@@ -5084,7 +4872,7 @@ pub enum DeviceVulkan11Features {
     SamplerYcbcrConversion,
     ShaderDrawParameters,
 }
-impl ToPhysicalFeature for DeviceVulkan11Features {
+impl DeviceFeatureTrait for DeviceVulkan11Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVulkan11Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5124,10 +4912,8 @@ impl ToPhysicalFeature for DeviceVulkan11Features {
             }
         }
     }
-}
-impl From<DeviceVulkan11Features> for DeviceFeature {
-    fn from(feature: DeviceVulkan11Features) -> Self {
-        DeviceFeature::DeviceVulkan11Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVulkan11Features {
@@ -5203,11 +4989,10 @@ impl const From<PhysicalDeviceDepthClipControlFeaturesEXT> for FeatureType {
         FeatureType::DeviceDepthClipControlFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDepthClipControlFeaturesEXT {
     DepthClipControl,
 }
-impl ToPhysicalFeature for DeviceDepthClipControlFeaturesEXT {
+impl DeviceFeatureTrait for DeviceDepthClipControlFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDepthClipControlFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5216,10 +5001,8 @@ impl ToPhysicalFeature for DeviceDepthClipControlFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceDepthClipControlFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceDepthClipControlFeaturesEXT) -> Self {
-        DeviceFeature::DeviceDepthClipControlFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtDepthClipControl)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDepthClipControlFeaturesEXT {
@@ -5249,11 +5032,10 @@ impl const From<PhysicalDeviceASTCDecodeFeaturesEXT> for FeatureType {
         FeatureType::DeviceASTCDecodeFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceASTCDecodeFeaturesEXT {
     DecodeModeSharedExponent,
 }
-impl ToPhysicalFeature for DeviceASTCDecodeFeaturesEXT {
+impl DeviceFeatureTrait for DeviceASTCDecodeFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceASTCDecodeFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5262,10 +5044,8 @@ impl ToPhysicalFeature for DeviceASTCDecodeFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceASTCDecodeFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceASTCDecodeFeaturesEXT) -> Self {
-        DeviceFeature::DeviceASTCDecodeFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtAstcDecodeMode)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceASTCDecodeFeaturesEXT {
@@ -5296,12 +5076,11 @@ impl const From<PhysicalDeviceCooperativeMatrixFeaturesNV> for FeatureType {
         FeatureType::DeviceCooperativeMatrixFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceCooperativeMatrixFeaturesNV {
     CooperativeMatrix,
     CooperativeMatrixRobustBufferAccess,
 }
-impl ToPhysicalFeature for DeviceCooperativeMatrixFeaturesNV {
+impl DeviceFeatureTrait for DeviceCooperativeMatrixFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceCooperativeMatrixFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5313,10 +5092,8 @@ impl ToPhysicalFeature for DeviceCooperativeMatrixFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceCooperativeMatrixFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceCooperativeMatrixFeaturesNV) -> Self {
-        DeviceFeature::DeviceCooperativeMatrixFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvCooperativeMatrix)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceCooperativeMatrixFeaturesNV {
@@ -5355,12 +5132,11 @@ impl const From<PhysicalDeviceVariablePointersFeatures> for FeatureType {
         FeatureType::DeviceVariablePointersFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVariablePointersFeatures {
     VariablePointersStorageBuffer,
     VariablePointers,
 }
-impl ToPhysicalFeature for DeviceVariablePointersFeatures {
+impl DeviceFeatureTrait for DeviceVariablePointersFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVariablePointersFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5372,10 +5148,8 @@ impl ToPhysicalFeature for DeviceVariablePointersFeatures {
             }
         }
     }
-}
-impl From<DeviceVariablePointersFeatures> for DeviceFeature {
-    fn from(feature: DeviceVariablePointersFeatures) -> Self {
-        DeviceFeature::DeviceVariablePointersFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVariablePointersFeatures {
@@ -5423,7 +5197,6 @@ impl const From<PhysicalDevicePortabilitySubsetFeaturesKHR> for FeatureType {
         FeatureType::DevicePortabilitySubsetFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePortabilitySubsetFeaturesKHR {
     ConstantAlphaColorBlendFactors,
     Events,
@@ -5441,7 +5214,7 @@ pub enum DevicePortabilitySubsetFeaturesKHR {
     TriangleFans,
     VertexAttributeAccessBeyondStride,
 }
-impl ToPhysicalFeature for DevicePortabilitySubsetFeaturesKHR {
+impl DeviceFeatureTrait for DevicePortabilitySubsetFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDevicePortabilitySubsetFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5492,10 +5265,8 @@ impl ToPhysicalFeature for DevicePortabilitySubsetFeaturesKHR {
             }
         }
     }
-}
-impl From<DevicePortabilitySubsetFeaturesKHR> for DeviceFeature {
-    fn from(feature: DevicePortabilitySubsetFeaturesKHR) -> Self {
-        DeviceFeature::DevicePortabilitySubsetFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrPortabilitySubset)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePortabilitySubsetFeaturesKHR {
@@ -5593,11 +5364,10 @@ impl const From<PhysicalDeviceShaderImageFootprintFeaturesNV> for FeatureType {
         FeatureType::DeviceShaderImageFootprintFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderImageFootprintFeaturesNV {
     ImageFootprint,
 }
-impl ToPhysicalFeature for DeviceShaderImageFootprintFeaturesNV {
+impl DeviceFeatureTrait for DeviceShaderImageFootprintFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderImageFootprintFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5606,10 +5376,8 @@ impl ToPhysicalFeature for DeviceShaderImageFootprintFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceShaderImageFootprintFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceShaderImageFootprintFeaturesNV) -> Self {
-        DeviceFeature::DeviceShaderImageFootprintFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvShaderImageFootprint)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderImageFootprintFeaturesNV {
@@ -5639,11 +5407,10 @@ impl const From<PhysicalDeviceTexelBufferAlignmentFeaturesEXT> for FeatureType {
         FeatureType::DeviceTexelBufferAlignmentFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceTexelBufferAlignmentFeaturesEXT {
     TexelBufferAlignment,
 }
-impl ToPhysicalFeature for DeviceTexelBufferAlignmentFeaturesEXT {
+impl DeviceFeatureTrait for DeviceTexelBufferAlignmentFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceTexelBufferAlignmentFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5652,10 +5419,8 @@ impl ToPhysicalFeature for DeviceTexelBufferAlignmentFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceTexelBufferAlignmentFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceTexelBufferAlignmentFeaturesEXT) -> Self {
-        DeviceFeature::DeviceTexelBufferAlignmentFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceTexelBufferAlignmentFeaturesEXT {
@@ -5685,11 +5450,10 @@ impl const From<PhysicalDeviceImagelessFramebufferFeatures> for FeatureType {
         FeatureType::DeviceImagelessFramebufferFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceImagelessFramebufferFeatures {
     ImagelessFramebuffer,
 }
-impl ToPhysicalFeature for DeviceImagelessFramebufferFeatures {
+impl DeviceFeatureTrait for DeviceImagelessFramebufferFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceImagelessFramebufferFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5698,10 +5462,8 @@ impl ToPhysicalFeature for DeviceImagelessFramebufferFeatures {
             }
         }
     }
-}
-impl From<DeviceImagelessFramebufferFeatures> for DeviceFeature {
-    fn from(feature: DeviceImagelessFramebufferFeatures) -> Self {
-        DeviceFeature::DeviceImagelessFramebufferFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceImagelessFramebufferFeatures {
@@ -5731,11 +5493,10 @@ impl const From<PhysicalDeviceShaderSMBuiltinsFeaturesNV> for FeatureType {
         FeatureType::DeviceShaderSMBuiltinsFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderSMBuiltinsFeaturesNV {
     ShaderSmBuiltins,
 }
-impl ToPhysicalFeature for DeviceShaderSMBuiltinsFeaturesNV {
+impl DeviceFeatureTrait for DeviceShaderSMBuiltinsFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderSMBuiltinsFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5744,10 +5505,8 @@ impl ToPhysicalFeature for DeviceShaderSMBuiltinsFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceShaderSMBuiltinsFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceShaderSMBuiltinsFeaturesNV) -> Self {
-        DeviceFeature::DeviceShaderSMBuiltinsFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvShaderSmBuiltins)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderSMBuiltinsFeaturesNV {
@@ -5777,11 +5536,10 @@ impl const From<PhysicalDeviceFragmentShaderBarycentricFeaturesNV> for FeatureTy
         FeatureType::DeviceFragmentShaderBarycentricFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentShaderBarycentricFeaturesNV {
     FragmentShaderBarycentric,
 }
-impl ToPhysicalFeature for DeviceFragmentShaderBarycentricFeaturesNV {
+impl DeviceFeatureTrait for DeviceFragmentShaderBarycentricFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentShaderBarycentricFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5790,10 +5548,8 @@ impl ToPhysicalFeature for DeviceFragmentShaderBarycentricFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceFragmentShaderBarycentricFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceFragmentShaderBarycentricFeaturesNV) -> Self {
-        DeviceFeature::DeviceFragmentShaderBarycentricFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvFragmentShaderBarycentric)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentShaderBarycentricFeaturesNV {
@@ -5825,11 +5581,10 @@ impl const From<PhysicalDeviceTextureCompressionASTCHDRFeatures> for FeatureType
         FeatureType::DeviceTextureCompressionASTCHDRFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceTextureCompressionASTCHDRFeatures {
     TextureCompressionAstcHdr,
 }
-impl ToPhysicalFeature for DeviceTextureCompressionASTCHDRFeatures {
+impl DeviceFeatureTrait for DeviceTextureCompressionASTCHDRFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceTextureCompressionASTCHDRFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5838,10 +5593,8 @@ impl ToPhysicalFeature for DeviceTextureCompressionASTCHDRFeatures {
             }
         }
     }
-}
-impl From<DeviceTextureCompressionASTCHDRFeatures> for DeviceFeature {
-    fn from(feature: DeviceTextureCompressionASTCHDRFeatures) -> Self {
-        DeviceFeature::DeviceTextureCompressionASTCHDRFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceTextureCompressionASTCHDRFeatures {
@@ -5871,11 +5624,10 @@ impl const From<PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT> for FeatureT
         FeatureType::DevicePageableDeviceLocalMemoryFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DevicePageableDeviceLocalMemoryFeaturesEXT {
     PageableDeviceLocalMemory,
 }
-impl ToPhysicalFeature for DevicePageableDeviceLocalMemoryFeaturesEXT {
+impl DeviceFeatureTrait for DevicePageableDeviceLocalMemoryFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5884,10 +5636,8 @@ impl ToPhysicalFeature for DevicePageableDeviceLocalMemoryFeaturesEXT {
             }
         }
     }
-}
-impl From<DevicePageableDeviceLocalMemoryFeaturesEXT> for DeviceFeature {
-    fn from(feature: DevicePageableDeviceLocalMemoryFeaturesEXT) -> Self {
-        DeviceFeature::DevicePageableDeviceLocalMemoryFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtPageableDeviceLocalMemory)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDevicePageableDeviceLocalMemoryFeaturesEXT {
@@ -5919,19 +5669,16 @@ impl const From<PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures> for Feature
         FeatureType::DeviceZeroInitializeWorkgroupMemoryFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceZeroInitializeWorkgroupMemoryFeatures {
     ShaderZeroInitializeWorkgroupMemory,
 }
-impl ToPhysicalFeature for DeviceZeroInitializeWorkgroupMemoryFeatures {
+impl DeviceFeatureTrait for DeviceZeroInitializeWorkgroupMemoryFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceZeroInitializeWorkgroupMemoryFeatures :: ShaderZeroInitializeWorkgroupMemory => PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures :: ShaderZeroInitializeWorkgroupMemory , }
     }
-}
-impl From<DeviceZeroInitializeWorkgroupMemoryFeatures> for DeviceFeature {
-    fn from(feature: DeviceZeroInitializeWorkgroupMemoryFeatures) -> Self {
-        DeviceFeature::DeviceZeroInitializeWorkgroupMemoryFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceZeroInitializeWorkgroupMemoryFeatures {
@@ -5965,13 +5712,12 @@ impl const From<PhysicalDeviceRobustness2FeaturesEXT> for FeatureType {
         FeatureType::DeviceRobustness2FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRobustness2FeaturesEXT {
     RobustBufferAccess2,
     RobustImageAccess2,
     NullDescriptor,
 }
-impl ToPhysicalFeature for DeviceRobustness2FeaturesEXT {
+impl DeviceFeatureTrait for DeviceRobustness2FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRobustness2FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -5986,10 +5732,8 @@ impl ToPhysicalFeature for DeviceRobustness2FeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceRobustness2FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceRobustness2FeaturesEXT) -> Self {
-        DeviceFeature::DeviceRobustness2FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtRobustness2)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRobustness2FeaturesEXT {
@@ -6027,11 +5771,10 @@ impl const From<PhysicalDeviceShaderTerminateInvocationFeatures> for FeatureType
         FeatureType::DeviceShaderTerminateInvocationFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderTerminateInvocationFeatures {
     ShaderTerminateInvocation,
 }
-impl ToPhysicalFeature for DeviceShaderTerminateInvocationFeatures {
+impl DeviceFeatureTrait for DeviceShaderTerminateInvocationFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderTerminateInvocationFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6040,10 +5783,8 @@ impl ToPhysicalFeature for DeviceShaderTerminateInvocationFeatures {
             }
         }
     }
-}
-impl From<DeviceShaderTerminateInvocationFeatures> for DeviceFeature {
-    fn from(feature: DeviceShaderTerminateInvocationFeatures) -> Self {
-        DeviceFeature::DeviceShaderTerminateInvocationFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderTerminateInvocationFeatures {
@@ -6073,11 +5814,10 @@ impl const From<PhysicalDeviceGlobalPriorityQueryFeaturesKHR> for FeatureType {
         FeatureType::DeviceGlobalPriorityQueryFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceGlobalPriorityQueryFeaturesKHR {
     GlobalPriorityQuery,
 }
-impl ToPhysicalFeature for DeviceGlobalPriorityQueryFeaturesKHR {
+impl DeviceFeatureTrait for DeviceGlobalPriorityQueryFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceGlobalPriorityQueryFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6086,10 +5826,8 @@ impl ToPhysicalFeature for DeviceGlobalPriorityQueryFeaturesKHR {
             }
         }
     }
-}
-impl From<DeviceGlobalPriorityQueryFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceGlobalPriorityQueryFeaturesKHR) -> Self {
-        DeviceFeature::DeviceGlobalPriorityQueryFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrGlobalPriority)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceGlobalPriorityQueryFeaturesKHR {
@@ -6130,7 +5868,6 @@ impl const From<PhysicalDeviceShaderAtomicFloatFeaturesEXT> for FeatureType {
         FeatureType::DeviceShaderAtomicFloatFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderAtomicFloatFeaturesEXT {
     ShaderBufferFloat32Atomics,
     ShaderBufferFloat32AtomicAdd,
@@ -6145,7 +5882,7 @@ pub enum DeviceShaderAtomicFloatFeaturesEXT {
     SparseImageFloat32Atomics,
     SparseImageFloat32AtomicAdd,
 }
-impl ToPhysicalFeature for DeviceShaderAtomicFloatFeaturesEXT {
+impl DeviceFeatureTrait for DeviceShaderAtomicFloatFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderAtomicFloatFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6187,10 +5924,8 @@ impl ToPhysicalFeature for DeviceShaderAtomicFloatFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceShaderAtomicFloatFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceShaderAtomicFloatFeaturesEXT) -> Self {
-        DeviceFeature::DeviceShaderAtomicFloatFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtShaderAtomicFloat)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderAtomicFloatFeaturesEXT {
@@ -6265,20 +6000,17 @@ impl const From<PhysicalDeviceVertexAttributeDivisorFeaturesEXT> for FeatureType
         FeatureType::DeviceVertexAttributeDivisorFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceVertexAttributeDivisorFeaturesEXT {
     VertexAttributeInstanceRateDivisor,
     VertexAttributeInstanceRateZeroDivisor,
 }
-impl ToPhysicalFeature for DeviceVertexAttributeDivisorFeaturesEXT {
+impl DeviceFeatureTrait for DeviceVertexAttributeDivisorFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceVertexAttributeDivisorFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceVertexAttributeDivisorFeaturesEXT :: VertexAttributeInstanceRateDivisor => PhysicalDeviceVertexAttributeDivisorFeaturesEXT :: VertexAttributeInstanceRateDivisor , DeviceVertexAttributeDivisorFeaturesEXT :: VertexAttributeInstanceRateZeroDivisor => PhysicalDeviceVertexAttributeDivisorFeaturesEXT :: VertexAttributeInstanceRateZeroDivisor , }
     }
-}
-impl From<DeviceVertexAttributeDivisorFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceVertexAttributeDivisorFeaturesEXT) -> Self {
-        DeviceFeature::DeviceVertexAttributeDivisorFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtVertexAttributeDivisor)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceVertexAttributeDivisorFeaturesEXT {
@@ -6337,7 +6069,6 @@ impl const From<PhysicalDeviceDescriptorIndexingFeatures> for FeatureType {
         FeatureType::DeviceDescriptorIndexingFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDescriptorIndexingFeatures {
     ShaderInputAttachmentArrayDynamicIndexing,
     ShaderUniformTexelBufferArrayDynamicIndexing,
@@ -6360,15 +6091,13 @@ pub enum DeviceDescriptorIndexingFeatures {
     DescriptorBindingVariableDescriptorCount,
     RuntimeDescriptorArray,
 }
-impl ToPhysicalFeature for DeviceDescriptorIndexingFeatures {
+impl DeviceFeatureTrait for DeviceDescriptorIndexingFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDescriptorIndexingFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self { DeviceDescriptorIndexingFeatures :: ShaderInputAttachmentArrayDynamicIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderInputAttachmentArrayDynamicIndexing , DeviceDescriptorIndexingFeatures :: ShaderUniformTexelBufferArrayDynamicIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderUniformTexelBufferArrayDynamicIndexing , DeviceDescriptorIndexingFeatures :: ShaderStorageTexelBufferArrayDynamicIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderStorageTexelBufferArrayDynamicIndexing , DeviceDescriptorIndexingFeatures :: ShaderUniformBufferArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderUniformBufferArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderSampledImageArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderSampledImageArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderStorageBufferArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderStorageBufferArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderStorageImageArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderStorageImageArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderInputAttachmentArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderInputAttachmentArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderUniformTexelBufferArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderUniformTexelBufferArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: ShaderStorageTexelBufferArrayNonUniformIndexing => PhysicalDeviceDescriptorIndexingFeatures :: ShaderStorageTexelBufferArrayNonUniformIndexing , DeviceDescriptorIndexingFeatures :: DescriptorBindingUniformBufferUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingUniformBufferUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingSampledImageUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingSampledImageUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingStorageImageUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingStorageImageUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingStorageBufferUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingStorageBufferUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingUniformTexelBufferUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingUniformTexelBufferUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingStorageTexelBufferUpdateAfterBind => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingStorageTexelBufferUpdateAfterBind , DeviceDescriptorIndexingFeatures :: DescriptorBindingUpdateUnusedWhilePending => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingUpdateUnusedWhilePending , DeviceDescriptorIndexingFeatures :: DescriptorBindingPartiallyBound => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingPartiallyBound , DeviceDescriptorIndexingFeatures :: DescriptorBindingVariableDescriptorCount => PhysicalDeviceDescriptorIndexingFeatures :: DescriptorBindingVariableDescriptorCount , DeviceDescriptorIndexingFeatures :: RuntimeDescriptorArray => PhysicalDeviceDescriptorIndexingFeatures :: RuntimeDescriptorArray , }
     }
-}
-impl From<DeviceDescriptorIndexingFeatures> for DeviceFeature {
-    fn from(feature: DeviceDescriptorIndexingFeatures) -> Self {
-        DeviceFeature::DeviceDescriptorIndexingFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDescriptorIndexingFeatures {
@@ -6522,11 +6251,10 @@ impl const From<PhysicalDeviceFragmentDensityMap2FeaturesEXT> for FeatureType {
         FeatureType::DeviceFragmentDensityMap2FeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentDensityMap2FeaturesEXT {
     FragmentDensityMapDeferred,
 }
-impl ToPhysicalFeature for DeviceFragmentDensityMap2FeaturesEXT {
+impl DeviceFeatureTrait for DeviceFragmentDensityMap2FeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentDensityMap2FeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6535,10 +6263,8 @@ impl ToPhysicalFeature for DeviceFragmentDensityMap2FeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceFragmentDensityMap2FeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceFragmentDensityMap2FeaturesEXT) -> Self {
-        DeviceFeature::DeviceFragmentDensityMap2FeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtFragmentDensityMap2)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentDensityMap2FeaturesEXT {
@@ -6568,11 +6294,10 @@ impl const From<PhysicalDeviceUniformBufferStandardLayoutFeatures> for FeatureTy
         FeatureType::DeviceUniformBufferStandardLayoutFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceUniformBufferStandardLayoutFeatures {
     UniformBufferStandardLayout,
 }
-impl ToPhysicalFeature for DeviceUniformBufferStandardLayoutFeatures {
+impl DeviceFeatureTrait for DeviceUniformBufferStandardLayoutFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceUniformBufferStandardLayoutFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6581,10 +6306,8 @@ impl ToPhysicalFeature for DeviceUniformBufferStandardLayoutFeatures {
             }
         }
     }
-}
-impl From<DeviceUniformBufferStandardLayoutFeatures> for DeviceFeature {
-    fn from(feature: DeviceUniformBufferStandardLayoutFeatures) -> Self {
-        DeviceFeature::DeviceUniformBufferStandardLayoutFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceUniformBufferStandardLayoutFeatures {
@@ -6616,11 +6339,10 @@ impl const From<PhysicalDeviceMemoryPriorityFeaturesEXT> for FeatureType {
         FeatureType::DeviceMemoryPriorityFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMemoryPriorityFeaturesEXT {
     MemoryPriority,
 }
-impl ToPhysicalFeature for DeviceMemoryPriorityFeaturesEXT {
+impl DeviceFeatureTrait for DeviceMemoryPriorityFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMemoryPriorityFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6629,10 +6351,8 @@ impl ToPhysicalFeature for DeviceMemoryPriorityFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceMemoryPriorityFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceMemoryPriorityFeaturesEXT) -> Self {
-        DeviceFeature::DeviceMemoryPriorityFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtMemoryPriority)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMemoryPriorityFeaturesEXT {
@@ -6662,11 +6382,10 @@ impl const From<PhysicalDeviceScalarBlockLayoutFeatures> for FeatureType {
         FeatureType::DeviceScalarBlockLayoutFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceScalarBlockLayoutFeatures {
     ScalarBlockLayout,
 }
-impl ToPhysicalFeature for DeviceScalarBlockLayoutFeatures {
+impl DeviceFeatureTrait for DeviceScalarBlockLayoutFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceScalarBlockLayoutFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6675,10 +6394,8 @@ impl ToPhysicalFeature for DeviceScalarBlockLayoutFeatures {
             }
         }
     }
-}
-impl From<DeviceScalarBlockLayoutFeatures> for DeviceFeature {
-    fn from(feature: DeviceScalarBlockLayoutFeatures) -> Self {
-        DeviceFeature::DeviceScalarBlockLayoutFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceScalarBlockLayoutFeatures {
@@ -6708,11 +6425,10 @@ impl const From<PhysicalDeviceShaderDemoteToHelperInvocationFeatures> for Featur
         FeatureType::DeviceShaderDemoteToHelperInvocationFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderDemoteToHelperInvocationFeatures {
     ShaderDemoteToHelperInvocation,
 }
-impl ToPhysicalFeature for DeviceShaderDemoteToHelperInvocationFeatures {
+impl DeviceFeatureTrait for DeviceShaderDemoteToHelperInvocationFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderDemoteToHelperInvocationFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6721,10 +6437,8 @@ impl ToPhysicalFeature for DeviceShaderDemoteToHelperInvocationFeatures {
             }
         }
     }
-}
-impl From<DeviceShaderDemoteToHelperInvocationFeatures> for DeviceFeature {
-    fn from(feature: DeviceShaderDemoteToHelperInvocationFeatures) -> Self {
-        DeviceFeature::DeviceShaderDemoteToHelperInvocationFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderDemoteToHelperInvocationFeatures {
@@ -6757,12 +6471,11 @@ impl const From<PhysicalDeviceSubgroupSizeControlFeatures> for FeatureType {
         FeatureType::DeviceSubgroupSizeControlFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceSubgroupSizeControlFeatures {
     SubgroupSizeControl,
     ComputeFullSubgroups,
 }
-impl ToPhysicalFeature for DeviceSubgroupSizeControlFeatures {
+impl DeviceFeatureTrait for DeviceSubgroupSizeControlFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceSubgroupSizeControlFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6774,10 +6487,8 @@ impl ToPhysicalFeature for DeviceSubgroupSizeControlFeatures {
             }
         }
     }
-}
-impl From<DeviceSubgroupSizeControlFeatures> for DeviceFeature {
-    fn from(feature: DeviceSubgroupSizeControlFeatures) -> Self {
-        DeviceFeature::DeviceSubgroupSizeControlFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceSubgroupSizeControlFeatures {
@@ -6812,12 +6523,11 @@ impl const From<PhysicalDeviceShaderAtomicInt64Features> for FeatureType {
         FeatureType::DeviceShaderAtomicInt64Features(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderAtomicInt64Features {
     ShaderBufferInt64Atomics,
     ShaderSharedInt64Atomics,
 }
-impl ToPhysicalFeature for DeviceShaderAtomicInt64Features {
+impl DeviceFeatureTrait for DeviceShaderAtomicInt64Features {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderAtomicInt64Features;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6829,10 +6539,8 @@ impl ToPhysicalFeature for DeviceShaderAtomicInt64Features {
             }
         }
     }
-}
-impl From<DeviceShaderAtomicInt64Features> for DeviceFeature {
-    fn from(feature: DeviceShaderAtomicInt64Features) -> Self {
-        DeviceFeature::DeviceShaderAtomicInt64Features(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderAtomicInt64Features {
@@ -6867,12 +6575,11 @@ impl const From<PhysicalDeviceMeshShaderFeaturesNV> for FeatureType {
         FeatureType::DeviceMeshShaderFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceMeshShaderFeaturesNV {
     TaskShader,
     MeshShader,
 }
-impl ToPhysicalFeature for DeviceMeshShaderFeaturesNV {
+impl DeviceFeatureTrait for DeviceMeshShaderFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceMeshShaderFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6884,10 +6591,8 @@ impl ToPhysicalFeature for DeviceMeshShaderFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceMeshShaderFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceMeshShaderFeaturesNV) -> Self {
-        DeviceFeature::DeviceMeshShaderFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvMeshShader)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceMeshShaderFeaturesNV {
@@ -6922,12 +6627,11 @@ impl const From<PhysicalDeviceShaderClockFeaturesKHR> for FeatureType {
         FeatureType::DeviceShaderClockFeaturesKHR(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderClockFeaturesKHR {
     ShaderSubgroupClock,
     ShaderDeviceClock,
 }
-impl ToPhysicalFeature for DeviceShaderClockFeaturesKHR {
+impl DeviceFeatureTrait for DeviceShaderClockFeaturesKHR {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderClockFeaturesKHR;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6939,10 +6643,8 @@ impl ToPhysicalFeature for DeviceShaderClockFeaturesKHR {
             }
         }
     }
-}
-impl From<DeviceShaderClockFeaturesKHR> for DeviceFeature {
-    fn from(feature: DeviceShaderClockFeaturesKHR) -> Self {
-        DeviceFeature::DeviceShaderClockFeaturesKHR(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::KhrShaderClock)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderClockFeaturesKHR {
@@ -6978,13 +6680,12 @@ impl const From<PhysicalDeviceFragmentShaderInterlockFeaturesEXT> for FeatureTyp
         FeatureType::DeviceFragmentShaderInterlockFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentShaderInterlockFeaturesEXT {
     FragmentShaderSampleInterlock,
     FragmentShaderPixelInterlock,
     FragmentShaderShadingRateInterlock,
 }
-impl ToPhysicalFeature for DeviceFragmentShaderInterlockFeaturesEXT {
+impl DeviceFeatureTrait for DeviceFragmentShaderInterlockFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentShaderInterlockFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -6999,10 +6700,8 @@ impl ToPhysicalFeature for DeviceFragmentShaderInterlockFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceFragmentShaderInterlockFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceFragmentShaderInterlockFeaturesEXT) -> Self {
-        DeviceFeature::DeviceFragmentShaderInterlockFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtFragmentShaderInterlock)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentShaderInterlockFeaturesEXT {
@@ -7046,11 +6745,10 @@ impl const From<PhysicalDeviceRepresentativeFragmentTestFeaturesNV> for FeatureT
         FeatureType::DeviceRepresentativeFragmentTestFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceRepresentativeFragmentTestFeaturesNV {
     RepresentativeFragmentTest,
 }
-impl ToPhysicalFeature for DeviceRepresentativeFragmentTestFeaturesNV {
+impl DeviceFeatureTrait for DeviceRepresentativeFragmentTestFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceRepresentativeFragmentTestFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7059,10 +6757,8 @@ impl ToPhysicalFeature for DeviceRepresentativeFragmentTestFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceRepresentativeFragmentTestFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceRepresentativeFragmentTestFeaturesNV) -> Self {
-        DeviceFeature::DeviceRepresentativeFragmentTestFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvRepresentativeFragmentTest)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceRepresentativeFragmentTestFeaturesNV {
@@ -7096,13 +6792,12 @@ impl const From<PhysicalDeviceFragmentShadingRateEnumsFeaturesNV> for FeatureTyp
         FeatureType::DeviceFragmentShadingRateEnumsFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceFragmentShadingRateEnumsFeaturesNV {
     FragmentShadingRateEnums,
     SupersampleFragmentShadingRates,
     NoInvocationFragmentShadingRates,
 }
-impl ToPhysicalFeature for DeviceFragmentShadingRateEnumsFeaturesNV {
+impl DeviceFeatureTrait for DeviceFragmentShadingRateEnumsFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceFragmentShadingRateEnumsFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7117,10 +6812,8 @@ impl ToPhysicalFeature for DeviceFragmentShadingRateEnumsFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceFragmentShadingRateEnumsFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceFragmentShadingRateEnumsFeaturesNV) -> Self {
-        DeviceFeature::DeviceFragmentShadingRateEnumsFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvFragmentShadingRateEnums)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceFragmentShadingRateEnumsFeaturesNV {
@@ -7166,11 +6859,10 @@ impl const From<PhysicalDeviceDeviceGeneratedCommandsFeaturesNV> for FeatureType
         FeatureType::DeviceDeviceGeneratedCommandsFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDeviceGeneratedCommandsFeaturesNV {
     DeviceGeneratedCommands,
 }
-impl ToPhysicalFeature for DeviceDeviceGeneratedCommandsFeaturesNV {
+impl DeviceFeatureTrait for DeviceDeviceGeneratedCommandsFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDeviceGeneratedCommandsFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7179,10 +6871,8 @@ impl ToPhysicalFeature for DeviceDeviceGeneratedCommandsFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceDeviceGeneratedCommandsFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceDeviceGeneratedCommandsFeaturesNV) -> Self {
-        DeviceFeature::DeviceDeviceGeneratedCommandsFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvDeviceGeneratedCommands)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDeviceGeneratedCommandsFeaturesNV {
@@ -7212,11 +6902,10 @@ impl const From<PhysicalDeviceExclusiveScissorFeaturesNV> for FeatureType {
         FeatureType::DeviceExclusiveScissorFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceExclusiveScissorFeaturesNV {
     ExclusiveScissor,
 }
-impl ToPhysicalFeature for DeviceExclusiveScissorFeaturesNV {
+impl DeviceFeatureTrait for DeviceExclusiveScissorFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceExclusiveScissorFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7225,10 +6914,8 @@ impl ToPhysicalFeature for DeviceExclusiveScissorFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceExclusiveScissorFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceExclusiveScissorFeaturesNV) -> Self {
-        DeviceFeature::DeviceExclusiveScissorFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvScissorExclusive)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceExclusiveScissorFeaturesNV {
@@ -7258,11 +6945,10 @@ impl const From<PhysicalDeviceCornerSampledImageFeaturesNV> for FeatureType {
         FeatureType::DeviceCornerSampledImageFeaturesNV(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceCornerSampledImageFeaturesNV {
     CornerSampledImage,
 }
-impl ToPhysicalFeature for DeviceCornerSampledImageFeaturesNV {
+impl DeviceFeatureTrait for DeviceCornerSampledImageFeaturesNV {
     type PhysicalDeviceFeatureTy = PhysicalDeviceCornerSampledImageFeaturesNV;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7271,10 +6957,8 @@ impl ToPhysicalFeature for DeviceCornerSampledImageFeaturesNV {
             }
         }
     }
-}
-impl From<DeviceCornerSampledImageFeaturesNV> for DeviceFeature {
-    fn from(feature: DeviceCornerSampledImageFeaturesNV) -> Self {
-        DeviceFeature::DeviceCornerSampledImageFeaturesNV(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::NvCornerSampledImage)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceCornerSampledImageFeaturesNV {
@@ -7304,11 +6988,10 @@ impl const From<PhysicalDeviceDepthClipEnableFeaturesEXT> for FeatureType {
         FeatureType::DeviceDepthClipEnableFeaturesEXT(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceDepthClipEnableFeaturesEXT {
     DepthClipEnable,
 }
-impl ToPhysicalFeature for DeviceDepthClipEnableFeaturesEXT {
+impl DeviceFeatureTrait for DeviceDepthClipEnableFeaturesEXT {
     type PhysicalDeviceFeatureTy = PhysicalDeviceDepthClipEnableFeaturesEXT;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7317,10 +7000,8 @@ impl ToPhysicalFeature for DeviceDepthClipEnableFeaturesEXT {
             }
         }
     }
-}
-impl From<DeviceDepthClipEnableFeaturesEXT> for DeviceFeature {
-    fn from(feature: DeviceDepthClipEnableFeaturesEXT) -> Self {
-        DeviceFeature::DeviceDepthClipEnableFeaturesEXT(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        Some(crate::extensions::PhysicalDeviceExtensionType::ExtDepthClipEnable)
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceDepthClipEnableFeaturesEXT {
@@ -7350,11 +7031,10 @@ impl const From<PhysicalDeviceShaderDrawParametersFeatures> for FeatureType {
         FeatureType::DeviceShaderDrawParametersFeatures(feature)
     }
 }
-#[derive(Clone, PartialEq, Eq)]
 pub enum DeviceShaderDrawParametersFeatures {
     ShaderDrawParameters,
 }
-impl ToPhysicalFeature for DeviceShaderDrawParametersFeatures {
+impl DeviceFeatureTrait for DeviceShaderDrawParametersFeatures {
     type PhysicalDeviceFeatureTy = PhysicalDeviceShaderDrawParametersFeatures;
     fn to_physical(&self) -> Self::PhysicalDeviceFeatureTy {
         match self {
@@ -7363,10 +7043,8 @@ impl ToPhysicalFeature for DeviceShaderDrawParametersFeatures {
             }
         }
     }
-}
-impl From<DeviceShaderDrawParametersFeatures> for DeviceFeature {
-    fn from(feature: DeviceShaderDrawParametersFeatures) -> Self {
-        DeviceFeature::DeviceShaderDrawParametersFeatures(feature)
+    fn required_extension(&self) -> Option<crate::extensions::PhysicalDeviceExtensionType> {
+        None
     }
 }
 impl VkDeviceFeature for ash::vk::PhysicalDeviceShaderDrawParametersFeatures {
@@ -7518,126 +7196,6 @@ pub enum FeatureType {
     DeviceCornerSampledImageFeaturesNV(PhysicalDeviceCornerSampledImageFeaturesNV),
     DeviceDepthClipEnableFeaturesEXT(PhysicalDeviceDepthClipEnableFeaturesEXT),
     DeviceShaderDrawParametersFeatures(PhysicalDeviceShaderDrawParametersFeatures),
-}
-#[derive(Clone, PartialEq, Eq)]
-pub enum DeviceFeature {
-    DeviceShaderAtomicFloat2FeaturesEXT(DeviceShaderAtomicFloat2FeaturesEXT),
-    DeviceCoverageReductionModeFeaturesNV(DeviceCoverageReductionModeFeaturesNV),
-    DeviceSynchronization2Features(DeviceSynchronization2Features),
-    DeviceVertexInputDynamicStateFeaturesEXT(DeviceVertexInputDynamicStateFeaturesEXT),
-    DeviceMultiviewFeatures(DeviceMultiviewFeatures),
-    DeviceShaderIntegerFunctions2FeaturesINTEL(DeviceShaderIntegerFunctions2FeaturesINTEL),
-    DevicePrivateDataFeatures(DevicePrivateDataFeatures),
-    DevicePipelineCreationCacheControlFeatures(DevicePipelineCreationCacheControlFeatures),
-    DeviceMutableDescriptorTypeFeaturesVALVE(DeviceMutableDescriptorTypeFeaturesVALVE),
-    DeviceTimelineSemaphoreFeatures(DeviceTimelineSemaphoreFeatures),
-    DeviceRayTracingPipelineFeaturesKHR(DeviceRayTracingPipelineFeaturesKHR),
-    DeviceVulkanMemoryModelFeatures(DeviceVulkanMemoryModelFeatures),
-    DeviceExtendedDynamicState2FeaturesEXT(DeviceExtendedDynamicState2FeaturesEXT),
-    DeviceShaderImageAtomicInt64FeaturesEXT(DeviceShaderImageAtomicInt64FeaturesEXT),
-    DeviceInheritedViewportScissorFeaturesNV(DeviceInheritedViewportScissorFeaturesNV),
-    DeviceYcbcr2Plane444FormatsFeaturesEXT(DeviceYcbcr2Plane444FormatsFeaturesEXT),
-    DevicePresentWaitFeaturesKHR(DevicePresentWaitFeaturesKHR),
-    DeviceComputeShaderDerivativesFeaturesNV(DeviceComputeShaderDerivativesFeaturesNV),
-    DeviceVulkan13Features(DeviceVulkan13Features),
-    DeviceExternalMemoryRDMAFeaturesNV(DeviceExternalMemoryRDMAFeaturesNV),
-    DeviceProtectedMemoryFeatures(DeviceProtectedMemoryFeatures),
-    DeviceDynamicRenderingFeatures(DeviceDynamicRenderingFeatures),
-    DeviceFragmentDensityMapFeaturesEXT(DeviceFragmentDensityMapFeaturesEXT),
-    DeviceShaderFloat16Int8Features(DeviceShaderFloat16Int8Features),
-    DeviceInvocationMaskFeaturesHUAWEI(DeviceInvocationMaskFeaturesHUAWEI),
-    DeviceRayQueryFeaturesKHR(DeviceRayQueryFeaturesKHR),
-    DeviceSubpassShadingFeaturesHUAWEI(DeviceSubpassShadingFeaturesHUAWEI),
-    DeviceShaderSubgroupExtendedTypesFeatures(DeviceShaderSubgroupExtendedTypesFeatures),
-    DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR(DeviceWorkgroupMemoryExplicitLayoutFeaturesKHR),
-    DeviceRayTracingMotionBlurFeaturesNV(DeviceRayTracingMotionBlurFeaturesNV),
-    DeviceMaintenance4Features(DeviceMaintenance4Features),
-    Device4444FormatsFeaturesEXT(Device4444FormatsFeaturesEXT),
-    DevicePrimitiveTopologyListRestartFeaturesEXT(DevicePrimitiveTopologyListRestartFeaturesEXT),
-    DeviceShaderIntegerDotProductFeatures(DeviceShaderIntegerDotProductFeatures),
-    DeviceInlineUniformBlockFeatures(DeviceInlineUniformBlockFeatures),
-    DeviceSeparateDepthStencilLayoutsFeatures(DeviceSeparateDepthStencilLayoutsFeatures),
-    DeviceRGBA10X6FormatsFeaturesEXT(DeviceRGBA10X6FormatsFeaturesEXT),
-    DeviceShadingRateImageFeaturesNV(DeviceShadingRateImageFeaturesNV),
-    DeviceDescriptorSetHostMappingFeaturesVALVE(DeviceDescriptorSetHostMappingFeaturesVALVE),
-    DeviceBufferDeviceAddressFeaturesEXT(DeviceBufferDeviceAddressFeaturesEXT),
-    DevicePipelineExecutablePropertiesFeaturesKHR(DevicePipelineExecutablePropertiesFeaturesKHR),
-    DeviceHostQueryResetFeatures(DeviceHostQueryResetFeatures),
-    DeviceRasterizationOrderAttachmentAccessFeaturesARM(
-        DeviceRasterizationOrderAttachmentAccessFeaturesARM,
-    ),
-    DeviceFragmentDensityMapOffsetFeaturesQCOM(DeviceFragmentDensityMapOffsetFeaturesQCOM),
-    DeviceTransformFeedbackFeaturesEXT(DeviceTransformFeedbackFeaturesEXT),
-    DevicePerformanceQueryFeaturesKHR(DevicePerformanceQueryFeaturesKHR),
-    DeviceDedicatedAllocationImageAliasingFeaturesNV(
-        DeviceDedicatedAllocationImageAliasingFeaturesNV,
-    ),
-    DeviceImageViewMinLodFeaturesEXT(DeviceImageViewMinLodFeaturesEXT),
-    DeviceShaderSubgroupUniformControlFlowFeaturesKHR(
-        DeviceShaderSubgroupUniformControlFlowFeaturesKHR,
-    ),
-    DeviceFeatures(DeviceFeatures),
-    DeviceIndexTypeUint8FeaturesEXT(DeviceIndexTypeUint8FeaturesEXT),
-    DeviceVulkan12Features(DeviceVulkan12Features),
-    DeviceDiagnosticsConfigFeaturesNV(DeviceDiagnosticsConfigFeaturesNV),
-    DeviceFragmentShadingRateFeaturesKHR(DeviceFragmentShadingRateFeaturesKHR),
-    DeviceLineRasterizationFeaturesEXT(DeviceLineRasterizationFeaturesEXT),
-    DeviceProvokingVertexFeaturesEXT(DeviceProvokingVertexFeaturesEXT),
-    DeviceExtendedDynamicStateFeaturesEXT(DeviceExtendedDynamicStateFeaturesEXT),
-    DevicePresentIdFeaturesKHR(DevicePresentIdFeaturesKHR),
-    DeviceDeviceMemoryReportFeaturesEXT(DeviceDeviceMemoryReportFeaturesEXT),
-    Device16BitStorageFeatures(Device16BitStorageFeatures),
-    DeviceBufferDeviceAddressFeatures(DeviceBufferDeviceAddressFeatures),
-    DeviceCoherentMemoryFeaturesAMD(DeviceCoherentMemoryFeaturesAMD),
-    DeviceColorWriteEnableFeaturesEXT(DeviceColorWriteEnableFeaturesEXT),
-    DeviceMultiDrawFeaturesEXT(DeviceMultiDrawFeaturesEXT),
-    DeviceSamplerYcbcrConversionFeatures(DeviceSamplerYcbcrConversionFeatures),
-    DeviceCustomBorderColorFeaturesEXT(DeviceCustomBorderColorFeaturesEXT),
-    DeviceBorderColorSwizzleFeaturesEXT(DeviceBorderColorSwizzleFeaturesEXT),
-    DeviceAccelerationStructureFeaturesKHR(DeviceAccelerationStructureFeaturesKHR),
-    DeviceBlendOperationAdvancedFeaturesEXT(DeviceBlendOperationAdvancedFeaturesEXT),
-    DeviceLinearColorAttachmentFeaturesNV(DeviceLinearColorAttachmentFeaturesNV),
-    DeviceConditionalRenderingFeaturesEXT(DeviceConditionalRenderingFeaturesEXT),
-    DeviceYcbcrImageArraysFeaturesEXT(DeviceYcbcrImageArraysFeaturesEXT),
-    DeviceImageRobustnessFeatures(DeviceImageRobustnessFeatures),
-    Device8BitStorageFeatures(Device8BitStorageFeatures),
-    DeviceVulkan11Features(DeviceVulkan11Features),
-    DeviceDepthClipControlFeaturesEXT(DeviceDepthClipControlFeaturesEXT),
-    DeviceASTCDecodeFeaturesEXT(DeviceASTCDecodeFeaturesEXT),
-    DeviceCooperativeMatrixFeaturesNV(DeviceCooperativeMatrixFeaturesNV),
-    DeviceVariablePointersFeatures(DeviceVariablePointersFeatures),
-    DevicePortabilitySubsetFeaturesKHR(DevicePortabilitySubsetFeaturesKHR),
-    DeviceShaderImageFootprintFeaturesNV(DeviceShaderImageFootprintFeaturesNV),
-    DeviceTexelBufferAlignmentFeaturesEXT(DeviceTexelBufferAlignmentFeaturesEXT),
-    DeviceImagelessFramebufferFeatures(DeviceImagelessFramebufferFeatures),
-    DeviceShaderSMBuiltinsFeaturesNV(DeviceShaderSMBuiltinsFeaturesNV),
-    DeviceFragmentShaderBarycentricFeaturesNV(DeviceFragmentShaderBarycentricFeaturesNV),
-    DeviceTextureCompressionASTCHDRFeatures(DeviceTextureCompressionASTCHDRFeatures),
-    DevicePageableDeviceLocalMemoryFeaturesEXT(DevicePageableDeviceLocalMemoryFeaturesEXT),
-    DeviceZeroInitializeWorkgroupMemoryFeatures(DeviceZeroInitializeWorkgroupMemoryFeatures),
-    DeviceRobustness2FeaturesEXT(DeviceRobustness2FeaturesEXT),
-    DeviceShaderTerminateInvocationFeatures(DeviceShaderTerminateInvocationFeatures),
-    DeviceGlobalPriorityQueryFeaturesKHR(DeviceGlobalPriorityQueryFeaturesKHR),
-    DeviceShaderAtomicFloatFeaturesEXT(DeviceShaderAtomicFloatFeaturesEXT),
-    DeviceVertexAttributeDivisorFeaturesEXT(DeviceVertexAttributeDivisorFeaturesEXT),
-    DeviceDescriptorIndexingFeatures(DeviceDescriptorIndexingFeatures),
-    DeviceFragmentDensityMap2FeaturesEXT(DeviceFragmentDensityMap2FeaturesEXT),
-    DeviceUniformBufferStandardLayoutFeatures(DeviceUniformBufferStandardLayoutFeatures),
-    DeviceMemoryPriorityFeaturesEXT(DeviceMemoryPriorityFeaturesEXT),
-    DeviceScalarBlockLayoutFeatures(DeviceScalarBlockLayoutFeatures),
-    DeviceShaderDemoteToHelperInvocationFeatures(DeviceShaderDemoteToHelperInvocationFeatures),
-    DeviceSubgroupSizeControlFeatures(DeviceSubgroupSizeControlFeatures),
-    DeviceShaderAtomicInt64Features(DeviceShaderAtomicInt64Features),
-    DeviceMeshShaderFeaturesNV(DeviceMeshShaderFeaturesNV),
-    DeviceShaderClockFeaturesKHR(DeviceShaderClockFeaturesKHR),
-    DeviceFragmentShaderInterlockFeaturesEXT(DeviceFragmentShaderInterlockFeaturesEXT),
-    DeviceRepresentativeFragmentTestFeaturesNV(DeviceRepresentativeFragmentTestFeaturesNV),
-    DeviceFragmentShadingRateEnumsFeaturesNV(DeviceFragmentShadingRateEnumsFeaturesNV),
-    DeviceDeviceGeneratedCommandsFeaturesNV(DeviceDeviceGeneratedCommandsFeaturesNV),
-    DeviceExclusiveScissorFeaturesNV(DeviceExclusiveScissorFeaturesNV),
-    DeviceCornerSampledImageFeaturesNV(DeviceCornerSampledImageFeaturesNV),
-    DeviceDepthClipEnableFeaturesEXT(DeviceDepthClipEnableFeaturesEXT),
-    DeviceShaderDrawParametersFeatures(DeviceShaderDrawParametersFeatures),
 }
 #[allow(dead_code)]
 pub(crate) union VkFeatureUnion {
@@ -7865,6 +7423,7 @@ pub struct Feature<const FEATURE: FeatureType> {
 pub(crate) fn register_features(
     features: &rustc_hash::FxHashSet<FeatureType>,
 ) -> ash::vk::PhysicalDeviceFeatures2 {
+    #[repr(C)]
     struct VkStructHeader {
         pub _s_type: ash::vk::StructureType,
         pub p_next: *mut std::ffi::c_void,

@@ -1,3 +1,5 @@
+#![feature(const_trait_impl)]
+#![feature(const_convert)]
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Cursor;
@@ -49,6 +51,9 @@ use yarvk::descriptor::descriptor_pool::DescriptorPool;
 use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding};
 use yarvk::descriptor::write_descriptor_sets::{DescriptorBufferInfo, DescriptorImageInfo};
 use yarvk::descriptor::DescriptorType;
+use yarvk::device_features::{
+    DeviceFeatures, PhysicalDeviceFeatures,
+};
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
 use yarvk::queue::Queue;
@@ -230,10 +235,11 @@ fn main() {
     let (device, mut queues) = Device::builder(pdevice.clone())
         .add_queue_info(queue_create_info)
         .add_extension(&DeviceExtensionType::KhrSwapchain(surface_ext))
-        // .add_feature(PhysicalDeviceFeatures::LogicOp.into())
-        // .add_feature(DevicePortabilitySubsetFeaturesKHR::ImageViewFormatSwizzle().into());
+        // .add_feature(DeviceFeatures::LogicOp)
+        .add_feature(DeviceFeatures::SamplerAnisotropy)
         .build()
         .unwrap();
+    let feature_sampler_anisotropy = device.get_feature::<{PhysicalDeviceFeatures::SamplerAnisotropy.into()}>().unwrap();
     let swapchian_extension = device
         .get_extension::<{ PhysicalDeviceExtensionType::KhrSwapchain }>()
         .unwrap();
@@ -731,7 +737,7 @@ fn main() {
         .address_mode_u(SamplerAddressMode::MIRRORED_REPEAT)
         .address_mode_v(SamplerAddressMode::MIRRORED_REPEAT)
         .address_mode_w(SamplerAddressMode::MIRRORED_REPEAT)
-        // .max_anisotropy(1.0)
+        .max_anisotropy(1.0, feature_sampler_anisotropy)
         .border_color(BorderColor::FLOAT_OPAQUE_WHITE)
         .compare_op(CompareOp::NEVER)
         .build()

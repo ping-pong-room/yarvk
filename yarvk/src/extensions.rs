@@ -221,7 +221,7 @@ impl PhysicalInstanceExtensionType {
 }
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum PhysicalDeviceExtensionType {
-    AmdShaderCoreProperties2,
+    NvCoverageReductionMode,
     KhrIncrementalPresent,
     KhrVideoEncodeQueue,
     ExtMemoryBudget,
@@ -352,8 +352,8 @@ pub enum PhysicalDeviceExtensionType {
     NvExternalMemoryWin32,
     NvShaderSubgroupPartitioned,
     ExtExternalMemoryHost,
-    GoogleDisplayTiming,
     ExtExternalMemoryDmaBuf,
+    GoogleDisplayTiming,
     NvExternalMemory,
     NvExternalMemoryRdma,
     QcomRenderPassStoreOps,
@@ -388,13 +388,13 @@ pub enum PhysicalDeviceExtensionType {
     NvMeshShader,
     AmdGpuShaderInt16,
     ExtDeviceMemoryReport,
-    NvCoverageReductionMode,
+    AmdShaderCoreProperties2,
 }
 impl PhysicalDeviceExtensionType {
     pub fn to_cstr(&self) -> &'static std::ffi::CStr {
         match self {
-            Self::AmdShaderCoreProperties2 => unsafe {
-                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_AMD_shader_core_properties2\0")
+            Self::NvCoverageReductionMode => unsafe {
+                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_NV_coverage_reduction_mode\0")
             },
             Self::KhrIncrementalPresent => unsafe {
                 std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_KHR_incremental_present\0")
@@ -828,11 +828,11 @@ impl PhysicalDeviceExtensionType {
             Self::ExtExternalMemoryHost => unsafe {
                 std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_EXT_external_memory_host\0")
             },
-            Self::GoogleDisplayTiming => unsafe {
-                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_GOOGLE_display_timing\0")
-            },
             Self::ExtExternalMemoryDmaBuf => unsafe {
                 std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_EXT_external_memory_dma_buf\0")
+            },
+            Self::GoogleDisplayTiming => unsafe {
+                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_GOOGLE_display_timing\0")
             },
             Self::NvExternalMemory => unsafe {
                 std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_NV_external_memory\0")
@@ -944,14 +944,14 @@ impl PhysicalDeviceExtensionType {
             Self::ExtDeviceMemoryReport => unsafe {
                 std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_EXT_device_memory_report\0")
             },
-            Self::NvCoverageReductionMode => unsafe {
-                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_NV_coverage_reduction_mode\0")
+            Self::AmdShaderCoreProperties2 => unsafe {
+                std::ffi::CStr::from_bytes_with_nul_unchecked(b"VK_AMD_shader_core_properties2\0")
             },
         }
     }
     pub fn get_dependencies(&self) -> &[Self] {
         match self {
-            Self::AmdShaderCoreProperties2 => &[Self::AmdShaderCoreProperties],
+            Self::NvCoverageReductionMode => &[Self::NvFramebufferMixedSamples],
             Self::KhrIncrementalPresent => &[Self::KhrSwapchain],
             Self::KhrVideoEncodeQueue => &[Self::KhrVideoQueue],
             Self::ExtMemoryBudget => &[],
@@ -1080,8 +1080,8 @@ impl PhysicalDeviceExtensionType {
             Self::ExtYcbcrImageArrays => &[],
             Self::NvRayTracingMotionBlur => &[
                 Self::KhrRayTracingPipeline,
-                Self::KhrAccelerationStructure,
                 Self::KhrDeferredHostOperations,
+                Self::KhrAccelerationStructure,
             ],
             Self::ExtVertexAttributeDivisor => &[],
             Self::KhrExternalMemoryFd => &[],
@@ -1089,8 +1089,8 @@ impl PhysicalDeviceExtensionType {
             Self::NvExternalMemoryWin32 => &[Self::NvExternalMemory],
             Self::NvShaderSubgroupPartitioned => &[],
             Self::ExtExternalMemoryHost => &[],
-            Self::GoogleDisplayTiming => &[Self::KhrSwapchain],
             Self::ExtExternalMemoryDmaBuf => &[Self::KhrExternalMemoryFd],
+            Self::GoogleDisplayTiming => &[Self::KhrSwapchain],
             Self::NvExternalMemory => &[],
             Self::NvExternalMemoryRdma => &[],
             Self::QcomRenderPassStoreOps => &[],
@@ -1103,8 +1103,8 @@ impl PhysicalDeviceExtensionType {
             Self::ExtCustomBorderColor => &[],
             Self::HuaweiInvocationMask => &[
                 Self::KhrRayTracingPipeline,
-                Self::KhrAccelerationStructure,
                 Self::KhrDeferredHostOperations,
+                Self::KhrAccelerationStructure,
             ],
             Self::IntelPerformanceQuery => &[],
             Self::ExtProvokingVertex => &[],
@@ -1132,13 +1132,13 @@ impl PhysicalDeviceExtensionType {
             Self::NvMeshShader => &[],
             Self::AmdGpuShaderInt16 => &[],
             Self::ExtDeviceMemoryReport => &[],
-            Self::NvCoverageReductionMode => &[Self::NvFramebufferMixedSamples],
+            Self::AmdShaderCoreProperties2 => &[Self::AmdShaderCoreProperties],
         }
     }
     pub fn from_cstr(vk_name: &'static std::ffi::CStr) -> Option<Self> {
         let bytes = vk_name.to_bytes_with_nul();
         match bytes {
-            b"VK_AMD_shader_core_properties2\0" => Some(Self::AmdShaderCoreProperties2),
+            b"VK_NV_coverage_reduction_mode\0" => Some(Self::NvCoverageReductionMode),
             b"VK_KHR_incremental_present\0" => Some(Self::KhrIncrementalPresent),
             b"VK_KHR_video_encode_queue\0" => Some(Self::KhrVideoEncodeQueue),
             b"VK_EXT_memory_budget\0" => Some(Self::ExtMemoryBudget),
@@ -1281,8 +1281,8 @@ impl PhysicalDeviceExtensionType {
             b"VK_NV_external_memory_win32\0" => Some(Self::NvExternalMemoryWin32),
             b"VK_NV_shader_subgroup_partitioned\0" => Some(Self::NvShaderSubgroupPartitioned),
             b"VK_EXT_external_memory_host\0" => Some(Self::ExtExternalMemoryHost),
-            b"VK_GOOGLE_display_timing\0" => Some(Self::GoogleDisplayTiming),
             b"VK_EXT_external_memory_dma_buf\0" => Some(Self::ExtExternalMemoryDmaBuf),
+            b"VK_GOOGLE_display_timing\0" => Some(Self::GoogleDisplayTiming),
             b"VK_NV_external_memory\0" => Some(Self::NvExternalMemory),
             b"VK_NV_external_memory_rdma\0" => Some(Self::NvExternalMemoryRdma),
             b"VK_QCOM_render_pass_store_ops\0" => Some(Self::QcomRenderPassStoreOps),
@@ -1323,20 +1323,18 @@ impl PhysicalDeviceExtensionType {
             b"VK_NV_mesh_shader\0" => Some(Self::NvMeshShader),
             b"VK_AMD_gpu_shader_int16\0" => Some(Self::AmdGpuShaderInt16),
             b"VK_EXT_device_memory_report\0" => Some(Self::ExtDeviceMemoryReport),
-            b"VK_NV_coverage_reduction_mode\0" => Some(Self::NvCoverageReductionMode),
+            b"VK_AMD_shader_core_properties2\0" => Some(Self::AmdShaderCoreProperties2),
             _ => None,
         }
     }
 }
 pub enum DeviceExtensionType {
-    AmdShaderCoreProperties2,
+    NvCoverageReductionMode,
     KhrIncrementalPresent(InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>),
     KhrVideoEncodeQueue,
     ExtMemoryBudget,
     NvAcquireWinrtDisplay(
-        InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>,
         InstanceExtension<{ PhysicalInstanceExtensionType::ExtDirectModeDisplay }>,
-        InstanceExtension<{ PhysicalInstanceExtensionType::KhrDisplay }>,
     ),
     KhrSwapchainMutableFormat(InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>),
     HuaweiSubpassShading,
@@ -1419,7 +1417,6 @@ pub enum DeviceExtensionType {
     NvFragmentCoverageToColor,
     ExtDisplayControl(
         InstanceExtension<{ PhysicalInstanceExtensionType::ExtDisplaySurfaceCounter }>,
-        InstanceExtension<{ PhysicalInstanceExtensionType::KhrDisplay }>,
         InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>,
     ),
     NvShaderSmBuiltins,
@@ -1485,8 +1482,8 @@ pub enum DeviceExtensionType {
     ),
     NvShaderSubgroupPartitioned,
     ExtExternalMemoryHost,
-    GoogleDisplayTiming(InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>),
     ExtExternalMemoryDmaBuf,
+    GoogleDisplayTiming(InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>),
     NvExternalMemory(
         InstanceExtension<{ PhysicalInstanceExtensionType::NvExternalMemoryCapabilities }>,
     ),
@@ -1523,12 +1520,12 @@ pub enum DeviceExtensionType {
     NvMeshShader,
     AmdGpuShaderInt16,
     ExtDeviceMemoryReport,
-    NvCoverageReductionMode,
+    AmdShaderCoreProperties2,
 }
 impl From<&DeviceExtensionType> for PhysicalDeviceExtensionType {
     fn from(device_ext_type: &DeviceExtensionType) -> PhysicalDeviceExtensionType {
         match device_ext_type {
-            DeviceExtensionType::AmdShaderCoreProperties2 => Self::AmdShaderCoreProperties2,
+            DeviceExtensionType::NvCoverageReductionMode => Self::NvCoverageReductionMode,
             DeviceExtensionType::KhrIncrementalPresent(..) => Self::KhrIncrementalPresent,
             DeviceExtensionType::KhrVideoEncodeQueue => Self::KhrVideoEncodeQueue,
             DeviceExtensionType::ExtMemoryBudget => Self::ExtMemoryBudget,
@@ -1677,8 +1674,8 @@ impl From<&DeviceExtensionType> for PhysicalDeviceExtensionType {
             DeviceExtensionType::NvExternalMemoryWin32(..) => Self::NvExternalMemoryWin32,
             DeviceExtensionType::NvShaderSubgroupPartitioned => Self::NvShaderSubgroupPartitioned,
             DeviceExtensionType::ExtExternalMemoryHost => Self::ExtExternalMemoryHost,
-            DeviceExtensionType::GoogleDisplayTiming(..) => Self::GoogleDisplayTiming,
             DeviceExtensionType::ExtExternalMemoryDmaBuf => Self::ExtExternalMemoryDmaBuf,
+            DeviceExtensionType::GoogleDisplayTiming(..) => Self::GoogleDisplayTiming,
             DeviceExtensionType::NvExternalMemory(..) => Self::NvExternalMemory,
             DeviceExtensionType::NvExternalMemoryRdma => Self::NvExternalMemoryRdma,
             DeviceExtensionType::QcomRenderPassStoreOps => Self::QcomRenderPassStoreOps,
@@ -1719,7 +1716,7 @@ impl From<&DeviceExtensionType> for PhysicalDeviceExtensionType {
             DeviceExtensionType::NvMeshShader => Self::NvMeshShader,
             DeviceExtensionType::AmdGpuShaderInt16 => Self::AmdGpuShaderInt16,
             DeviceExtensionType::ExtDeviceMemoryReport => Self::ExtDeviceMemoryReport,
-            DeviceExtensionType::NvCoverageReductionMode => Self::NvCoverageReductionMode,
+            DeviceExtensionType::AmdShaderCoreProperties2 => Self::AmdShaderCoreProperties2,
         }
     }
 }

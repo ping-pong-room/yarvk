@@ -1,3 +1,5 @@
+#![feature(get_mut_unchecked)]
+
 use crate::generate_device_features::generate_device_features;
 use crate::generate_extensions::generate_extensions;
 use std::fs::File;
