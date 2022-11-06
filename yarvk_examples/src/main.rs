@@ -947,7 +947,6 @@ fn main() {
         .unwrap()
         .allocate_command_buffer::<{ SECONDARY }>()
         .unwrap();
-    let secondary_command_buffer_handler = secondary_command_buffer.handle();
     let mut secondary_command_buffer = Some(secondary_command_buffer);
     let inheritance_info = CommandBufferInheritanceInfo::builder()
         .render_pass(renderpass.clone())
@@ -1093,7 +1092,7 @@ fn main() {
                     .unwrap();
                 let secondary_buffer = command_buffer
                     .secondary_buffers()
-                    .remove(&secondary_command_buffer_handler)
+                    .pop()
                     .unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();

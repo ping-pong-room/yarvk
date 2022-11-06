@@ -169,10 +169,10 @@ pub struct CommandBuffer<
     pub(crate) vk_command_buffer: ash::vk::CommandBuffer,
     inheritance_info: Pin<Arc<CommandBufferInheritanceInfo>>,
     pub(crate) holding_resources: HoldingResources,
-    secondary_buffers: FxHashMap<u64, CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>>,
+    secondary_buffers: Vec<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }, true>>,
 }
 
-unsafe fn par_vector_transmute<
+pub fn par_for_each<
     const S1: Level,
     const S2: State,
     const S3: RenderPassScope,
@@ -183,29 +183,32 @@ unsafe fn par_vector_transmute<
     const T4: bool,
 >(
     source: Vec<CommandBuffer<S1, S2, S3, S4>>,
-    f: impl Fn(CommandBuffer<S1, S2, S3, S4>) -> Result<CommandBuffer<T1, T2, T3, T4>, ash::vk::Result> + Sync,
+    f: impl Fn(CommandBuffer<S1, S2, S3, S4>) -> Result<CommandBuffer<T1, T2, T3, T4>, ash::vk::Result>
+        + Sync,
 ) -> Result<Vec<CommandBuffer<T1, T2, T3, T4>>, ash::vk::Result> {
-    let mut buffers: Vec<CommandBuffer<T1, T2, T3, T4>> = std::mem::transmute(source);
-    let results = buffers
-        .par_iter_mut()
-        .map(|foo| {
-            let temp = std::ptr::read(foo);
-            let temp: CommandBuffer<S1, S2, S3, S4> = std::mem::transmute(temp);
-            match f(temp) {
-                Ok(temp) => {
-                    std::ptr::write(foo, temp);
-                    ash::vk::Result::SUCCESS
+    unsafe {
+        let mut buffers: Vec<CommandBuffer<T1, T2, T3, T4>> = std::mem::transmute(source);
+        let results = buffers
+            .par_iter_mut()
+            .map(|foo| {
+                let temp = std::ptr::read(foo);
+                let temp: CommandBuffer<S1, S2, S3, S4> = std::mem::transmute(temp);
+                match f(temp) {
+                    Ok(temp) => {
+                        std::ptr::write(foo, temp);
+                        ash::vk::Result::SUCCESS
+                    }
+                    Err(err) => err,
                 }
-                Err(err) => err,
+            })
+            .collect::<Vec<ash::vk::Result>>();
+        for result in &results {
+            if *result != ash::vk::Result::SUCCESS {
+                return Err(*result);
             }
-        })
-        .collect::<Vec<ash::vk::Result>>();
-    for result in &results {
-        if *result != ash::vk::Result::SUCCESS {
-            return Err(*result)
         }
+        Ok(buffers)
     }
-    Ok(buffers)
 }
 
 impl<
@@ -380,12 +383,10 @@ macro_rules! secondary_record_impls {
                 Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>>,
                 ash::vk::Result,
             > {
-                unsafe {
-                    let mut buffers = par_vector_transmute(buffers, |buffer| buffer.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
-                    f(buffers.as_mut_slice())?;
-                    let buffers = par_vector_transmute(buffers, |buffer| buffer.end())?;
-                    Ok(buffers)
-                }
+                let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ OUTSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                f(buffers.as_mut_slice())?;
+                let buffers = par_for_each(buffers, |buffer| buffer.end())?;
+                Ok(buffers)
             }
             pub fn record_render_pass_continue_buffers<const ONE_TIME_SUBMIT: bool>(
                 buffers: Vec<Self>,
@@ -397,12 +398,10 @@ macro_rules! secondary_record_impls {
                 Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }, ONE_TIME_SUBMIT>>,
                 ash::vk::Result,
             > {
-                unsafe {
-                    let mut buffers = par_vector_transmute(buffers, |buffer| buffer.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
-                    f(buffers.as_mut_slice())?;
-                    let buffers = par_vector_transmute(buffers, |buffer| buffer.end())?;
-                    Ok(buffers)
-                }
+                let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ INSIDE }, ONE_TIME_SUBMIT>(inheritance_info.clone()))?;
+                f(buffers.as_mut_slice())?;
+                let buffers = par_for_each(buffers, |buffer| buffer.end())?;
+                Ok(buffers)
             }
         }
     )*};
@@ -413,7 +412,7 @@ secondary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INVALID }, SCOPE, true> {
     pub fn secondary_buffers(
         &mut self,
-    ) -> &mut FxHashMap<u64, CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>> {
+    ) -> &mut Vec<CommandBuffer<{ SECONDARY }, { INVALID }, { OUTSIDE }, true>> {
         &mut self.secondary_buffers
     }
 }
@@ -424,9 +423,7 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE
         buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }, true>,
     ) {
         self.secondary_buffers
-            .insert(buffer.vk_command_buffer.as_raw(), unsafe {
-                std::mem::transmute(buffer)
-            });
+            .push(unsafe { std::mem::transmute(buffer) });
     }
 }
 impl CommandPool {
@@ -484,9 +481,8 @@ impl<const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
         while !secondary_command_buffers.is_empty() {
             let buffer = secondary_command_buffers.pop().unwrap();
             vk_buffers.push(buffer.vk_command_buffer);
-            let handle = buffer.vk_command_buffer.as_raw();
             let buffer = unsafe { std::mem::transmute(buffer) };
-            self.secondary_buffers.insert(handle, buffer);
+            self.secondary_buffers.push(buffer);
         }
 
         // Host Synchronization: commandBuffer, VkCommandPool
