@@ -42,7 +42,7 @@ pub mod submit_info;
 // }
 
 pub struct Queue {
-    pub(crate) device: Arc<Device>,
+    pub device: Arc<Device>,
     pub(crate) vk_queue: ash::vk::Queue,
     pub queue_family_property: QueueFamilyProperties,
     pub priority: f32,
