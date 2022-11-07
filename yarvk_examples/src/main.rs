@@ -656,80 +656,6 @@ fn main() {
             .expect("Unable to bind depth image memory"),
     );
 
-    let command_buffer = setup_command_buffer
-        .record(|command_buffer| {
-            let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
-                .dst_access_mask(AccessFlags::TRANSFER_WRITE)
-                .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
-                .subresource_range(
-                    ImageSubresourceRange::builder()
-                        .aspect_mask(ImageAspectFlags::COLOR)
-                        .level_count(1)
-                        .layer_count(1)
-                        .build(),
-                )
-                .build();
-            let mut image_barriers = Vec::with_capacity(1);
-            image_barriers.push(texture_barrier);
-            command_buffer.cmd_pipeline_barrier(
-                &[PipelineStageFlags::BottomOfPipe],
-                &[PipelineStageFlags::Transfer],
-                DependencyFlags::empty(),
-                &[],
-                &[],
-                &image_barriers,
-            );
-            let buffer_copy_regions = BufferImageCopy::builder()
-                .image_subresource(
-                    ImageSubresourceLayers::builder()
-                        .aspect_mask(ImageAspectFlags::COLOR)
-                        .layer_count(1)
-                        .build(),
-                )
-                .image_extent(Extent3D {
-                    width,
-                    height,
-                    depth: 1,
-                });
-
-            command_buffer.cmd_copy_buffer_to_image(
-                image_buffer.clone(),
-                texture_image.clone(),
-                ImageLayout::TRANSFER_DST_OPTIMAL,
-                &[buffer_copy_regions.build()],
-            );
-            let texture_barrier_end = ImageMemoryBarrier::builder(texture_image.clone())
-                .src_access_mask(AccessFlags::TRANSFER_WRITE)
-                .dst_access_mask(AccessFlags::SHADER_READ)
-                .old_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
-                .new_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-                .subresource_range(
-                    ImageSubresourceRange::builder()
-                        .aspect_mask(ImageAspectFlags::COLOR)
-                        .level_count(1)
-                        .layer_count(1)
-                        .build(),
-                )
-                .build();
-            let mut image_barriers = Vec::with_capacity(1);
-            image_barriers.push(texture_barrier_end);
-            command_buffer.cmd_pipeline_barrier(
-                &[PipelineStageFlags::Transfer],
-                &[PipelineStageFlags::FragmentShader],
-                DependencyFlags::empty(),
-                &[],
-                &[],
-                &image_barriers,
-            );
-            Ok(())
-        })
-        .unwrap();
-    let (fence, command_buffer) = submit(
-        &mut present_queue,
-        command_buffer,
-        setup_commands_reuse_fence,
-    );
-
     let sampler = Sampler::builder(device.clone())
         .mag_filter(Filter::LINEAR)
         .min_filter(Filter::LINEAR)
@@ -813,6 +739,80 @@ fn main() {
     write_descriptor_sets.update_buffer(0, 0, 0, buffers);
     write_descriptor_sets.update_image(0, 1, 0, images);
     write_descriptor_sets.par_update();
+
+    let command_buffer = setup_command_buffer
+        .record(|command_buffer| {
+            let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
+                .dst_access_mask(AccessFlags::TRANSFER_WRITE)
+                .new_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
+                .subresource_range(
+                    ImageSubresourceRange::builder()
+                        .aspect_mask(ImageAspectFlags::COLOR)
+                        .level_count(1)
+                        .layer_count(1)
+                        .build(),
+                )
+                .build();
+            let mut image_barriers = Vec::with_capacity(1);
+            image_barriers.push(texture_barrier);
+            command_buffer.cmd_pipeline_barrier(
+                &[PipelineStageFlags::BottomOfPipe],
+                &[PipelineStageFlags::Transfer],
+                DependencyFlags::empty(),
+                &[],
+                &[],
+                &image_barriers,
+            );
+            let buffer_copy_regions = BufferImageCopy::builder()
+                .image_subresource(
+                    ImageSubresourceLayers::builder()
+                        .aspect_mask(ImageAspectFlags::COLOR)
+                        .layer_count(1)
+                        .build(),
+                )
+                .image_extent(Extent3D {
+                    width,
+                    height,
+                    depth: 1,
+                });
+
+            command_buffer.cmd_copy_buffer_to_image(
+                image_buffer.clone(),
+                texture_image.clone(),
+                ImageLayout::TRANSFER_DST_OPTIMAL,
+                &[buffer_copy_regions.build()],
+            );
+            let texture_barrier_end = ImageMemoryBarrier::builder(texture_image.clone())
+                .src_access_mask(AccessFlags::TRANSFER_WRITE)
+                .dst_access_mask(AccessFlags::SHADER_READ)
+                .old_layout(ImageLayout::TRANSFER_DST_OPTIMAL)
+                .new_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                .subresource_range(
+                    ImageSubresourceRange::builder()
+                        .aspect_mask(ImageAspectFlags::COLOR)
+                        .level_count(1)
+                        .layer_count(1)
+                        .build(),
+                )
+                .build();
+            let mut image_barriers = Vec::with_capacity(1);
+            image_barriers.push(texture_barrier_end);
+            command_buffer.cmd_pipeline_barrier(
+                &[PipelineStageFlags::Transfer],
+                &[PipelineStageFlags::FragmentShader],
+                DependencyFlags::empty(),
+                &[],
+                &[],
+                &image_barriers,
+            );
+            Ok(())
+        })
+        .unwrap();
+    let (fence, command_buffer) = submit(
+        &mut present_queue,
+        command_buffer,
+        setup_commands_reuse_fence,
+    );
 
     let mut vertex_spv_file = Cursor::new(&include_bytes!("vert.spv")[..]);
     let mut frag_spv_file = Cursor::new(&include_bytes!("frag.spv")[..]);
