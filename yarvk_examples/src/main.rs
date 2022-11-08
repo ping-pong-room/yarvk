@@ -358,12 +358,12 @@ fn main() {
     let command_buffer = command_buffer
         .record(|command_buffer| {
             command_buffer.cmd_pipeline_barrier(
-                &[PipelineStageFlags::BottomOfPipe],
-                &[PipelineStageFlags::LateFragmentTests],
+                [PipelineStageFlags::BottomOfPipe],
+                [PipelineStageFlags::LateFragmentTests],
                 DependencyFlags::empty(),
-                &[],
-                &[],
-                &[ImageMemoryBarrier::builder(depth_image.clone())
+                [],
+                [],
+                [ImageMemoryBarrier::builder(depth_image.clone())
                     .dst_access_mask(
                         AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
                             | AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
@@ -756,12 +756,12 @@ fn main() {
             let mut image_barriers = Vec::with_capacity(1);
             image_barriers.push(texture_barrier);
             command_buffer.cmd_pipeline_barrier(
-                &[PipelineStageFlags::BottomOfPipe],
-                &[PipelineStageFlags::Transfer],
+                [PipelineStageFlags::BottomOfPipe],
+                [PipelineStageFlags::Transfer],
                 DependencyFlags::empty(),
-                &[],
-                &[],
-                &image_barriers,
+                [],
+                [],
+                image_barriers,
             );
             let buffer_copy_regions = BufferImageCopy::builder()
                 .image_subresource(
@@ -798,12 +798,12 @@ fn main() {
             let mut image_barriers = Vec::with_capacity(1);
             image_barriers.push(texture_barrier_end);
             command_buffer.cmd_pipeline_barrier(
-                &[PipelineStageFlags::Transfer],
-                &[PipelineStageFlags::FragmentShader],
+                [PipelineStageFlags::Transfer],
+                [PipelineStageFlags::FragmentShader],
                 DependencyFlags::empty(),
-                &[],
-                &[],
-                &image_barriers,
+                [],
+                [],
+                image_barriers,
             );
             Ok(())
         })

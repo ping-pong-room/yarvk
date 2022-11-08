@@ -9,12 +9,15 @@ use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use ash::vk::Handle;
 
 use std::cell::Cell;
-use std::pin::Pin;
 use std::sync::Arc;
 
 pub struct MemoryBarrier {
     pub(crate) ash_vk_memory_barrier: ash::vk::MemoryBarrier,
 }
+
+// TODO handle p_next
+unsafe impl Sync for MemoryBarrier {}
+unsafe impl Send for MemoryBarrier {}
 
 impl MemoryBarrier {
     pub fn builder() -> MemoryBarrierBuilder {
@@ -36,27 +39,20 @@ impl MemoryBarrierBuilder {
         self.ash_vk_memory_barrier.dst_access_mask = dst_access_mask;
         self
     }
-    pub fn build(self) -> Arc<MemoryBarrier> {
-        Arc::new(MemoryBarrier {
+    pub fn build(self) -> MemoryBarrier {
+        MemoryBarrier {
             ash_vk_memory_barrier: self.ash_vk_memory_barrier,
-        })
+        }
     }
 }
 
 pub struct ImageMemoryBarrier {
     pub(crate) ash_vk_image_memory_barrier: ash::vk::ImageMemoryBarrier,
     pub image: Arc<dyn Image>,
-    // src_queue_family: Option<QueueFamilyProperties>,
-    // dst_queue_family: Option<QueueFamilyProperties>,
 }
-
-// impl VulkanWrapper for ImageMemoryBarrier {
-//     type VulkanTy = ash::vk::ImageMemoryBarrier;
-//
-//     fn raw_value(&self) -> Self::VulkanTy {
-//         self.borrow().ash_vk_image_memory_barrier
-//     }
-// }
+// TODO handle p_next
+unsafe impl Sync for ImageMemoryBarrier {}
+unsafe impl Send for ImageMemoryBarrier {}
 
 impl ImageMemoryBarrier {
     // DONE VUID-VkImageMemoryBarrier-image-01932
@@ -114,7 +110,7 @@ impl ImageMemoryBarrierBuilder {
         self.subresource_range = subresource_range;
         self
     }
-    pub fn build(self) -> Pin<Arc<ImageMemoryBarrier>> {
+    pub fn build(self) -> ImageMemoryBarrier {
         let mut ash_vk_image_memory_barrier = ash::vk::ImageMemoryBarrier::builder()
             .src_access_mask(self.src_access_mask)
             .dst_access_mask(self.dst_access_mask)
@@ -130,30 +126,21 @@ impl ImageMemoryBarrierBuilder {
             ash_vk_image_memory_barrier =
                 ash_vk_image_memory_barrier.dst_queue_family_index(dst_queue_family.index);
         }
-        // TODO handle p_next by using pin
-        Arc::pin(ImageMemoryBarrier {
+        ImageMemoryBarrier {
             ash_vk_image_memory_barrier: ash_vk_image_memory_barrier.build(),
             image: self.image,
-            // src_queue_family: self.src_queue_family,
-            // dst_queue_family: self.dst_queue_family,
-        })
+        }
     }
 }
 
 pub struct BufferMemoryBarrier {
-    pub(crate) buffer: Arc<dyn Buffer>,
+    pub buffer: Arc<dyn Buffer>,
     pub(crate) ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier,
-    // src_queue_family: Option<QueueFamilyProperties>,
-    // dst_queue_family: Option<QueueFamilyProperties>,
 }
 
-// impl VulkanWrapper for BufferMemoryBarrier {
-//     type VulkanTy = ash::vk::BufferMemoryBarrier;
-//
-//     fn raw_value(&self) -> Self::VulkanTy {
-//         self.borrow().ash_vk_buffer_memory_barrier
-//     }
-// }
+// TODO handle p_next
+unsafe impl Sync for BufferMemoryBarrier {}
+unsafe impl Send for BufferMemoryBarrier {}
 
 impl BufferMemoryBarrier {
     pub fn builder(buffer: Arc<dyn Buffer>) -> BufferMemoryBarrierBuilder {
@@ -202,13 +189,11 @@ impl BufferMemoryBarrierBuilder {
         self.ash_vk_buffer_memory_barrier.size = size;
         self
     }
-    pub fn builder(self) -> Pin<Arc<BufferMemoryBarrier>> {
-        Arc::pin(BufferMemoryBarrier {
+    pub fn builder(self) -> BufferMemoryBarrier {
+        BufferMemoryBarrier {
             buffer: self.buffer,
             ash_vk_buffer_memory_barrier: self.ash_vk_buffer_memory_barrier,
-            // src_queue_family: self.src_queue_family,
-            // dst_queue_family: self.dst_queue_family,
-        })
+        }
     }
 }
 
@@ -224,21 +209,21 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     // DONE VUID-vkCmdPipelineBarrier-commandBuffer-recording
     pub fn cmd_pipeline_barrier(
         &mut self,
-        src_stage_mask: &[PipelineStageFlags],
-        dst_stage_mask: &[PipelineStageFlags],
+        src_stage_mask: impl IntoIterator<Item=PipelineStageFlags>,
+        dst_stage_mask: impl IntoIterator<Item=PipelineStageFlags>,
         dependency_flags: ash::vk::DependencyFlags,
-        memory_barriers: &[Pin<Arc<MemoryBarrier>>],
-        buffer_memory_barriers: &[Pin<Arc<BufferMemoryBarrier>>],
-        image_memory_barriers: &[Pin<Arc<ImageMemoryBarrier>>],
+        memory_barriers: impl IntoIterator<Item=MemoryBarrier>,
+        buffer_memory_barriers: impl IntoIterator<Item=BufferMemoryBarrier>,
+        image_memory_barriers: impl IntoIterator<Item=ImageMemoryBarrier>,
     ) {
         Self::BARRIERS_CACHES.with(|local| {
             let mut vk_src_stage_mask = ash::vk::PipelineStageFlags::default();
             src_stage_mask
-                .iter()
+                .into_iter()
                 .for_each(|flag| vk_src_stage_mask |= flag.to_ash());
             let mut vk_dst_stage_mask = ash::vk::PipelineStageFlags::default();
             dst_stage_mask
-                .iter()
+                .into_iter()
                 .for_each(|flag| vk_dst_stage_mask |= flag.to_ash());
 
             let (mut memory_cache, mut buffer_cache, mut image_cache) = local.take();
