@@ -149,6 +149,7 @@ pub use ash::vk::Viewport;
 pub use ash::vk::SUBPASS_EXTERNAL;
 pub use ash::vk::ExtendsMemoryRequirements2;
 pub use ash::vk::SurfaceFormatKHR;
+pub use ash::vk::CullModeFlags;
 
 pub use buffer::*;
 pub use image::*;
