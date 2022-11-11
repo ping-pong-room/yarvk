@@ -688,13 +688,6 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut descriptor_pool = DescriptorPool::builder(device.clone())
-        .max_sets(1)
-        .add_descriptor_pool_size(&DescriptorType::UniformBuffer, 1)
-        .add_descriptor_pool_size(&DescriptorType::CombinedImageSampler, 1)
-        .build()
-        .unwrap();
-
     let desc_set_layout = DescriptorSetLayout::builder(device.clone())
         .add_binding(
             DescriptorSetLayoutBinding::builder()
@@ -716,12 +709,13 @@ fn main() {
         )
         .build()
         .unwrap();
-    let descriptor_set_index = 0;
-    descriptor_pool
-        .allocatable()
-        .add_descriptor_set_layout(descriptor_set_index, desc_set_layout.clone())
-        .allocate()
+
+    let descriptor_pool = DescriptorPool::builder(desc_set_layout.clone())
+        .max_sets(1)
+        .build()
         .unwrap();
+
+    let descriptor_set_index = descriptor_pool.allocate().unwrap();
     let uniform_color_buffer_descriptor = DescriptorBufferInfo::builder()
         .buffer(uniform_color_buffer.clone())
         // .range(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
@@ -736,8 +730,8 @@ fn main() {
     let images = &[tex_descriptor];
 
     let mut write_descriptor_sets = descriptor_pool.write_descriptor_sets();
-    write_descriptor_sets.update_buffer(0, 0, 0, buffers);
-    write_descriptor_sets.update_image(0, 1, 0, images);
+    write_descriptor_sets.update_buffer(&descriptor_set_index, 0, 0, buffers);
+    write_descriptor_sets.update_image(&descriptor_set_index, 1, 0, images);
     write_descriptor_sets.par_update();
 
     let command_buffer = setup_command_buffer
@@ -1031,9 +1025,7 @@ fn main() {
                                                     PipelineBindPoint::GRAPHICS,
                                                     &pipeline_layout,
                                                     0,
-                                                    &[descriptor_pool
-                                                        .get_descriptor_set(&descriptor_set_index)
-                                                        .unwrap()],
+                                                    &[&descriptor_set_index],
                                                     &[],
                                                 );
                                                 command_buffer.cmd_bind_pipeline(

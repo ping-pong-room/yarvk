@@ -1,6 +1,5 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
-use crate::descriptor::descriptor_set::DescriptorSet;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceAccelerationStructureFeaturesKHR::AccelerationStructure;
 use crate::extensions::DeviceExtension;
@@ -8,9 +7,9 @@ use crate::extensions::PhysicalDeviceExtensionType::NvRayTracing;
 use crate::pipeline::PipelineLayout;
 use crate::sampler::Sampler;
 use std::sync::Arc;
+use crate::descriptor::descriptor_pool::DescriptorSet;
 
 pub mod descriptor_pool;
-pub mod descriptor_set;
 pub mod descriptor_set_layout;
 pub mod write_descriptor_sets;
 
