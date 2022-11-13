@@ -29,6 +29,7 @@ impl DescriptorPoolCreateFlag {
 /// 2. allocate max_set allocators when created.
 /// 3. cannot free, update descriptor set instead.
 pub struct DescriptorPool {
+    pub max_sets: u32,
     pub descriptor_set_layout: Arc<DescriptorSetLayout>,
     pub(crate) ash_vk_descriptor_pool: ash::vk::DescriptorPool,
     unused_descriptor_sets: scc::Queue<ash::vk::DescriptorSet>,
@@ -131,6 +132,7 @@ impl DescriptorPoolBuilder {
                 descriptor_set_layout: self.descriptor_set_layout.clone(),
                 ash_vk_descriptor_pool,
                 unused_descriptor_sets,
+                max_sets: self.max_sets,
             };
 
             Ok(Arc::new(descriptor_pool))

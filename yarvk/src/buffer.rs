@@ -128,19 +128,20 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
 {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
-    pub fn cmd_bind_vertex_buffers(
+    pub fn cmd_bind_vertex_buffers<T: Buffer + 'static, It: IntoIterator<Item=Arc<T>>>(
         &mut self,
         first_binding: u32,
-        buffers: &[Arc<dyn Buffer>],
+        buffers: It,
         offsets: &[ash::vk::DeviceSize],
     ) {
-        let mut ash_vk_buffers = Vec::with_capacity(buffers.len());
-        for buffer in buffers {
-            ash_vk_buffers.push(buffer.ash_vk_buffer);
+        let iter = buffers.into_iter();
+        let mut ash_vk_buffers = Vec::with_capacity(iter.size_hint().0);
+        for buffer in iter {
+            ash_vk_buffers.push(buffer.raw().ash_vk_buffer);
             // TODO insert by raw automatically
             self.holding_resources
                 .read_buffers
-                .insert(buffer.ash_vk_buffer.as_raw(), buffer.clone());
+                .insert(buffer.raw().ash_vk_buffer.as_raw(), buffer.clone());
         }
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool

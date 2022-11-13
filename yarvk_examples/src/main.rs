@@ -1023,18 +1023,18 @@ fn main() {
                                                 });
                                                 command_buffer.cmd_bind_descriptor_sets(
                                                     PipelineBindPoint::GRAPHICS,
-                                                    &pipeline_layout,
+                                                    pipeline_layout.clone(),
                                                     0,
-                                                    &[&descriptor_set_index],
+                                                    [descriptor_set_index.clone()],
                                                     &[],
                                                 );
                                                 command_buffer.cmd_bind_pipeline(
                                                     PipelineBindPoint::GRAPHICS,
-                                                    &graphic_pipeline,
+                                                    graphic_pipeline.clone(),
                                                 );
                                                 command_buffer.cmd_bind_vertex_buffers(
                                                     0,
-                                                    &[vertex_input_buffer.clone()],
+                                                    [vertex_input_buffer.clone()],
                                                     &[0],
                                                 );
                                                 command_buffer.cmd_bind_index_buffer(

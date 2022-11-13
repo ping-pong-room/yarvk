@@ -18,6 +18,8 @@ use rayon::iter::IntoParallelRefMutIterator;
 use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::descriptor::descriptor_pool::DescriptorSet;
+use crate::pipeline::{Pipeline, PipelineLayout};
 lazy_static! {
     pub static ref DEFAULT_INHERITANCE_INFO: Pin<Arc<CommandBufferInheritanceInfo>> =
         CommandBufferInheritanceInfo::builder().build();
@@ -147,6 +149,9 @@ pub(crate) struct HoldingResources {
     pub write_buffers: FxHashMap<u64, Arc<dyn Buffer>>,
     pub read_images: FxHashMap<u64, Arc<dyn Image>>,
     pub read_buffers: FxHashMap<u64, Arc<dyn Buffer>>,
+    pub pipeline_layouts: FxHashMap<u64, Arc<PipelineLayout>>,
+    pub pipelines: FxHashMap<u64, Arc<Pipeline>>,
+    pub descriptor_sets: FxHashMap<u64,Arc<DescriptorSet>>,
 }
 
 impl HoldingResources {
@@ -155,6 +160,9 @@ impl HoldingResources {
         self.read_images.clear();
         self.write_buffers.clear();
         self.read_buffers.clear();
+        self.pipeline_layouts.clear();
+        self.pipelines.clear();
+        self.descriptor_sets.clear();
     }
 }
 

@@ -15,6 +15,7 @@ use crate::render_pass::RenderPass;
 use crate::shader_module::ShaderModule;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::Arc;
+use ash::vk::Handle;
 use crate::descriptor::descriptor_set_layout::DescriptorSetLayout;
 
 pub mod color_blend_state;
@@ -287,7 +288,7 @@ impl<'a> PipelineBuilder<'a> {
     //     self.flags |= ash::vk::PipelineCreateFlags::ALLOW_DERIVATIVES;
     //     self
     // }
-    pub fn build(mut self) -> Result<Pipeline, ash::vk::Result> {
+    pub fn build(mut self) -> Result<Arc<Pipeline>, ash::vk::Result> {
         // stages
         let mut shader_modules_holder = Vec::with_capacity(self.stages.len());
         let mut ash_vk_stages = Vec::with_capacity(self.stages.len());
@@ -370,12 +371,12 @@ impl<'a> PipelineBuilder<'a> {
                 }
             }
         };
-        Ok(Pipeline {
+        Ok(Arc::new(Pipeline {
             device: self.device,
             _render_pass_holder: render_pass_holder,
             _shader_modules_holder: shader_modules_holder,
             ash_vk_pipeline,
-        })
+        }))
     }
 }
 
@@ -398,7 +399,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     pub fn cmd_bind_pipeline(
         &mut self,
         pipeline_bind_point: ash::vk::PipelineBindPoint,
-        pipeline: &Pipeline,
+        pipeline: Arc<Pipeline>,
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
@@ -408,6 +409,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
                 pipeline.ash_vk_pipeline,
             );
         }
+        self.holding_resources.pipelines.insert(pipeline.ash_vk_pipeline.as_raw(), pipeline);
     }
 
     pub fn cmd_push_constants(
