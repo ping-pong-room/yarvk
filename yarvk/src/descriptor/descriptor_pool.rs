@@ -1,9 +1,9 @@
 use crate::descriptor::descriptor_set_layout::DescriptorSetLayout;
+use crate::descriptor::write_descriptor_sets::WriteDescriptorSets;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceMutableDescriptorTypeFeaturesVALVE::MutableDescriptorType;
 use ash::vk::{DescriptorPoolSize, Handle};
 use std::sync::Arc;
-use crate::descriptor::write_descriptor_sets::WriteDescriptorSets;
 
 pub enum DescriptorPoolCreateFlag {
     VkDescriptorPoolCreateUpdateAfterBind,
@@ -32,7 +32,7 @@ pub struct DescriptorPool {
     pub max_sets: u32,
     pub descriptor_set_layout: Arc<DescriptorSetLayout>,
     pub(crate) ash_vk_descriptor_pool: ash::vk::DescriptorPool,
-    unused_descriptor_sets: scc::Queue<ash::vk::DescriptorSet>,
+    unused_descriptor_sets: crossbeam_queue::ArrayQueue<ash::vk::DescriptorSet>,
 }
 
 impl crate::Handle for DescriptorPool {
@@ -55,7 +55,7 @@ impl DescriptorPool {
             None => None,
             Some(ash_vk_descriptor_set) => Some(Arc::new(DescriptorSet {
                 pool: self.clone(),
-                ash_vk_descriptor_set: **ash_vk_descriptor_set,
+                ash_vk_descriptor_set,
             })),
         }
     }
@@ -70,7 +70,8 @@ impl Drop for DescriptorPool {
         unsafe {
             // DONE VUID-vkDestroyDescriptorPool-descriptorPool-00303
             // Host Synchronization: descriptorPool
-            self.descriptor_set_layout.device
+            self.descriptor_set_layout
+                .device
                 .ash_device
                 .destroy_descriptor_pool(self.ash_vk_descriptor_pool, None);
         }
@@ -122,10 +123,10 @@ impl DescriptorPoolBuilder {
                 .descriptor_pool(ash_vk_descriptor_pool)
                 .set_layouts(vk_layouts.as_slice())
                 .build();
-            let unused_descriptor_sets = scc::Queue::default();
+            let unused_descriptor_sets = crossbeam_queue::ArrayQueue::new(self.max_sets as _);
             // Host Synchronization: pAllocateInfo->descriptorPool
             for vk_descriptor_set in device.ash_device.allocate_descriptor_sets(&create_info)? {
-                unused_descriptor_sets.push(vk_descriptor_set);
+                unused_descriptor_sets.push(vk_descriptor_set).unwrap();
             }
 
             let descriptor_pool = DescriptorPool {
@@ -149,6 +150,7 @@ impl Drop for DescriptorSet {
     fn drop(&mut self) {
         self.pool
             .unused_descriptor_sets
-            .push(self.ash_vk_descriptor_set);
+            .push(self.ash_vk_descriptor_set)
+            .unwrap();
     }
 }
