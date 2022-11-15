@@ -1,6 +1,7 @@
 #![feature(adt_const_params)]
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
+#![feature(generic_const_exprs)]
 
 // use rustc_hash::FxHashSet;
 // use std::ffi::CStr;
