@@ -50,13 +50,13 @@ impl DescriptorPool {
         }
     }
 
-    pub fn allocate(self: &Arc<Self>) -> Option<Arc<DescriptorSet>> {
+    pub fn allocate(self: &Arc<Self>) -> Option<DescriptorSet> {
         match self.unused_descriptor_sets.pop() {
             None => None,
-            Some(ash_vk_descriptor_set) => Some(Arc::new(DescriptorSet {
+            Some(ash_vk_descriptor_set) => Some(DescriptorSet {
                 pool: self.clone(),
                 ash_vk_descriptor_set,
-            })),
+            }),
         }
     }
 

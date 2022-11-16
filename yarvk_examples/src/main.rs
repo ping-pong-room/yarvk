@@ -48,9 +48,8 @@ use yarvk::pipeline::vertex_input_state::{
 };
 // use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use yarvk::descriptor::descriptor_pool::DescriptorPool;
-use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding};
+use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorType};
 use yarvk::descriptor::write_descriptor_sets::{DescriptorBufferInfo, DescriptorImageInfo};
-use yarvk::descriptor::DescriptorType;
 use yarvk::device_features::{
     DeviceFeatures, PhysicalDeviceFeatures,
 };
@@ -734,6 +733,7 @@ fn main() {
     write_descriptor_sets.update_image(&descriptor_set_index, 1, 0, images);
     write_descriptor_sets.par_update();
 
+    let descriptor_set_index = Arc::new(descriptor_set_index);
     let command_buffer = setup_command_buffer
         .record(|command_buffer| {
             let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
