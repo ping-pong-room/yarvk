@@ -1,4 +1,4 @@
-use crate::descriptor::descriptor_pool::{DescriptorPool, DescriptorSet};
+use crate::descriptor::descriptor_pool::DescriptorSet;
 use crate::device::Device;
 use crate::device_memory::MemoryRequirement;
 use crate::image_view::ImageView;
@@ -142,19 +142,18 @@ enum DescriptorInfoType<'a> {
 }
 
 pub struct WriteDescriptorSets<'a> {
-    descriptor_pool: Arc<DescriptorPool>,
-    write_descriptor_sets:
-        FxHashMap<ash::vk::DescriptorSet, FxHashMap<u32, DescriptorInfoType<'a>> /*bindings*/>,
+    descriptor_set: &'a mut DescriptorSet,
+    binding_values: FxHashMap<u32, DescriptorInfoType<'a>>,
     tmp_vk_image_infos: Vec<Vec<ash::vk::DescriptorImageInfo>>,
     tmp_vk_buffer_infos: Vec<Vec<ash::vk::DescriptorBufferInfo>>,
     tmp_vk_texel_buffer_views: Vec<Vec<ash::vk::BufferView>>,
 }
 
 impl<'a> WriteDescriptorSets<'a> {
-    pub fn new(descriptor_pool: Arc<DescriptorPool>) -> Self {
+    pub fn new(descriptor_set: &'a mut DescriptorSet) -> Self {
         Self {
-            descriptor_pool,
-            write_descriptor_sets: Default::default(),
+            descriptor_set,
+            binding_values: Default::default(),
             tmp_vk_image_infos: vec![],
             tmp_vk_buffer_infos: vec![],
             tmp_vk_texel_buffer_views: vec![],
@@ -162,16 +161,11 @@ impl<'a> WriteDescriptorSets<'a> {
     }
     pub fn update_image(
         &mut self,
-        descriptor_set: &'a DescriptorSet,
         binding: u32,
         dst_array_element: u32,
         image_info: &'a [DescriptorImageInfo],
     ) {
-        let bindings = self
-            .write_descriptor_sets
-            .entry(descriptor_set.ash_vk_descriptor_set)
-            .or_default();
-        bindings.insert(
+        self.binding_values.insert(
             binding,
             DescriptorInfoType::Image(WriteImage {
                 dst_array_element,
@@ -182,16 +176,11 @@ impl<'a> WriteDescriptorSets<'a> {
 
     pub fn update_buffer(
         &mut self,
-        descriptor_set: &'a DescriptorSet,
         binding: u32,
         dst_array_element: u32,
         buffer_info: &'a [DescriptorBufferInfo],
     ) {
-        let bindings = self
-            .write_descriptor_sets
-            .entry(descriptor_set.ash_vk_descriptor_set)
-            .or_default();
-        bindings.insert(
+        self.binding_values.insert(
             binding,
             DescriptorInfoType::Buffer(WriteBuffer {
                 dst_array_element,
@@ -202,16 +191,11 @@ impl<'a> WriteDescriptorSets<'a> {
 
     pub fn update_texel_buffer_view(
         &mut self,
-        descriptor_set: &'a DescriptorSet,
         binding: u32,
         dst_array_element: u32,
         texel_buffer_view: &'a [BufferView],
     ) {
-        let bindings = self
-            .write_descriptor_sets
-            .entry(descriptor_set.ash_vk_descriptor_set)
-            .or_default();
-        bindings.insert(
+        self.binding_values.insert(
             binding,
             DescriptorInfoType::TexelBufferView(WriteTexelBufferView {
                 dst_array_element,
@@ -221,66 +205,66 @@ impl<'a> WriteDescriptorSets<'a> {
     }
 
     fn push_ash(&mut self, vec: &mut ParallelSplitWriteDescriptorSets) {
-        for (ash_vk_descriptor_set, bindings) in &self.write_descriptor_sets {
-            for (binding, descriptor_info_type) in bindings {
-                if let Some(descriptor_set_layout_binding) =
-                    self.descriptor_pool.descriptor_set_layout.bindings.get(binding)
-                {
-                    let mut builder = ash::vk::WriteDescriptorSet::builder()
-                        .dst_set(*ash_vk_descriptor_set)
-                        .dst_binding(*binding)
-                        .descriptor_type(descriptor_set_layout_binding.descriptor_type().to_ash());
-                    match descriptor_info_type {
-                        DescriptorInfoType::Image(image_info) => {
-                            builder = builder.dst_array_element(image_info.dst_array_element);
-                            self.tmp_vk_image_infos.push(
-                                image_info
-                                    .image_info
-                                    .iter()
-                                    .map(|info| info.ash_builder().build())
-                                    .collect(),
-                            );
-                            let slice = self.tmp_vk_image_infos.last().unwrap().as_slice();
-                            builder = builder.image_info(slice);
-                        }
-                        DescriptorInfoType::Buffer(buffer_info) => {
-                            builder = builder.dst_array_element(buffer_info.dst_array_element);
-                            self.tmp_vk_buffer_infos.push(
-                                buffer_info
-                                    .buffer_info
-                                    .iter()
-                                    .map(|info| info.ash_builder().build())
-                                    .collect(),
-                            );
-                            let slice = self.tmp_vk_buffer_infos.last().unwrap();
-                            builder = builder.buffer_info(slice);
-                        }
-                        DescriptorInfoType::TexelBufferView(ash_vk_buffer_views) => {
-                            builder =
-                                builder.dst_array_element(ash_vk_buffer_views.dst_array_element);
-                            self.tmp_vk_texel_buffer_views.push(
-                                ash_vk_buffer_views
-                                    .texel_buffer_view
-                                    .iter()
-                                    .map(|info| info.ash_vk_buffer_view)
-                                    .collect(),
-                            );
-                            let slice = self.tmp_vk_texel_buffer_views.last().unwrap();
-                            builder = builder.texel_buffer_view(slice);
-                        }
+        for (binding, descriptor_info_type) in &self.binding_values {
+            if let Some(descriptor_set_layout_binding) = self
+                .descriptor_set
+                .descriptor_set_layout
+                .bindings
+                .get(binding)
+            {
+                let mut builder = ash::vk::WriteDescriptorSet::builder()
+                    .dst_set(self.descriptor_set.ash_vk_descriptor_set)
+                    .dst_binding(*binding)
+                    .descriptor_type(descriptor_set_layout_binding.descriptor_type().to_ash());
+                match descriptor_info_type {
+                    DescriptorInfoType::Image(image_info) => {
+                        builder = builder.dst_array_element(image_info.dst_array_element);
+                        self.tmp_vk_image_infos.push(
+                            image_info
+                                .image_info
+                                .iter()
+                                .map(|info| info.ash_builder().build())
+                                .collect(),
+                        );
+                        let slice = self.tmp_vk_image_infos.last().unwrap().as_slice();
+                        builder = builder.image_info(slice);
                     }
-                    vec.fix_push(builder);
+                    DescriptorInfoType::Buffer(buffer_info) => {
+                        builder = builder.dst_array_element(buffer_info.dst_array_element);
+                        self.tmp_vk_buffer_infos.push(
+                            buffer_info
+                                .buffer_info
+                                .iter()
+                                .map(|info| info.ash_builder().build())
+                                .collect(),
+                        );
+                        let slice = self.tmp_vk_buffer_infos.last().unwrap();
+                        builder = builder.buffer_info(slice);
+                    }
+                    DescriptorInfoType::TexelBufferView(ash_vk_buffer_views) => {
+                        builder = builder.dst_array_element(ash_vk_buffer_views.dst_array_element);
+                        self.tmp_vk_texel_buffer_views.push(
+                            ash_vk_buffer_views
+                                .texel_buffer_view
+                                .iter()
+                                .map(|info| info.ash_vk_buffer_view)
+                                .collect(),
+                        );
+                        let slice = self.tmp_vk_texel_buffer_views.last().unwrap();
+                        builder = builder.texel_buffer_view(slice);
+                    }
                 }
+                vec.fix_push(builder);
             }
-            vec.focus_next();
         }
+        vec.focus_next();
     }
 
     /// update descriptors in parallel
     pub fn par_update(&mut self) {
         let mut vec = ParallelSplitWriteDescriptorSets::new();
         self.push_ash(&mut vec);
-        vec.update(&self.descriptor_pool.descriptor_set_layout.device);
+        vec.update(&self.descriptor_set.descriptor_set_layout.device);
     }
 }
 
@@ -331,13 +315,7 @@ impl<'a> ParallelSplitWriteDescriptorSets<'a> {
 }
 
 impl Device {
-    pub fn par_update_descriptor_sets<
-        'a,
-        It: IntoIterator<Item = &'a mut WriteDescriptorSets<'a>>,
-    >(
-        &self,
-        descriptor_writes: It,
-    ) {
+    pub fn par_update_descriptor_sets(&self, descriptor_writes: &mut [WriteDescriptorSets]) {
         let mut vec = ParallelSplitWriteDescriptorSets::new();
         for write_descriptor_set in descriptor_writes.into_iter() {
             write_descriptor_set.push_ash(&mut vec);

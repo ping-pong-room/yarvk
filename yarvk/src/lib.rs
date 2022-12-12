@@ -2,10 +2,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 
-// use rustc_hash::FxHashSet;
-// use std::ffi::CStr;
-// use std::pin::Pin;
-// use std::sync::Arc;
 pub mod buffer;
 pub mod command;
 pub mod debug_utils_messenger;
@@ -31,7 +27,6 @@ pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
-pub mod utils;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;

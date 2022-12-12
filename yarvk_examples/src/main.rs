@@ -714,7 +714,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let descriptor_set_index = descriptor_pool.allocate().unwrap();
+    let mut descriptor_set = descriptor_pool.allocate().unwrap();
     let uniform_color_buffer_descriptor = DescriptorBufferInfo::builder()
         .buffer(uniform_color_buffer.clone())
         // .range(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
@@ -728,12 +728,13 @@ fn main() {
     let buffers = &[uniform_color_buffer_descriptor];
     let images = &[tex_descriptor];
 
-    let mut write_descriptor_sets = descriptor_pool.write_descriptor_sets();
-    write_descriptor_sets.update_buffer(&descriptor_set_index, 0, 0, buffers);
-    write_descriptor_sets.update_image(&descriptor_set_index, 1, 0, images);
-    write_descriptor_sets.par_update();
+    let mut write_descriptor_set = descriptor_set.write_descriptor_sets();
+    write_descriptor_set.update_buffer( 0, 0, buffers);
+    write_descriptor_set.update_image( 1, 0, images);
 
-    let descriptor_set_index = Arc::new(descriptor_set_index);
+    device.par_update_descriptor_sets(&mut [write_descriptor_set]);
+
+    let descriptor_set = Arc::new(descriptor_set);
     let command_buffer = setup_command_buffer
         .record(|command_buffer| {
             let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
@@ -1025,7 +1026,7 @@ fn main() {
                                                     PipelineBindPoint::GRAPHICS,
                                                     pipeline_layout.clone(),
                                                     0,
-                                                    [descriptor_set_index.clone()],
+                                                    [descriptor_set.clone()],
                                                     &[],
                                                 );
                                                 command_buffer.cmd_bind_pipeline(

@@ -55,13 +55,10 @@ impl DescriptorPool {
             None => None,
             Some(ash_vk_descriptor_set) => Some(DescriptorSet {
                 pool: self.clone(),
+                descriptor_set_layout: self.descriptor_set_layout.clone(),
                 ash_vk_descriptor_set,
             }),
         }
-    }
-
-    pub fn write_descriptor_sets<'a>(self: &'a Arc<Self>) -> WriteDescriptorSets<'a> {
-        WriteDescriptorSets::new(self.clone())
     }
 }
 
@@ -143,7 +140,14 @@ impl DescriptorPoolBuilder {
 
 pub struct DescriptorSet {
     pub pool: Arc<DescriptorPool>,
+    pub descriptor_set_layout: Arc<DescriptorSetLayout>,
     pub(crate) ash_vk_descriptor_set: ash::vk::DescriptorSet,
+}
+
+impl DescriptorSet {
+    pub fn write_descriptor_sets(&mut self) -> WriteDescriptorSets {
+        WriteDescriptorSets::new(self)
+    }
 }
 
 impl Drop for DescriptorSet {
