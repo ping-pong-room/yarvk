@@ -51,9 +51,7 @@ use yarvk::descriptor::descriptor_pool::DescriptorPool;
 use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding};
 use yarvk::descriptor::write_descriptor_sets::{DescriptorBufferInfo, DescriptorImageInfo};
 use yarvk::descriptor::DescriptorType;
-use yarvk::device_features::{
-    DeviceFeatures, PhysicalDeviceFeatures,
-};
+use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
 use yarvk::queue::Queue;
@@ -239,7 +237,9 @@ fn main() {
         .add_feature(DeviceFeatures::SamplerAnisotropy)
         .build()
         .unwrap();
-    let feature_sampler_anisotropy = device.get_feature::<{PhysicalDeviceFeatures::SamplerAnisotropy.into()}>().unwrap();
+    let feature_sampler_anisotropy = device
+        .get_feature::<{ PhysicalDeviceFeatures::SamplerAnisotropy.into() }>()
+        .unwrap();
     let swapchian_extension = device
         .get_extension::<{ PhysicalDeviceExtensionType::KhrSwapchain }>()
         .unwrap();
@@ -479,14 +479,12 @@ fn main() {
         .build()
         .unwrap();
     index_buffer_memory
-        .map_memory(0, index_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..std::mem::size_of_val(&index_buffer_data)].copy_from_slice(unsafe {
-                std::slice::from_raw_parts(
-                    index_buffer_data.as_ptr() as *const u8,
-                    std::mem::size_of_val(&index_buffer_data),
-                )
-            });
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                index_buffer_data.as_ptr() as *const u8,
+                std::mem::size_of_val(&index_buffer_data),
+            )
+        })])
         .unwrap();
     let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
 
@@ -532,15 +530,12 @@ fn main() {
             .unwrap();
 
     vertex_input_buffer_memory
-        .map_memory(0, vertex_input_buffer_memory_req.size, |mut_slice| {
-            // TODO check alignment
-            mut_slice[0..std::mem::size_of_val(&vertices)].copy_from_slice(unsafe {
-                std::slice::from_raw_parts(
-                    vertices.as_ptr() as *const u8,
-                    std::mem::size_of_val(&vertices),
-                )
-            });
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                vertices.as_ptr() as *const u8,
+                std::mem::size_of_val(&vertices),
+            )
+        })])
         .unwrap();
     let vertex_input_buffer = Arc::new(
         vertex_input_buffer
@@ -575,16 +570,12 @@ fn main() {
             .unwrap();
 
     uniform_color_buffer_memory
-        .map_memory(0, uniform_color_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..std::mem::size_of_val(&uniform_color_buffer_data)].copy_from_slice(
-                unsafe {
-                    std::slice::from_raw_parts(
-                        &uniform_color_buffer_data as *const _ as *const u8,
-                        std::mem::size_of_val(&uniform_color_buffer_data),
-                    )
-                },
-            );
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                &uniform_color_buffer_data as *const _ as *const u8,
+                std::mem::size_of_val(&uniform_color_buffer_data),
+            )
+        })])
         .unwrap();
 
     let uniform_color_buffer = Arc::new(
@@ -619,9 +610,7 @@ fn main() {
         .build()
         .unwrap();
     image_buffer_memory
-        .map_memory(0, image_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..image_data.len()].copy_from_slice(image_data.as_slice());
-        })
+        .write_memory(&[(0, image_data.as_slice())])
         .unwrap();
 
     let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
@@ -1082,10 +1071,7 @@ fn main() {
                 let mut command_buffer = result
                     .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
-                let secondary_buffer = command_buffer
-                    .secondary_buffers()
-                    .pop()
-                    .unwrap();
+                let secondary_buffer = command_buffer.secondary_buffers().pop().unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();
                 draw_command_buffer = Some(command_buffer);
