@@ -19,6 +19,7 @@ use std::marker::PhantomPinned;
 use std::pin::Pin;
 use std::sync::Arc;
 use crate::descriptor::descriptor_pool::DescriptorSet;
+use crate::descriptor_set_v2::descriptor_set::IDescriptorSet;
 use crate::pipeline::{Pipeline, PipelineLayout};
 lazy_static! {
     pub static ref DEFAULT_INHERITANCE_INFO: Pin<Arc<CommandBufferInheritanceInfo>> =
@@ -152,6 +153,7 @@ pub(crate) struct HoldingResources {
     pub pipeline_layouts: FxHashMap<u64, Arc<PipelineLayout>>,
     pub pipelines: FxHashMap<u64, Arc<Pipeline>>,
     pub descriptor_sets: FxHashMap<u64,Arc<DescriptorSet>>,
+    pub descriptor_sets_v2: FxHashMap<u64,Arc<dyn IDescriptorSet>>,
 }
 
 impl HoldingResources {
@@ -163,6 +165,7 @@ impl HoldingResources {
         self.pipeline_layouts.clear();
         self.pipelines.clear();
         self.descriptor_sets.clear();
+        self.descriptor_sets_v2.clear();
     }
 }
 

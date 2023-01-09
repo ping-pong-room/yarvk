@@ -74,6 +74,13 @@ pub struct ImageView {
     pub(crate) ash_vk_image_view: ash::vk::ImageView,
 }
 
+impl PartialEq for ImageView {
+    fn eq(&self, other: &Self) -> bool {
+        self.image.device == other.image.device
+            && self.ash_vk_image_view == other.ash_vk_image_view
+    }
+}
+
 impl ImageView {
     pub fn builder(image: Arc<dyn Image>) -> ImageViewBuilder {
         ImageViewBuilder::new(image)

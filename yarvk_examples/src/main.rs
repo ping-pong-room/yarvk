@@ -1,5 +1,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
+
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Cursor;
@@ -17,6 +18,13 @@ use yarvk::device::{Device, DeviceQueueCreateInfo};
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
 use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
+use yarvk::descriptor_set_v2::desccriptor_pool::DescriptorPool;
+use yarvk::descriptor_set_v2::descriptor_set::{
+    ConstDescriptorSetValue2, DescriptorSetValue, DescriptorSetValue2, IDescriptorSet,
+};
+use yarvk::descriptor_set_v2::descriptor_set_layout::DescriptorSetLayout;
+use yarvk::descriptor_set_v2::descriptor_type::DescriptorKind;
+use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
 use yarvk::entry::Entry;
@@ -45,13 +53,6 @@ use yarvk::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStage};
 use yarvk::pipeline::vertex_input_state::{
     PipelineVertexInputStateCreateInfo, VertexInputAttributeDescription,
     VertexInputBindingDescription,
-};
-// use yarvk::pipeline::viewport_state::PipelineViewportStateCreateInfo;
-use yarvk::descriptor::descriptor_pool::DescriptorPool;
-use yarvk::descriptor::descriptor_set_layout::{DescriptorSetLayout, DescriptorSetLayoutBinding, DescriptorType};
-use yarvk::descriptor::write_descriptor_sets::{DescriptorBufferInfo, DescriptorImageInfo};
-use yarvk::device_features::{
-    DeviceFeatures, PhysicalDeviceFeatures,
 };
 use yarvk::pipeline::{Pipeline, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
@@ -143,6 +144,15 @@ pub fn find_memory_type_index(
         })
         .map(|(_index, memory_type)| memory_type.clone())
 }
+
+type MyDescriptorLayout = DescriptorSetValue2<
+    0,
+    { DescriptorKind::UniformBuffer },
+    1,
+    1,
+    { DescriptorKind::CombinedImageSamplerImmutable },
+    1,
+>;
 
 fn main() {
     let window_width = 1920;
@@ -238,7 +248,9 @@ fn main() {
         .add_feature(DeviceFeatures::SamplerAnisotropy)
         .build()
         .unwrap();
-    let feature_sampler_anisotropy = device.get_feature::<{PhysicalDeviceFeatures::SamplerAnisotropy.into()}>().unwrap();
+    let feature_sampler_anisotropy = device
+        .get_feature::<{ PhysicalDeviceFeatures::SamplerAnisotropy.into() }>()
+        .unwrap();
     let swapchian_extension = device
         .get_extension::<{ PhysicalDeviceExtensionType::KhrSwapchain }>()
         .unwrap();
@@ -687,54 +699,34 @@ fn main() {
         .build()
         .unwrap();
 
-    let desc_set_layout = DescriptorSetLayout::builder(device.clone())
-        .add_binding(
-            DescriptorSetLayoutBinding::builder()
-                .binding(0)
-                .descriptor_type(DescriptorType::UniformBuffer)
-                .descriptor_count(1)
-                .add_stage_flag(ShaderStage::Fragment)
-                .build(),
-        )
-        .add_binding(
-            DescriptorSetLayoutBinding::builder()
-                .binding(1)
-                .descriptor_type(DescriptorType::CombinedImageSamplerImmutable(vec![
-                    sampler.clone()
-                ]))
-                .descriptor_count(1)
-                .add_stage_flag(ShaderStage::Fragment)
-                .build(),
-        )
-        .build()
+    let layout_const: <MyDescriptorLayout as DescriptorSetValue>::ConstDescriptorSetValue =
+        ConstDescriptorSetValue2 {
+            t0: ([(); 1], ShaderStage::Fragment),
+            t1: ([sampler.clone(); 1], ShaderStage::Fragment),
+        };
+
+    let desc_set_layout = DescriptorSetLayout::new(&device, layout_const).unwrap();
+
+    let descriptor_pool = DescriptorPool::new(&device, 1, &desc_set_layout).unwrap();
+
+    let init_value = MyDescriptorLayout {
+        t0: [(
+            uniform_color_buffer.clone(),
+            0,
+            std::mem::size_of_val(&uniform_color_buffer_data) as u64,
+        )],
+        t1: [(
+            tex_image_view.clone(),
+            ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+        )],
+    };
+
+    let descriptor_set = descriptor_pool
+        .allocate([init_value.clone()])
+        .pop()
         .unwrap();
 
-    let descriptor_pool = DescriptorPool::builder(desc_set_layout.clone())
-        .max_sets(1)
-        .build()
-        .unwrap();
-
-    let mut descriptor_set = descriptor_pool.allocate().unwrap();
-    let uniform_color_buffer_descriptor = DescriptorBufferInfo::builder()
-        .buffer(uniform_color_buffer.clone())
-        // .range(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
-        .build();
-
-    let tex_descriptor = DescriptorImageInfo::builder()
-        .image_layout(ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-        .image_view(tex_image_view.clone())
-        .build();
-
-    let buffers = &[uniform_color_buffer_descriptor];
-    let images = &[tex_descriptor];
-
-    let mut write_descriptor_set = descriptor_set.write_descriptor_sets();
-    write_descriptor_set.update_buffer( 0, 0, buffers);
-    write_descriptor_set.update_image( 1, 0, images);
-
-    device.par_update_descriptor_sets(&mut [write_descriptor_set]);
-
-    let descriptor_set = Arc::new(descriptor_set);
+    let descriptor_set: Arc<dyn IDescriptorSet> = Arc::new(descriptor_set);
     let command_buffer = setup_command_buffer
         .record(|command_buffer| {
             let texture_barrier = ImageMemoryBarrier::builder(texture_image.clone())
@@ -826,7 +818,7 @@ fn main() {
         .unwrap();
 
     let pipeline_layout = PipelineLayout::builder(device.clone())
-        .add_set_layout(desc_set_layout.clone())
+        .add_set_layout_v2(desc_set_layout.clone())
         .build()
         .unwrap();
 
@@ -1022,16 +1014,23 @@ fn main() {
                                                     extent: surface_resolution,
                                                     ..Default::default()
                                                 });
-                                                command_buffer.cmd_bind_descriptor_sets(
+                                                command_buffer.cmd_bind_pipeline(
+                                                    PipelineBindPoint::GRAPHICS,
+                                                    graphic_pipeline.clone(),
+                                                );
+                                                // command_buffer.cmd_bind_descriptor_sets(
+                                                //     PipelineBindPoint::GRAPHICS,
+                                                //     pipeline_layout.clone(),
+                                                //     0,
+                                                //     [descriptor_set.clone()],
+                                                //     &[],
+                                                // );
+                                                command_buffer.cmd_bind_descriptor_sets_v2(
                                                     PipelineBindPoint::GRAPHICS,
                                                     pipeline_layout.clone(),
                                                     0,
                                                     [descriptor_set.clone()],
                                                     &[],
-                                                );
-                                                command_buffer.cmd_bind_pipeline(
-                                                    PipelineBindPoint::GRAPHICS,
-                                                    graphic_pipeline.clone(),
                                                 );
                                                 command_buffer.cmd_bind_vertex_buffers(
                                                     0,
@@ -1083,10 +1082,7 @@ fn main() {
                 let mut command_buffer = result
                     .take_invalid_primary_buffer(&command_buffer_handler)
                     .unwrap();
-                let secondary_buffer = command_buffer
-                    .secondary_buffers()
-                    .pop()
-                    .unwrap();
+                let secondary_buffer = command_buffer.secondary_buffers().pop().unwrap();
                 let command_buffer = command_buffer.reset().unwrap();
                 let secondary_buffer = secondary_buffer.reset().unwrap();
                 draw_command_buffer = Some(command_buffer);

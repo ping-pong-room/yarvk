@@ -2,7 +2,7 @@ use crate::descriptor::descriptor_set_layout::DescriptorSetLayout;
 use crate::descriptor::write_descriptor_sets::WriteDescriptorSets;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceMutableDescriptorTypeFeaturesVALVE::MutableDescriptorType;
-use ash::vk::{DescriptorPoolSize, Handle};
+use ash::vk::Handle;
 use std::sync::Arc;
 
 pub enum DescriptorPoolCreateFlag {
@@ -97,7 +97,7 @@ impl DescriptorPoolBuilder {
             Vec::with_capacity(self.max_sets as usize * self.descriptor_set_layout.bindings.len());
         for _ in 0..self.max_sets {
             for (_, binding) in &self.descriptor_set_layout.bindings {
-                pool_sizes.push(DescriptorPoolSize {
+                pool_sizes.push(ash::vk::DescriptorPoolSize {
                     ty: binding.descriptor_type().to_ash(),
                     descriptor_count: binding.descriptor_count(),
                 });

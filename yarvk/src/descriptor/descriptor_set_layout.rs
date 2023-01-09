@@ -1,12 +1,12 @@
 use crate::device::Device;
-use crate::pipeline::shader_stage::ShaderStage;
-use rustc_hash::FxHashMap;
-use std::sync::Arc;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceAccelerationStructureFeaturesKHR::AccelerationStructure;
 use crate::extensions::DeviceExtension;
 use crate::extensions::PhysicalDeviceExtensionType::NvRayTracing;
+use crate::pipeline::shader_stage::ShaderStage;
 use crate::sampler::Sampler;
+use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
 #[derive(Default)]
 pub enum DescriptorType {
@@ -155,9 +155,8 @@ pub struct DescriptorSetLayout {
 }
 
 impl DescriptorSetLayout {
-    pub fn builder(device: Arc<Device>) -> DescriptorSetLayoutBuilder {
+    pub fn builder() -> DescriptorSetLayoutBuilder {
         DescriptorSetLayoutBuilder {
-            device,
             flags: Default::default(),
             bindings: Default::default(),
         }
@@ -165,7 +164,6 @@ impl DescriptorSetLayout {
 }
 
 pub struct DescriptorSetLayoutBuilder {
-    device: Arc<Device>,
     flags: ash::vk::DescriptorSetLayoutCreateFlags,
     bindings: FxHashMap<u32, DescriptorSetLayoutBinding>,
 }
@@ -183,7 +181,7 @@ impl DescriptorSetLayoutBuilder {
         }
         self
     }
-    pub fn build(self) -> Result<Arc<DescriptorSetLayout>, ash::vk::Result> {
+    pub fn build(self, device: &Arc<Device>) -> Result<Arc<DescriptorSetLayout>, ash::vk::Result> {
         let mut ash_cache = Vec::new();
         let bindings = self
             .bindings
@@ -196,12 +194,11 @@ impl DescriptorSetLayoutBuilder {
             .build();
         unsafe {
             // Host Synchronization: none
-            let ash_vk_descriptor_set_layout = self
-                .device
+            let ash_vk_descriptor_set_layout = device
                 .ash_device
                 .create_descriptor_set_layout(&create_info, None)?;
             Ok(Arc::new(DescriptorSetLayout {
-                device: self.device,
+                device: device.clone(),
                 ash_vk_descriptor_set_layout,
                 bindings: self.bindings,
             }))

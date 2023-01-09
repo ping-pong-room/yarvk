@@ -15,6 +15,7 @@ derive_more = "0.99.17"
 lazy_static = "1.4.0"
 rayon = "1.5.3"
 crossbeam-queue = "0.3.6"
+dashmap = "5.4.0"
 
 [target."cfg(any(target_os = \"macos\", target_os = \"ios\"))".dependencies.raw-window-metal]
 version = "0.1"

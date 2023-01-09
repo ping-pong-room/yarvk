@@ -6,6 +6,13 @@ pub struct BufferView {
     pub(crate) ash_vk_buffer_view: ash::vk::BufferView,
 }
 
+impl PartialEq for BufferView {
+    fn eq(&self, other: &Self) -> bool {
+        self.buffer.device == other.buffer.device
+            && self.ash_vk_buffer_view == other.ash_vk_buffer_view
+    }
+}
+
 impl BufferView {
     pub fn builder(buffer: Arc<dyn Buffer>) -> BufferViewBuilder {
         BufferViewBuilder {

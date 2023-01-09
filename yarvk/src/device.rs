@@ -187,8 +187,6 @@ impl PartialEq for Device {
     }
 }
 
-impl Eq for Device {}
-
 impl Device {
     pub fn builder(physical_device: Arc<PhysicalDevice>) -> DeviceBuilder {
         DeviceBuilder {

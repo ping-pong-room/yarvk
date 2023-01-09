@@ -1,6 +1,9 @@
 #![feature(adt_const_params)]
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
+#![feature(specialization)]
+#![feature(min_specialization)]
+#![feature(once_cell)]
 
 pub mod buffer;
 pub mod command;
@@ -27,6 +30,7 @@ pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
+pub mod descriptor_set_v2;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;

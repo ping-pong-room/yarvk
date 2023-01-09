@@ -9,6 +9,13 @@ pub struct Sampler {
     pub(crate) ash_vk_sampler: ash::vk::Sampler,
 }
 
+impl PartialEq for Sampler {
+    fn eq(&self, other: &Self) -> bool {
+        self.device == other.device
+            && self.ash_vk_sampler == other.ash_vk_sampler
+    }
+}
+
 impl Drop for Sampler {
     fn drop(&mut self) {
         unsafe {
@@ -42,6 +49,7 @@ impl Sampler {
     }
 }
 
+#[derive(Clone)]
 pub struct SamplerBuilder {
     device: Arc<Device>,
     flags: ash::vk::SamplerCreateFlags,

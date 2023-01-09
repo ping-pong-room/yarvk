@@ -120,30 +120,27 @@ impl DescriptorBufferInfoBuilder {
     }
 }
 
-struct WriteImage<'a> {
-    dst_array_element: u32,
-    image_info: &'a [DescriptorImageInfo],
+struct WriteImage {
+    image_info: Vec<DescriptorImageInfo>,
 }
 
-struct WriteBuffer<'a> {
-    dst_array_element: u32,
-    buffer_info: &'a [DescriptorBufferInfo],
+struct WriteBuffer {
+    buffer_info: Vec<DescriptorBufferInfo>,
 }
 
-struct WriteTexelBufferView<'a> {
-    dst_array_element: u32,
-    texel_buffer_view: &'a [BufferView],
+struct WriteTexelBufferView {
+    texel_buffer_view: Vec<Arc<BufferView>>,
 }
 
-enum DescriptorInfoType<'a> {
-    Image(WriteImage<'a>),
-    Buffer(WriteBuffer<'a>),
-    TexelBufferView(WriteTexelBufferView<'a>),
+enum DescriptorInfoType {
+    Image(WriteImage),
+    Buffer(WriteBuffer),
+    TexelBufferView(WriteTexelBufferView),
 }
 
 pub struct WriteDescriptorSets<'a> {
     descriptor_set: &'a mut DescriptorSet,
-    binding_values: FxHashMap<u32, DescriptorInfoType<'a>>,
+    binding_values: FxHashMap<u32, (u32, DescriptorInfoType)>,
     tmp_vk_image_infos: Vec<Vec<ash::vk::DescriptorImageInfo>>,
     tmp_vk_buffer_infos: Vec<Vec<ash::vk::DescriptorBufferInfo>>,
     tmp_vk_texel_buffer_views: Vec<Vec<ash::vk::BufferView>>,
@@ -163,14 +160,14 @@ impl<'a> WriteDescriptorSets<'a> {
         &mut self,
         binding: u32,
         dst_array_element: u32,
-        image_info: &'a [DescriptorImageInfo],
+        image_info: Vec<DescriptorImageInfo>,
     ) {
         self.binding_values.insert(
             binding,
-            DescriptorInfoType::Image(WriteImage {
+            (
                 dst_array_element,
-                image_info,
-            }),
+                DescriptorInfoType::Image(WriteImage { image_info }),
+            ),
         );
     }
 
@@ -178,14 +175,14 @@ impl<'a> WriteDescriptorSets<'a> {
         &mut self,
         binding: u32,
         dst_array_element: u32,
-        buffer_info: &'a [DescriptorBufferInfo],
+        buffer_info: Vec<DescriptorBufferInfo>,
     ) {
         self.binding_values.insert(
             binding,
-            DescriptorInfoType::Buffer(WriteBuffer {
+            (
                 dst_array_element,
-                buffer_info,
-            }),
+                DescriptorInfoType::Buffer(WriteBuffer { buffer_info }),
+            ),
         );
     }
 
@@ -193,19 +190,19 @@ impl<'a> WriteDescriptorSets<'a> {
         &mut self,
         binding: u32,
         dst_array_element: u32,
-        texel_buffer_view: &'a [BufferView],
+        texel_buffer_view: Vec<Arc<BufferView>>,
     ) {
         self.binding_values.insert(
             binding,
-            DescriptorInfoType::TexelBufferView(WriteTexelBufferView {
+            (
                 dst_array_element,
-                texel_buffer_view,
-            }),
+                DescriptorInfoType::TexelBufferView(WriteTexelBufferView { texel_buffer_view }),
+            ),
         );
     }
 
     fn push_ash(&mut self, vec: &mut ParallelSplitWriteDescriptorSets) {
-        for (binding, descriptor_info_type) in &self.binding_values {
+        for (binding, (dst_array_element, descriptor_info_type)) in &self.binding_values {
             if let Some(descriptor_set_layout_binding) = self
                 .descriptor_set
                 .descriptor_set_layout
@@ -215,10 +212,10 @@ impl<'a> WriteDescriptorSets<'a> {
                 let mut builder = ash::vk::WriteDescriptorSet::builder()
                     .dst_set(self.descriptor_set.ash_vk_descriptor_set)
                     .dst_binding(*binding)
+                    .dst_array_element(*dst_array_element)
                     .descriptor_type(descriptor_set_layout_binding.descriptor_type().to_ash());
                 match descriptor_info_type {
                     DescriptorInfoType::Image(image_info) => {
-                        builder = builder.dst_array_element(image_info.dst_array_element);
                         self.tmp_vk_image_infos.push(
                             image_info
                                 .image_info
@@ -230,7 +227,6 @@ impl<'a> WriteDescriptorSets<'a> {
                         builder = builder.image_info(slice);
                     }
                     DescriptorInfoType::Buffer(buffer_info) => {
-                        builder = builder.dst_array_element(buffer_info.dst_array_element);
                         self.tmp_vk_buffer_infos.push(
                             buffer_info
                                 .buffer_info
@@ -242,7 +238,6 @@ impl<'a> WriteDescriptorSets<'a> {
                         builder = builder.buffer_info(slice);
                     }
                     DescriptorInfoType::TexelBufferView(ash_vk_buffer_views) => {
-                        builder = builder.dst_array_element(ash_vk_buffer_views.dst_array_element);
                         self.tmp_vk_texel_buffer_views.push(
                             ash_vk_buffer_views
                                 .texel_buffer_view
@@ -271,7 +266,7 @@ impl<'a> WriteDescriptorSets<'a> {
 struct SyncWriteDescriptorSet(ash::vk::WriteDescriptorSet);
 unsafe impl Sync for SyncWriteDescriptorSet {}
 
-struct ParallelSplitWriteDescriptorSets<'a> {
+pub(crate) struct ParallelSplitWriteDescriptorSets<'a> {
     focused: usize,
     current_num_threads: usize,
     vectors: Vec<Vec<SyncWriteDescriptorSet>>,
@@ -279,7 +274,7 @@ struct ParallelSplitWriteDescriptorSets<'a> {
 }
 
 impl<'a> ParallelSplitWriteDescriptorSets<'a> {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let current_num_threads = rayon::current_num_threads();
         let mut vectors = Vec::new();
         vectors.resize_with(rayon::current_num_threads(), || Vec::new());
@@ -292,16 +287,16 @@ impl<'a> ParallelSplitWriteDescriptorSets<'a> {
     }
 
     // push the same vector in the last time.
-    fn fix_push(&mut self, write_descriptor_set: ash::vk::WriteDescriptorSetBuilder) {
+    pub fn fix_push(&mut self, write_descriptor_set: ash::vk::WriteDescriptorSetBuilder) {
         let vector = &mut self.vectors[self.focused];
         vector.push(SyncWriteDescriptorSet(write_descriptor_set.build()));
     }
 
-    fn focus_next(&mut self) {
+    pub fn focus_next(&mut self) {
         self.focused = (self.focused + 1) % self.current_num_threads;
     }
 
-    fn update(self, device: &Device) {
+    pub fn update(self, device: &Device) {
         self.vectors.par_iter().for_each(|vec| {
             unsafe {
                 // Host Synchronization: VUID-vkUpdateDescriptorSets-pDescriptorWrites-06993

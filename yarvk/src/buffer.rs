@@ -24,6 +24,13 @@ pub trait Buffer: Send + Sync {
     fn raw_mut(&mut self) -> &mut RawBuffer;
 }
 
+impl PartialEq for dyn Buffer {
+    fn eq(&self, other: &Self) -> bool {
+        self.device == other.device
+            && self.ash_vk_buffer == other.ash_vk_buffer
+    }
+}
+
 pub struct RawBuffer {
     pub device: Arc<Device>,
     pub(crate) ash_vk_buffer: ash::vk::Buffer,
@@ -128,7 +135,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bo
     CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
 {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
-    pub fn cmd_bind_vertex_buffers<T: Buffer + 'static, It: IntoIterator<Item=Arc<T>>>(
+    pub fn cmd_bind_vertex_buffers<T: Buffer + 'static, It: IntoIterator<Item = Arc<T>>>(
         &mut self,
         first_binding: u32,
         buffers: It,
