@@ -16,8 +16,7 @@ use crate::shader_module::ShaderModule;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::Arc;
 use ash::vk::Handle;
-use crate::descriptor::descriptor_set_layout::DescriptorSetLayout;
-use crate::descriptor_set_v2::descriptor_set_layout::IDescriptorSetLayout;
+use crate::descriptor_set::descriptor_set_layout::IDescriptorSetLayout;
 
 pub mod color_blend_state;
 pub mod depth_stencil_state;
@@ -40,7 +39,6 @@ impl PipelineLayout {
         PipelineLayoutBuilder {
             device,
             set_layouts: vec![],
-            set_layouts_v2: vec![],
             push_constant_ranges: vec![],
         }
     }
@@ -93,18 +91,13 @@ impl PushConstantRangeBuilder {
 
 pub struct PipelineLayoutBuilder {
     device: Arc<Device>,
-    set_layouts: Vec<Arc<DescriptorSetLayout>>,
-    set_layouts_v2: Vec<Arc<dyn IDescriptorSetLayout>>,
+    set_layouts: Vec<Arc<dyn IDescriptorSetLayout>>,
     push_constant_ranges: Vec<ash::vk::PushConstantRange>,
 }
 
 impl PipelineLayoutBuilder {
-    pub fn add_set_layout(mut self, set_layout: Arc<DescriptorSetLayout>) -> Self {
+    pub fn add_set_layout(mut self, set_layout: Arc<dyn IDescriptorSetLayout>) -> Self {
         self.set_layouts.push(set_layout);
-        self
-    }
-    pub fn add_set_layout_v2(mut self, set_layout: Arc<dyn IDescriptorSetLayout>) -> Self {
-        self.set_layouts_v2.push(set_layout);
         self
     }
     pub fn add_push_constant_range(
@@ -115,17 +108,11 @@ impl PipelineLayoutBuilder {
         self
     }
     pub fn build(self) -> Result<Arc<PipelineLayout>, ash::vk::Result> {
-        let mut vk_set_layouts = self
+        let vk_set_layouts = self
             .set_layouts
-            .iter()
-            .map(|layout| layout.ash_vk_descriptor_set_layout)
-            .collect::<Vec<_>>();
-        let vk_set_layouts_v2 = self
-            .set_layouts_v2
             .iter()
             .map(|layout| layout.raw())
             .collect::<Vec<_>>();
-        vk_set_layouts.extend(vk_set_layouts_v2);
         let create_info = ash::vk::PipelineLayoutCreateInfo::builder()
             .set_layouts(vk_set_layouts.as_slice())
             .push_constant_ranges(self.push_constant_ranges.as_slice())
@@ -405,8 +392,8 @@ impl Drop for Pipeline {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+impl<const LEVEL: Level, const SCOPE: RenderPassScope>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
 {
     // DONE VUID-vkCmdBindPipeline-commandBuffer-recording
     pub fn cmd_bind_pipeline(

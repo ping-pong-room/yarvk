@@ -1,16 +1,15 @@
 use crate::device::Device;
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
+// use crate::device_features::Feature;
+// use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use std::sync::Arc;
 
 pub enum CommandPoolCreateFlags {
     TRANSIENT,
-    /* yarvk use one pool per buffer, and it is suggested not to set RESET_COMMAND_BUFFER_BIT
-    if you only need to free the whole pool. */
+    /* yarvk do not reset buffer, either reset pool, or a const command buffer */
     // ResetCommandBuffer,
     // DONE VUID-VkCommandPoolCreateInfo-flags-02860
-    PROTECTED(Feature<{ ProtectedMemory.into() }>),
+    // PROTECTED(Feature<{ ProtectedMemory.into() }>),
 }
 
 impl CommandPoolCreateFlags {
@@ -20,7 +19,7 @@ impl CommandPoolCreateFlags {
             // CommandPoolCreateFlags::ResetCommandBuffer => {
             //     ash::vk::CommandPoolCreateFlags::RESET_COMMAND_BUFFER
             // }
-            CommandPoolCreateFlags::PROTECTED(_) => ash::vk::CommandPoolCreateFlags::PROTECTED,
+            // CommandPoolCreateFlags::PROTECTED(_) => ash::vk::CommandPoolCreateFlags::PROTECTED,
         }
     }
 }
@@ -31,9 +30,12 @@ pub struct CommandPool {
 }
 
 impl CommandPool {
-    pub fn builder(queue_family: QueueFamilyProperties, device: Arc<Device>) -> CommandPoolBuilder {
+    pub fn builder(
+        device: &Arc<Device>,
+        queue_family: QueueFamilyProperties,
+    ) -> CommandPoolBuilder {
         CommandPoolBuilder {
-            device,
+            device: device.clone(),
             flags: Default::default(),
             queue_family_index: queue_family,
         }

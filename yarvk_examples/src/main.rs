@@ -11,19 +11,20 @@ use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
-use yarvk::command::command_pool::CommandPool;
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::device::{Device, DeviceQueueCreateInfo};
 
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
-use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
-use yarvk::descriptor_set_v2::desccriptor_pool::DescriptorPool;
-use yarvk::descriptor_set_v2::descriptor_set::{
-    ConstDescriptorSetValue2, DescriptorSetValue, DescriptorSetValue2, IDescriptorSet,
+use yarvk::descriptor_set::desccriptor_pool::DescriptorPool;
+use yarvk::descriptor_set::descriptor_set::{DescriptorSetValue, IDescriptorSet};
+use yarvk::descriptor_set::descriptor_type::DescriptorKind;
+
+use yarvk::command::command_buffer::{
+    CommandBuffer, CommandBufferInheritanceInfo, TransientCommandBuffer,
 };
-use yarvk::descriptor_set_v2::descriptor_set_layout::DescriptorSetLayout;
-use yarvk::descriptor_set_v2::descriptor_type::DescriptorKind;
+
+use yarvk::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
@@ -79,6 +80,7 @@ use yarvk::{
     StencilOp, StencilOpState, SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate,
     Viewport, SUBPASS_EXTERNAL,
 };
+use yarvk::descriptor_set::descriptor_variadic_generics::{ConstDescriptorSetValue2, DescriptorSetValue2};
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -106,11 +108,11 @@ pub struct Vector3 {
 
 pub fn submit(
     queue: &mut Queue,
-    buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>,
+    buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>,
     fence: UnsignaledFence,
 ) -> (
     UnsignaledFence,
-    CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
+    CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
 ) {
     let handler = buffer.handle();
     let submit_info = SubmitInfo::builder()
@@ -297,11 +299,8 @@ fn main() {
         .image_array_layers(1)
         .build()
         .unwrap();
-    let command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        .build()
-        .unwrap()
-        .allocate_command_buffer::<{ PRIMARY }>()
-        .unwrap();
+    let command_buffer =
+        TransientCommandBuffer::<{ PRIMARY }>::new(&device, queue_family.clone()).unwrap();
     let command_buffer_handler = command_buffer.handle();
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
@@ -490,14 +489,12 @@ fn main() {
         .build()
         .unwrap();
     index_buffer_memory
-        .map_memory(0, index_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..std::mem::size_of_val(&index_buffer_data)].copy_from_slice(unsafe {
-                std::slice::from_raw_parts(
-                    index_buffer_data.as_ptr() as *const u8,
-                    std::mem::size_of_val(&index_buffer_data),
-                )
-            });
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                index_buffer_data.as_ptr() as *const u8,
+                std::mem::size_of_val(&index_buffer_data),
+            )
+        })])
         .unwrap();
     let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
 
@@ -543,15 +540,12 @@ fn main() {
             .unwrap();
 
     vertex_input_buffer_memory
-        .map_memory(0, vertex_input_buffer_memory_req.size, |mut_slice| {
-            // TODO check alignment
-            mut_slice[0..std::mem::size_of_val(&vertices)].copy_from_slice(unsafe {
-                std::slice::from_raw_parts(
-                    vertices.as_ptr() as *const u8,
-                    std::mem::size_of_val(&vertices),
-                )
-            });
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                vertices.as_ptr() as *const u8,
+                std::mem::size_of_val(&vertices),
+            )
+        })])
         .unwrap();
     let vertex_input_buffer = Arc::new(
         vertex_input_buffer
@@ -586,16 +580,12 @@ fn main() {
             .unwrap();
 
     uniform_color_buffer_memory
-        .map_memory(0, uniform_color_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..std::mem::size_of_val(&uniform_color_buffer_data)].copy_from_slice(
-                unsafe {
-                    std::slice::from_raw_parts(
-                        &uniform_color_buffer_data as *const _ as *const u8,
-                        std::mem::size_of_val(&uniform_color_buffer_data),
-                    )
-                },
-            );
-        })
+        .write_memory(&[(0, unsafe {
+            std::slice::from_raw_parts(
+                &uniform_color_buffer_data as *const _ as *const u8,
+                std::mem::size_of_val(&uniform_color_buffer_data),
+            )
+        })])
         .unwrap();
 
     let uniform_color_buffer = Arc::new(
@@ -630,9 +620,7 @@ fn main() {
         .build()
         .unwrap();
     image_buffer_memory
-        .map_memory(0, image_buffer_memory_req.size, |mut_slice| {
-            mut_slice[0..image_data.len()].copy_from_slice(image_data.as_slice());
-        })
+        .write_memory(&[(0, image_data.as_slice())])
         .unwrap();
 
     let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
@@ -818,7 +806,7 @@ fn main() {
         .unwrap();
 
     let pipeline_layout = PipelineLayout::builder(device.clone())
-        .add_set_layout_v2(desc_set_layout.clone())
+        .add_set_layout(desc_set_layout.clone())
         .build()
         .unwrap();
 
@@ -929,11 +917,8 @@ fn main() {
     let mut rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
     let mut draw_commands_reuse_fence = Some(fence);
     let mut draw_command_buffer = Some(command_buffer);
-    let secondary_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        .build()
-        .unwrap()
-        .allocate_command_buffer::<{ SECONDARY }>()
-        .unwrap();
+    let secondary_command_buffer =
+        TransientCommandBuffer::<{ SECONDARY }>::new(&device, queue_family).unwrap();
     let mut secondary_command_buffer = Some(secondary_command_buffer);
     let inheritance_info = CommandBufferInheritanceInfo::builder()
         .render_pass(renderpass.clone())
@@ -964,7 +949,7 @@ fn main() {
                     .acquire_next_image_semaphore_only(u64::MAX, &present_complete_semaphore)
                     .unwrap();
                 let framebuffer = framebuffers.get(&image.handle()).unwrap();
-                let render_pass_begin_info =
+                let render_pass_begin_info = Arc::new(
                     RenderPassBeginInfo::builder(renderpass.clone(), framebuffer.clone())
                         .render_area(surface_resolution.into())
                         .add_clear_value(ClearValue {
@@ -978,12 +963,13 @@ fn main() {
                                 stencil: 0,
                             },
                         })
-                        .build();
+                        .build(),
+                );
                 let command_buffer = draw_command_buffer.take().unwrap();
                 let command_buffer = command_buffer
                     .record(|command_buffer| {
                         command_buffer.cmd_begin_render_pass(
-                            &render_pass_begin_info,
+                            render_pass_begin_info.clone(),
                             SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
                                 let secondary_buffer = secondary_command_buffer.take().unwrap();
@@ -992,7 +978,6 @@ fn main() {
                                     { SECONDARY },
                                     { INITIAL },
                                     { OUTSIDE },
-                                    true,
                                 >::record_render_pass_continue_buffers(
                                     vec,
                                     inheritance_info.clone(),
@@ -1025,7 +1010,7 @@ fn main() {
                                                 //     [descriptor_set.clone()],
                                                 //     &[],
                                                 // );
-                                                command_buffer.cmd_bind_descriptor_sets_v2(
+                                                command_buffer.cmd_bind_descriptor_sets(
                                                     PipelineBindPoint::GRAPHICS,
                                                     pipeline_layout.clone(),
                                                     0,

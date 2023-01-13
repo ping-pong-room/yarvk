@@ -1,8 +1,8 @@
-use std::ffi::c_void;
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
 use ash::vk::Handle;
+use std::ffi::c_void;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
@@ -32,11 +32,8 @@ pub struct DeviceMemory {
     pub device: Arc<Device>,
     pub(crate) vk_device_memory: ash::vk::DeviceMemory,
     pub size: ash::vk::DeviceSize,
-    host_mapped: Option<(
-        ash::vk::DeviceSize, /*offset*/
-        ash::vk::DeviceSize, /*size*/
-        *mut c_void, /*ptr*/
-    )>,
+    pub memory_type: MemoryType,
+    host_mapped: *mut c_void, /*ptr*/
 }
 
 unsafe impl Sync for DeviceMemory {}
@@ -45,10 +42,11 @@ unsafe impl Send for DeviceMemory {}
 impl Drop for DeviceMemory {
     fn drop(&mut self) {
         unsafe {
-            if self.host_mapped.is_some() {
+            if self.host_mapped != std::ptr::null_mut() {
                 // Host Synchronization: memory
                 self.device.ash_device.unmap_memory(self.vk_device_memory);
             }
+
             // Host Synchronization: memory
             self.device
                 .ash_device
@@ -75,41 +73,96 @@ impl DeviceMemory {
         }
     }
 
-    pub fn map_memory<F: Fn(&mut [u8])>(
+    fn should_sync_manually(&self) -> bool {
+        self.memory_type
+            .property_flags
+            .contains(ash::vk::MemoryPropertyFlags::HOST_CACHED)
+            && !self
+                .memory_type
+                .property_flags
+                .contains(ash::vk::MemoryPropertyFlags::HOST_COHERENT)
+    }
+
+    pub fn write_memory(
         &mut self,
-        offset: ash::vk::DeviceSize,
-        size: ash::vk::DeviceSize,
-        f: F,
+        data: &[(ash::vk::DeviceSize, &[u8])],
     ) -> Result<(), ash::vk::Result> {
-       unsafe {
-           let ptr = if let Some((current_offset,current_size,ptr)) = self.host_mapped {
-               if offset == current_offset && size <= current_size {
-                   ptr
-               } else {
-                   self.device.ash_device.unmap_memory(self.vk_device_memory);
-                   let ptr = self.device.ash_device.map_memory(
-                       self.vk_device_memory,
-                       offset,
-                       size,
-                       ash::vk::MemoryMapFlags::empty(),
-                   )?;
-                   self.host_mapped = Some((offset, size, ptr));
-                   ptr
-               }
-           } else {
-               let ptr = self.device.ash_device.map_memory(
-                   self.vk_device_memory,
-                   offset,
-                   size,
-                   ash::vk::MemoryMapFlags::empty(),
-               )?;
-               self.host_mapped = Some((offset, size, ptr));
-               ptr
-           };
-           let mapped_memory = std::slice::from_raw_parts_mut(ptr as _, size as _);
-           f(mapped_memory);
-       }
+        let mut mapped_ranges = Vec::with_capacity(data.len());
+        for (offset, data) in data {
+            let size = data.len();
+            if size as ash::vk::DeviceSize + offset > self.size {
+                return Err(ash::vk::Result::ERROR_MEMORY_MAP_FAILED);
+            }
+            let mapped_memory = unsafe {
+                std::slice::from_raw_parts_mut(self.host_mapped.add(*offset as _) as _, size as _)
+            };
+            mapped_memory.copy_from_slice(data);
+            mapped_ranges.push(
+                ash::vk::MappedMemoryRange::builder()
+                    .memory(self.vk_device_memory)
+                    .offset(*offset)
+                    .size(size as _)
+                    .build(),
+            );
+        }
+
+        unsafe {
+            if self.should_sync_manually() {
+                self.device
+                    .ash_device
+                    .flush_mapped_memory_ranges(mapped_ranges.as_slice())?;
+            }
+        }
         Ok(())
+    }
+
+    pub fn read_memory(
+        &self,
+        range: &[(ash::vk::DeviceSize, ash::vk::DeviceSize)],
+    ) -> Result<Vec<&[u8]>, ash::vk::Result> {
+        let mut slices = Vec::with_capacity(range.len());
+        if self.should_sync_manually() {
+            let mut mapped_ranges = Vec::with_capacity(range.len());
+            for (offset, size) in range {
+                if size + offset > self.size {
+                    return Err(ash::vk::Result::ERROR_MEMORY_MAP_FAILED);
+                }
+                mapped_ranges.push(
+                    ash::vk::MappedMemoryRange::builder()
+                        .memory(self.vk_device_memory)
+                        .offset(*offset)
+                        .size(*size)
+                        .build(),
+                );
+            }
+            unsafe {
+                self.device
+                    .ash_device
+                    .invalidate_mapped_memory_ranges(mapped_ranges.as_slice())?;
+            }
+            for (offset, size) in range {
+                slices.push(unsafe {
+                    std::slice::from_raw_parts(
+                        self.host_mapped.add(*offset as _) as _,
+                        *size as _,
+                    )
+                });
+            }
+            return Ok(slices);
+        } else {
+            for (offset, size) in range {
+                if size + offset > self.size {
+                    return Err(ash::vk::Result::ERROR_MEMORY_MAP_FAILED);
+                }
+                slices.push(unsafe {
+                    std::slice::from_raw_parts(
+                        self.host_mapped.add(*offset as _) as _,
+                        *size as _,
+                    )
+                });
+            }
+            return Ok(slices);
+        }
     }
 }
 
@@ -165,12 +218,29 @@ impl<'a> DeviceMemoryBuilder<'a> {
                 return Err(ash::vk::Result::ERROR_TOO_MANY_OBJECTS);
             }
         }
+        let ptr = if self
+            .memory_type
+            .property_flags
+            .contains(ash::vk::MemoryPropertyFlags::HOST_VISIBLE)
+        {
+            unsafe {
+                self.device.ash_device.map_memory(
+                    vk_device_memory,
+                    0,
+                    self.allocation_size,
+                    ash::vk::MemoryMapFlags::empty(),
+                )?
+            }
+        } else {
+            std::ptr::null_mut()
+        };
 
         Ok(DeviceMemory {
             device: self.device,
             vk_device_memory,
             size: self.allocation_size,
-            host_mapped: None,
+            memory_type: self.memory_type.clone(),
+            host_mapped: ptr,
         })
     }
 }

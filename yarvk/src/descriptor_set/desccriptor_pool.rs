@@ -1,5 +1,5 @@
-use crate::descriptor_set_v2::descriptor_set::{DescriptorSet, DescriptorSetValue};
-use crate::descriptor_set_v2::descriptor_set_layout::DescriptorSetLayout;
+use crate::descriptor_set::descriptor_set::{DescriptorSet, DescriptorSetValue};
+use crate::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
 use crate::device::Device;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -74,7 +74,7 @@ impl<T: DescriptorSetValue> DescriptorPool<T> {
                 break;
             }
         }
-        let mut update = self.device.update_descriptor_sets_v2();
+        let mut update = self.device.update_descriptor_sets();
         descriptor_sets.iter_mut().for_each(|descriptor_set| {
             let write_descriptor_sets = descriptor_set.init();
             update.add_to_init(write_descriptor_sets);

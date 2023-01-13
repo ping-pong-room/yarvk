@@ -1,5 +1,5 @@
-use crate::descriptor_set_v2::descriptor_set::{DescriptorSet, DescriptorSetValue};
-use crate::descriptor_set_v2::private::ParallelSplitWriteDescriptorSets;
+use crate::descriptor_set::descriptor_set::{DescriptorSet, DescriptorSetValue};
+use crate::descriptor_set::private::ParallelSplitWriteDescriptorSets;
 use crate::device::Device;
 use std::any::Any;
 use std::sync::Arc;
@@ -84,7 +84,7 @@ impl<'a> Updatable<'a> {
 }
 
 impl Device {
-    pub fn update_descriptor_sets_v2<'a>(self: &Arc<Self>) -> Updatable<'a> {
+    pub fn update_descriptor_sets<'a>(self: &Arc<Self>) -> Updatable<'a> {
         Updatable {
             device: self.clone(),
             vk_values: vec![],

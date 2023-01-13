@@ -197,8 +197,8 @@ impl BufferMemoryBarrierBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+impl<const LEVEL: Level, const SCOPE: RenderPassScope>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
 {
     thread_local! {
         static BARRIERS_CACHES: Cell<(Vec<ash::vk::MemoryBarrier>,

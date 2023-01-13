@@ -4,7 +4,6 @@
 #![feature(specialization)]
 #![feature(min_specialization)]
 #![feature(once_cell)]
-
 pub mod buffer;
 pub mod command;
 pub mod debug_utils_messenger;
@@ -25,12 +24,11 @@ pub mod swapchain;
 pub mod window;
 
 pub mod barrier;
-pub mod descriptor;
 pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
-pub mod descriptor_set_v2;
+pub mod descriptor_set;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;

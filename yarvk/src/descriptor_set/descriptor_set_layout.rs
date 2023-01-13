@@ -1,5 +1,5 @@
-use crate::descriptor_set_v2::descriptor_set::DescriptorSetValue;
-use crate::descriptor_set_v2::private::PrivateConstDescriptorSetValue;
+use crate::descriptor_set::descriptor_set::DescriptorSetValue;
+use crate::descriptor_set::private::PrivateConstDescriptorSetValue;
 use crate::device::Device;
 use std::marker::PhantomData;
 use std::sync::Arc;

@@ -2,7 +2,7 @@ use crate::image_view::ImageView;
 use crate::sampler::Sampler;
 use crate::{Buffer, BufferView};
 use std::sync::Arc;
-use crate::descriptor_set_v2::private::FnVkUpdateInfo;
+use crate::descriptor_set::private::FnVkUpdateInfo;
 
 #[derive(PartialEq, Eq)]
 pub enum DescriptorKind {

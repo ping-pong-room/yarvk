@@ -4,6 +4,8 @@ pub mod desccriptor_pool;
 pub(crate) mod private;
 pub mod descriptor_set_layout;
 pub mod write_descriptor_set;
+pub mod descriptor_variadic_generics;
+mod private_descriptor_variadic_generics;
 
 pub(crate) fn diff<T: PartialEq, const I: usize>(
     old: &[T; I],
