@@ -10,13 +10,14 @@ use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
-use yarvk::command::command_pool::CommandPool;
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::device::{Device, DeviceQueueCreateInfo};
 
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
-use yarvk::command::command_buffer::{CommandBuffer, CommandBufferInheritanceInfo};
+use yarvk::command::command_buffer::{
+    CommandBuffer, CommandBufferInheritanceInfo, TransientCommandBuffer,
+};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
 use yarvk::entry::Entry;
@@ -104,11 +105,11 @@ pub struct Vector3 {
 
 pub fn submit(
     queue: &mut Queue,
-    buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>,
+    buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>,
     fence: UnsignaledFence,
 ) -> (
     UnsignaledFence,
-    CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
+    CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
 ) {
     let handler = buffer.handle();
     let submit_info = SubmitInfo::builder()
@@ -286,11 +287,8 @@ fn main() {
         .image_array_layers(1)
         .build()
         .unwrap();
-    let command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        .build()
-        .unwrap()
-        .allocate_command_buffer::<{ PRIMARY }>()
-        .unwrap();
+    let command_buffer =
+        TransientCommandBuffer::<{ PRIMARY }>::new(&device, queue_family.clone()).unwrap();
     let command_buffer_handler = command_buffer.handle();
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
@@ -925,11 +923,7 @@ fn main() {
     let mut rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
     let mut draw_commands_reuse_fence = Some(fence);
     let mut draw_command_buffer = Some(command_buffer);
-    let secondary_command_buffer = CommandPool::builder(queue_family.clone(), device.clone())
-        .build()
-        .unwrap()
-        .allocate_command_buffer::<{ SECONDARY }>()
-        .unwrap();
+    let secondary_command_buffer = TransientCommandBuffer::<{SECONDARY}>::new(&device, queue_family).unwrap();
     let mut secondary_command_buffer = Some(secondary_command_buffer);
     let inheritance_info = CommandBufferInheritanceInfo::builder()
         .render_pass(renderpass.clone())
@@ -960,7 +954,7 @@ fn main() {
                     .acquire_next_image_semaphore_only(u64::MAX, &present_complete_semaphore)
                     .unwrap();
                 let framebuffer = framebuffers.get(&image.handle()).unwrap();
-                let render_pass_begin_info =
+                let render_pass_begin_info = Arc::new(
                     RenderPassBeginInfo::builder(renderpass.clone(), framebuffer.clone())
                         .render_area(surface_resolution.into())
                         .add_clear_value(ClearValue {
@@ -974,12 +968,12 @@ fn main() {
                                 stencil: 0,
                             },
                         })
-                        .build();
+                        .build());
                 let command_buffer = draw_command_buffer.take().unwrap();
                 let command_buffer = command_buffer
                     .record(|command_buffer| {
                         command_buffer.cmd_begin_render_pass(
-                            &render_pass_begin_info,
+                            render_pass_begin_info.clone(),
                             SubpassContents::SECONDARY_COMMAND_BUFFERS,
                             |command_buffer| {
                                 let secondary_buffer = secondary_command_buffer.take().unwrap();
@@ -988,7 +982,6 @@ fn main() {
                                     { SECONDARY },
                                     { INITIAL },
                                     { OUTSIDE },
-                                    true,
                                 >::record_render_pass_continue_buffers(
                                     vec,
                                     inheritance_info.clone(),

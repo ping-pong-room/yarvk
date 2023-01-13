@@ -115,8 +115,8 @@ pub struct ImageCreateInfo {
 
 pub type ImageFormatListCreateInfo = Vec<ash::vk::Format>;
 
-impl<const LEVEL: Level, const ONE_TIME_SUBMIT: bool>
-    CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>
+impl<const LEVEL: Level>
+    CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }>
 {
     // DONE VUID-vkCmdCopyBufferToImage-commandBuffer-recording
     pub fn cmd_copy_buffer_to_image(

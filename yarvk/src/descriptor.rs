@@ -66,8 +66,8 @@ impl DescriptorType {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope, const ONE_TIME_SUBMIT: bool>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE, ONE_TIME_SUBMIT>
+impl<const LEVEL: Level, const SCOPE: RenderPassScope>
+    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
 {
     // DONE VUID-vkCmdBindDescriptorSets-commandBuffer-recording
     pub fn cmd_bind_descriptor_sets<It: IntoIterator<Item=Arc<DescriptorSet>>>(

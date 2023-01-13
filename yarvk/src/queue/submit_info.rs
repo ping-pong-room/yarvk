@@ -3,6 +3,7 @@ use crate::command::command_buffer::Level::PRIMARY;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
 
+use crate::command::constant_command_buffer::ConstantCommandBuffer;
 use crate::fence::{SignalingFence, UnsignaledFence};
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
 use crate::queue::Queue;
@@ -10,6 +11,7 @@ use crate::semaphore::Semaphore;
 use crate::Handle;
 use rustc_hash::FxHashMap;
 use std::cell::UnsafeCell;
+use std::sync::Arc;
 
 thread_local! {
     static SUBMIT_INFO_CACHE: UnsafeCell<Vec<SubmitInfo<'static>>> = UnsafeCell::new(Vec::new());
@@ -20,11 +22,8 @@ thread_local! {
 pub struct SubmitInfo<'a> {
     wait_semaphores: Vec<(&'a Semaphore, PipelineStageFlags)>,
     signal_semaphores: Vec<&'a Semaphore>,
-    reusable_command_buffers:
-        Vec<&'a mut CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, false>>,
-    onetime_submit_command_buffers:
-        Vec<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>>,
-
+    reusable_command_buffers: Vec<Arc<ConstantCommandBuffer>>,
+    onetime_submit_command_buffers: Vec<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>>,
     ash_vk_wait_semaphores: Vec<ash::vk::Semaphore>,
     ash_vk_wait_dst_stage_masks: Vec<ash::vk::PipelineStageFlags>,
     ash_vk_signal_semaphores: Vec<ash::vk::Semaphore>,
@@ -98,19 +97,19 @@ impl<'a> SubmitInfoBuilder<'a> {
             .push((wait_semaphore, wait_mask));
         self
     }
-    pub fn add_reusable_command_buffer(
+    pub fn add_constant_command_buffer(
         mut self,
-        command_buffer: &'a mut CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, false>,
+        command_buffer: &Arc<ConstantCommandBuffer>,
     ) -> Self {
         // DONE VUID-VkSubmitInfo-pCommandBuffers-00075
         self.submit_info
             .reusable_command_buffers
-            .push(command_buffer);
+            .push(command_buffer.clone());
         self
     }
     pub fn add_one_time_submit_command_buffer(
         mut self,
-        command_buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }, true>,
+        command_buffer: CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>,
     ) -> Self {
         // DONE VUID-VkSubmitInfo-pCommandBuffers-00075
         self.submit_info
@@ -214,13 +213,12 @@ impl<'a> Submittable<'a> {
 
 #[derive(Default)]
 pub struct SubmitResult {
-    invalid_command_buffers:
-        FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
+    invalid_command_buffers: FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }>>,
 }
 impl SubmitResult {
     pub fn add_primary_buffer(
         &mut self,
-        buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }, true>,
+        buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
     ) {
         self.invalid_command_buffers
             .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
@@ -228,7 +226,7 @@ impl SubmitResult {
     pub fn take_invalid_primary_buffer(
         &mut self,
         handler: &u64,
-    ) -> Option<CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>> {
+    ) -> Option<CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }>> {
         let buffer = self.invalid_command_buffers.remove(handler);
         match buffer {
             None => None,
@@ -248,6 +246,5 @@ impl Drop for SubmitResult {
     }
 }
 struct SubmitResultRaw {
-    invalid_command_buffers:
-        FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }, true>>,
+    invalid_command_buffers: FxHashMap<u64, CommandBuffer<{ PRIMARY }, { INVALID }, { OUTSIDE }>>,
 }

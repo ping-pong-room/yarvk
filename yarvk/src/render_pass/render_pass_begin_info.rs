@@ -56,20 +56,18 @@ impl RenderPassBeginInfo {
     }
 }
 
-impl<const ONE_TIME_SUBMIT: bool>
-    CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }, ONE_TIME_SUBMIT>
-{
+impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
     // DONE VUID-vkCmdBeginRenderPass-commandBuffer-recording
     // DONE VUID-vkCmdEndRenderPass-commandBuffer-recording
     pub fn cmd_begin_render_pass<F>(
         &mut self,
-        create_info: &RenderPassBeginInfo,
+        create_info: Arc<RenderPassBeginInfo>,
         contents: ash::vk::SubpassContents,
         f: F,
     ) -> Result<(), ash::vk::Result>
     where
         F: FnOnce(
-            &mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>,
+            &mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }>,
         ) -> Result<(), ash::vk::Result>,
     {
         unsafe {
@@ -81,8 +79,7 @@ impl<const ONE_TIME_SUBMIT: bool>
             );
         }
         f(unsafe {
-            &mut *(self as *mut Self
-                as *mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }, ONE_TIME_SUBMIT>)
+            &mut *(self as *mut Self as *mut CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }>)
         })?;
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
@@ -90,6 +87,12 @@ impl<const ONE_TIME_SUBMIT: bool>
                 .ash_device
                 .cmd_end_render_pass(self.vk_command_buffer);
         }
+        self.holding_resources
+            .render_pass
+            .push(create_info.render_pass.clone());
+        self.holding_resources
+            .framebuffers
+            .push(create_info.framebuffer.clone());
         Ok(())
     }
 }
