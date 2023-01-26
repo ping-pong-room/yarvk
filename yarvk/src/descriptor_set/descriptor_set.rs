@@ -6,6 +6,7 @@ use crate::command::command_buffer::State::RECORDING;
 use crate::descriptor_set::private::{PrivateConstDescriptorSetValue, PrivateDescriptorSetValue};
 use crate::pipeline::PipelineLayout;
 
+#[const_trait]
 pub trait DescriptorSetValue: PrivateDescriptorSetValue + Send + Sync {
     type ConstDescriptorSetValue: PrivateConstDescriptorSetValue<Self>;
 }
