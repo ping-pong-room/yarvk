@@ -2,7 +2,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 #![feature(specialization)]
-#![feature(min_specialization)]
 #![feature(once_cell)]
 pub mod buffer;
 pub mod command;
@@ -24,11 +23,11 @@ pub mod swapchain;
 pub mod window;
 
 pub mod barrier;
+pub mod descriptor_set;
 pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
-pub mod descriptor_set;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;
@@ -48,11 +47,13 @@ pub use ash::vk::CompareOp;
 pub use ash::vk::ComponentMapping;
 pub use ash::vk::ComponentSwizzle;
 pub use ash::vk::CompositeAlphaFlagsKHR;
+pub use ash::vk::CullModeFlags;
 pub use ash::vk::DebugUtilsMessageSeverityFlagsEXT;
 pub use ash::vk::DebugUtilsMessageTypeFlagsEXT;
 pub use ash::vk::DependencyFlags;
 pub use ash::vk::DescriptorPoolSize;
 pub use ash::vk::DeviceSize;
+pub use ash::vk::ExtendsMemoryRequirements2;
 pub use ash::vk::Extent2D;
 pub use ash::vk::Extent3D;
 pub use ash::vk::Filter;
@@ -67,6 +68,7 @@ pub use ash::vk::ImageType;
 pub use ash::vk::ImageUsageFlags;
 pub use ash::vk::IndexType;
 pub use ash::vk::LogicOp;
+pub use ash::vk::MemoryDedicatedRequirements;
 pub use ash::vk::MemoryPropertyFlags;
 pub use ash::vk::MemoryRequirements;
 pub use ash::vk::PhysicalDeviceAccelerationStructurePropertiesKHR;
@@ -139,14 +141,14 @@ pub use ash::vk::SamplerMipmapMode;
 pub use ash::vk::StencilOp;
 pub use ash::vk::StencilOpState;
 pub use ash::vk::SubpassContents;
+pub use ash::vk::SurfaceFormatKHR;
 pub use ash::vk::SurfaceTransformFlagsKHR;
 pub use ash::vk::SwapchainCreateFlagsKHR;
 pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
+
 pub use ash::vk::SUBPASS_EXTERNAL;
-pub use ash::vk::ExtendsMemoryRequirements2;
-pub use ash::vk::SurfaceFormatKHR;
-pub use ash::vk::CullModeFlags;
+pub use ash::vk::WHOLE_SIZE;
 
 pub use buffer::*;
 pub use image::*;

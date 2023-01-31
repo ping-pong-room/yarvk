@@ -8,24 +8,6 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 use std::sync::Arc;
 
-// pub trait HasLayer {
-//     fn has_layer(&self, layer_name: &'static CStr) -> bool;
-// }
-//
-// impl HasLayer for Vec<ash::vk::LayerProperties> {
-//     fn has_layer(&self, layer_name: &'static CStr) -> bool {
-//         for layer in self {
-//             if layer
-//                 .layer_name
-//                 .starts_with(unsafe { std::mem::transmute(layer_name.to_bytes()) })
-//             {
-//                 return true;
-//             }
-//         }
-//         false
-//     }
-// }
-
 pub struct ApplicationInfo {
     application_name: CString,
     application_version: u32,

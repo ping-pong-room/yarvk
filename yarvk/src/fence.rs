@@ -100,48 +100,4 @@ impl SignaledFence {
     }
 }
 
-// impl Device {
-//     thread_local! {
-//         static FENCE_CACHE: Cell<Vec<ash::vk::Fence>> = Cell::new(Vec::new());
-//     }
-//
-//     pub fn wait_for_fences(
-//         &self,
-//         fences: Vec<Fence<{ Executing }>>,
-//         wait_all: bool,
-//         timeout: u64,
-//     ) -> Result<Vec<Fence<{ Signaled }>>, ash::vk::Result> {
-//         Self::FENCE_CACHE.with(|local| {
-//             let mut fence_cache = local.take();
-//             for fence in &fences {
-//                 fence_cache.push(fence.vk_fence);
-//             }
-//             let result = unsafe {
-//                 self.ash_device.wait_for_fences(fence_cache.as_slice(), wait_all, timeout)
-//             };
-//             fence_cache.clear();
-//             local.set(fence_cache);
-//             result
-//         })?;
-//         Ok(unsafe { std::mem::transmute(fences) })
-//     }
-//
-//     pub fn reset_fences(
-//         &self,
-//         fences: Vec<Fence<{ Signaled }>>,
-//     ) -> Result<Vec<Fence<{ Unsignaled }>>, ash::vk::Result> {
-//         Self::FENCE_CACHE.with(|local| {
-//             let mut fence_cache = local.take();
-//             for fence in &fences {
-//                 fence_cache.push(fence.vk_fence);
-//             }
-//             // DONE VUID-vkResetFences-pFences-01123
-//             let result = unsafe { self.ash_device.reset_fences(fence_cache.as_slice()) };
-//             fence_cache.clear();
-//             local.set(fence_cache);
-//             result
-//         })?;
-//
-//         Ok(unsafe { std::mem::transmute(fences) })
-//     }
-// }
+// TODO batching fence wait and reset

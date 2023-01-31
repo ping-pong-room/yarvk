@@ -41,35 +41,6 @@ impl PrimitiveTopology {
     }
 }
 
-// fn need_geometry(topology: PrimitiveTopology) -> bool {
-//     match topology {
-//         PrimitiveTopology::LineListWithAdjacency => true,
-//         PrimitiveTopology::LineStripWithAdjacency => true,
-//         PrimitiveTopology::TriangleListWithAdjacency => true,
-//         PrimitiveTopology::TriangleStripWithAdjacency => true,
-//         _ => false
-//     }
-// }
-//
-// fn need_tessellation_shader(topology: PrimitiveTopology) -> bool {
-//     topology == PrimitiveTopology::PatchList
-// }
-//
-// fn need_triangle_fans(topology: PrimitiveTopology) -> bool {
-//     topology == PrimitiveTopology::TriangleFan
-// }
-//
-// fn need_nothing(topology: PrimitiveTopology) -> bool {
-//     match topology {
-//         PrimitiveTopology::PointList => true,
-//         PrimitiveTopology::LineList => true,
-//         PrimitiveTopology::LineStrip => true,
-//         PrimitiveTopology::TriangleList => true,
-//         PrimitiveTopology::TriangleStrip => true,
-//         _ => false
-//     }
-// }
-
 pub struct RestartBuilder<const TOPOLOGY: PrimitiveTopology> {
     primitive_restart_enable: bool,
 }
@@ -123,32 +94,6 @@ fn_topology_build_no_feature!(
     PrimitiveTopology::TriangleList,
     PrimitiveTopology::TriangleStrip
 );
-
-// const fn is_list(topology: PrimitiveTopology) -> bool {
-//     match topology {
-//         PrimitiveTopology::PointList => { true }
-//         PrimitiveTopology::LineList => { true }
-//         PrimitiveTopology::TriangleList => { true }
-//         PrimitiveTopology::LineListWithAdjacency => { true }
-//         PrimitiveTopology::TriangleListWithAdjacency => { true }
-//         _ => false
-//     }
-// }
-//
-// const fn is_patch(topology: PrimitiveTopology) -> bool {
-//     topology == PrimitiveTopology::PatchList
-// }
-//
-// const fn normal_topology(topology: PrimitiveTopology) -> bool {
-//     match topology {
-//         PrimitiveTopology::LineStrip => { true }
-//         PrimitiveTopology::TriangleStrip => { true }
-//         PrimitiveTopology::TriangleFan => { true }
-//         PrimitiveTopology::LineStripWithAdjacency => { true }
-//         PrimitiveTopology::TriangleStripWithAdjacency => { true }
-//         _ => false
-//     }
-// }
 
 macro_rules! fn_restart_enable {
     ($feature: expr, $($topology: expr),*) => {$(

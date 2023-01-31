@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["max_memory_allocation_count_check",]
+default = ["max_memory_allocation_count_check", "memory_alignment"]
 max_memory_allocation_count_check = []
+memory_alignment = []
 
 [dependencies]
 ash = "0.37.0"

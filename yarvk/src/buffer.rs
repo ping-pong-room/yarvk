@@ -16,6 +16,7 @@ use std::sync::Arc;
 
 pub mod buffer_view;
 pub mod continuous_buffer;
+use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 pub use buffer_view::*;
 pub use continuous_buffer::*;
 
@@ -26,8 +27,7 @@ pub trait Buffer: Send + Sync {
 
 impl PartialEq for dyn Buffer {
     fn eq(&self, other: &Self) -> bool {
-        self.device == other.device
-            && self.ash_vk_buffer == other.ash_vk_buffer
+        self.device == other.device && self.ash_vk_buffer == other.ash_vk_buffer
     }
 }
 
@@ -131,9 +131,7 @@ impl BufferCreateFlags {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
-{
+impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
     pub fn cmd_bind_vertex_buffers<T: Buffer + 'static, It: IntoIterator<Item = Arc<T>>>(
         &mut self,
@@ -222,6 +220,24 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope>
                 first_vertex,
                 first_instance,
             );
+        }
+    }
+}
+
+impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
+    pub fn cmd_update_buffer(
+        &mut self,
+        dst_buffer: &Arc<dyn Buffer>,
+        dst_offset: ash::vk::DeviceSize,
+        data: &[u8],
+    ) {
+        unsafe {
+            self.device.ash_device.cmd_update_buffer(
+                self.vk_command_buffer,
+                dst_buffer.ash_vk_buffer,
+                dst_offset,
+                data,
+            )
         }
     }
 }

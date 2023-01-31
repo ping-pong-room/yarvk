@@ -25,6 +25,9 @@ use yarvk::command::command_buffer::{
 };
 
 use yarvk::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
+use yarvk::descriptor_set::descriptor_variadic_generics::{
+    ConstDescriptorSetValue2, DescriptorSetValue2,
+};
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
@@ -80,7 +83,6 @@ use yarvk::{
     StencilOp, StencilOpState, SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate,
     Viewport, SUBPASS_EXTERNAL,
 };
-use yarvk::descriptor_set::descriptor_variadic_generics::{ConstDescriptorSetValue2, DescriptorSetValue2};
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -488,14 +490,16 @@ fn main() {
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
-    index_buffer_memory
-        .write_memory(&[(0, unsafe {
-            std::slice::from_raw_parts(
-                index_buffer_data.as_ptr() as *const u8,
-                std::mem::size_of_val(&index_buffer_data),
-            )
-        })])
+    let mut mapped_memory = index_buffer_memory
+        .map_memory(0, index_buffer_memory_req.size)
         .unwrap();
+    mapped_memory[0..std::mem::size_of_val(&index_buffer_data)].copy_from_slice(unsafe {
+        std::slice::from_raw_parts(
+            index_buffer_data.as_ptr() as *const u8,
+            std::mem::size_of_val(&index_buffer_data),
+        )
+    });
+    mapped_memory.unmap_memory();
     let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
 
     let vertices = [
@@ -539,14 +543,16 @@ fn main() {
             .build()
             .unwrap();
 
-    vertex_input_buffer_memory
-        .write_memory(&[(0, unsafe {
-            std::slice::from_raw_parts(
-                vertices.as_ptr() as *const u8,
-                std::mem::size_of_val(&vertices),
-            )
-        })])
+    let mut mapped_memory = vertex_input_buffer_memory
+        .map_memory(0, vertex_input_buffer_memory_req.size)
         .unwrap();
+    mapped_memory[0..std::mem::size_of_val(&vertices)].copy_from_slice(unsafe {
+        std::slice::from_raw_parts(
+            vertices.as_ptr() as *const u8,
+            std::mem::size_of_val(&vertices),
+        )
+    });
+    mapped_memory.unmap_memory();
     let vertex_input_buffer = Arc::new(
         vertex_input_buffer
             .bind_memory(&vertex_input_buffer_memory, 0)
@@ -579,15 +585,17 @@ fn main() {
             .build()
             .unwrap();
 
-    uniform_color_buffer_memory
-        .write_memory(&[(0, unsafe {
-            std::slice::from_raw_parts(
-                &uniform_color_buffer_data as *const _ as *const u8,
-                std::mem::size_of_val(&uniform_color_buffer_data),
-            )
-        })])
+    let mut mapped_memory = uniform_color_buffer_memory
+        .map_memory(0, uniform_color_buffer_memory_req.size)
         .unwrap();
 
+    mapped_memory[0..std::mem::size_of_val(&uniform_color_buffer_data)].copy_from_slice(unsafe {
+        std::slice::from_raw_parts(
+            &uniform_color_buffer_data as *const _ as *const u8,
+            std::mem::size_of_val(&uniform_color_buffer_data),
+        )
+    });
+    mapped_memory.unmap_memory();
     let uniform_color_buffer = Arc::new(
         uniform_color_buffer
             .bind_memory(&uniform_color_buffer_memory, 0)
@@ -616,13 +624,18 @@ fn main() {
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
     let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
-        .allocation_size(image_buffer_memory_req.size)
+        .allocation_size(image_buffer_memory_req.size + 257)
         .build()
         .unwrap();
-    image_buffer_memory
-        .write_memory(&[(0, image_data.as_slice())])
+    let mut mapped_memory = image_buffer_memory
+        .map_memory(0, image_buffer_memory_req.size)
         .unwrap();
-
+    mapped_memory[0..image_data.len()].copy_from_slice(image_data.as_slice());
+    // flush example if you used a non-coherent device memory
+    // let mut mapped_ranges = MappedRanges::new(&device);
+    // mapped_ranges.add_range(&mapped_memory, 0, image_buffer_memory_req.size);
+    // mapped_ranges.flush().unwrap();
+    mapped_memory.unmap_memory();
     let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
 
     let texture_image = ContinuousImage::builder(device.clone())
