@@ -14,8 +14,9 @@ pub trait MemoryRequirement {
     fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
 }
 
-pub trait BindMemory {
+pub trait UnBoundMemory {
     type BoundType;
+    fn device(&self) -> &Arc<Device>;
     fn bind_memory(
         self,
         memory: &DeviceMemory,

@@ -1,6 +1,6 @@
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{BindMemory, DeviceMemory, MemoryRequirement, State};
+use crate::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement, State};
 use crate::image::{Image, ImageCreateInfo, RawImage};
 use crate::physical_device::SharingMode;
 use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
@@ -146,8 +146,12 @@ impl Image for ContinuousImage<{ Bound }> {
     }
 }
 
-impl BindMemory for ContinuousImage<{ Unbound }> {
+impl UnBoundMemory for ContinuousImage<{ Unbound }> {
     type BoundType = ContinuousImage<{ Bound }>;
+
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 
     fn bind_memory(
         self,

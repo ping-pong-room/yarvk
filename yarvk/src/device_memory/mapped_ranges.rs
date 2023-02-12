@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 pub struct MappedRanges<'a> {
     device: Arc<Device>,
-    _device_memories: Vec<&'a MappedMemory<'a>>,
+    _device_memories: Vec<&'a MappedMemory>,
     ash_vk_mapped_ranges: Vec<ash::vk::MappedMemoryRange>,
 }
 

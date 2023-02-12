@@ -30,7 +30,7 @@ use yarvk::descriptor_set::descriptor_variadic_generics::{
 };
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
-use yarvk::device_memory::{BindMemory, DeviceMemory, MemoryRequirement};
+use yarvk::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement};
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
@@ -486,7 +486,7 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the index buffer.");
-    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
+    let index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -499,8 +499,12 @@ fn main() {
             std::mem::size_of_val(&index_buffer_data),
         )
     });
-    mapped_memory.unmap_memory();
-    let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
+    let index_buffer = Arc::new(
+        index_buffer
+            .bind_memory(&mapped_memory.device_memory, 0)
+            .unwrap(),
+    );
+    let index_buffer_memory = mapped_memory.unmap_memory();
 
     let vertices = [
         Vertex {
@@ -537,7 +541,7 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let mut vertex_input_buffer_memory =
+    let vertex_input_buffer_memory =
         DeviceMemory::builder(&vertex_input_buffer_memory_index, device.clone())
             .allocation_size(vertex_input_buffer_memory_req.size)
             .build()
@@ -552,7 +556,7 @@ fn main() {
             std::mem::size_of_val(&vertices),
         )
     });
-    mapped_memory.unmap_memory();
+    let vertex_input_buffer_memory = mapped_memory.unmap_memory();
     let vertex_input_buffer = Arc::new(
         vertex_input_buffer
             .bind_memory(&vertex_input_buffer_memory, 0)
@@ -579,7 +583,7 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
-    let mut uniform_color_buffer_memory =
+    let uniform_color_buffer_memory =
         DeviceMemory::builder(&uniform_color_buffer_memory_index, device.clone())
             .allocation_size(uniform_color_buffer_memory_req.size)
             .build()
@@ -595,7 +599,7 @@ fn main() {
             std::mem::size_of_val(&uniform_color_buffer_data),
         )
     });
-    mapped_memory.unmap_memory();
+    let uniform_color_buffer_memory = mapped_memory.unmap_memory();
     let uniform_color_buffer = Arc::new(
         uniform_color_buffer
             .bind_memory(&uniform_color_buffer_memory, 0)
@@ -623,8 +627,8 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
-        .allocation_size(image_buffer_memory_req.size + 257)
+    let image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
+        .allocation_size(image_buffer_memory_req.size)
         .build()
         .unwrap();
     let mut mapped_memory = image_buffer_memory
@@ -635,8 +639,12 @@ fn main() {
     // let mut mapped_ranges = MappedRanges::new(&device);
     // mapped_ranges.add_range(&mapped_memory, 0, image_buffer_memory_req.size);
     // mapped_ranges.flush().unwrap();
-    mapped_memory.unmap_memory();
-    let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
+    let image_buffer = Arc::new(
+        image_buffer
+            .bind_memory(&mapped_memory.device_memory, 0)
+            .unwrap(),
+    );
+    let image_buffer_memory = mapped_memory.unmap_memory();
 
     let texture_image = ContinuousImage::builder(device.clone())
         .image_type(ImageType::TYPE_2D)

@@ -1,36 +1,47 @@
 use crate::device_memory::DeviceMemory;
 use ash::vk::DeviceSize;
-use derive_more::{Deref, DerefMut};
+use std::ffi::c_void;
+use std::ops::{Deref, DerefMut};
 
-#[derive(Deref, DerefMut)]
-pub struct MappedMemory<'a> {
-    pub(crate) device_memory: &'a mut DeviceMemory,
-    #[deref]
-    #[deref_mut]
-    data: &'a mut [u8],
+pub struct MappedMemory {
+    pub device_memory: DeviceMemory,
+    size: DeviceSize,
+    ptr: *mut c_void,
 }
 
-impl<'a> Drop for MappedMemory<'a> {
-    fn drop(&mut self) {
+unsafe impl Sync for MappedMemory {}
+unsafe impl Send for MappedMemory {}
+
+impl Deref for MappedMemory {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        unsafe { std::slice::from_raw_parts(self.ptr as _, self.size as _) }
+    }
+}
+
+impl DerefMut for MappedMemory {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr as _, self.size as _) }
+    }
+}
+
+impl MappedMemory {
+    pub fn unmap_memory(self) -> DeviceMemory {
         unsafe {
             self.device_memory
                 .device
                 .ash_device
                 .unmap_memory(self.device_memory.vk_device_memory)
         }
-    }
-}
-
-impl<'a> MappedMemory<'a> {
-    pub fn unmap_memory(self) {
-        drop(self);
+        self.device_memory
     }
 }
 
 impl DeviceMemory {
     // DONE VUID-vkMapMemory-memory-00678
     pub fn map_memory(
-        &mut self,
+        self,
         offset: DeviceSize,
         mut size: DeviceSize,
     ) -> Result<MappedMemory, ash::vk::Result> {
@@ -67,12 +78,10 @@ impl DeviceMemory {
                 )?
             }
         };
-        let data = unsafe {
-            std::slice::from_raw_parts_mut(ptr.add((offset - real_offset) as _) as _, size as _)
-        };
         Ok(MappedMemory {
             device_memory: self,
-            data,
+            size,
+            ptr: unsafe { ptr.add((offset - real_offset) as _) },
         })
     }
 }

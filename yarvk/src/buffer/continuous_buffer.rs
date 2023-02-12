@@ -1,20 +1,19 @@
 use crate::buffer::{Buffer, BufferCreateFlags, RawBuffer};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{BindMemory, DeviceMemory, MemoryRequirement, State};
+use crate::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement, State};
 use crate::physical_device::SharingMode;
-use ash::vk::{ExtendsMemoryRequirements2, MemoryRequirements};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 pub struct ContinuousBuffer<const STATE: State = Bound>(RawBuffer);
 
 impl<const STATE: State> MemoryRequirement for ContinuousBuffer<STATE> {
-    fn get_memory_requirements(&self) -> &MemoryRequirements {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         self.0.get_memory_requirements()
     }
 
-    fn get_memory_requirements2<T: ExtendsMemoryRequirements2 + Default>(&self) -> T {
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
         self.0.get_memory_requirements2()
     }
 }
@@ -44,15 +43,18 @@ impl Buffer for ContinuousBuffer<{ Bound }> {
     }
 }
 
-impl BindMemory for ContinuousBuffer<{ Unbound }> {
+impl UnBoundMemory for ContinuousBuffer<{ Unbound }> {
     type BoundType = ContinuousBuffer<{ Bound }>;
+
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 
     fn bind_memory(
         self,
         memory: &DeviceMemory,
         memory_offset: ash::vk::DeviceSize,
     ) -> Result<Self::BoundType, ash::vk::Result> {
-        // TODO why device_memory do not need to be synchronized?
         // Host Synchronization buffer
         unsafe {
             self.device.ash_device.bind_buffer_memory(
@@ -77,6 +79,7 @@ impl ContinuousBuffer<{ Unbound }> {
     }
 }
 
+#[derive(Clone)]
 pub struct ContinuousBufferBuilder {
     device: Arc<Device>,
     flags: ash::vk::BufferCreateFlags,

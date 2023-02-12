@@ -57,7 +57,9 @@ impl ConstantCommandBuffer {
             // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
             // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
             // Host Synchronization:commandBuffer, VkCommandPool
-            let begin_info = ash::vk::CommandBufferBeginInfo::builder().build();
+            let begin_info = ash::vk::CommandBufferBeginInfo::builder()
+                .flags(ash::vk::CommandBufferUsageFlags::SIMULTANEOUS_USE)
+                .build();
             unsafe {
                 device
                     .ash_device
