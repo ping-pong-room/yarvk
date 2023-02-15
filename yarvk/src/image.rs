@@ -4,7 +4,7 @@ use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
 
-use crate::device_memory::MemoryRequirement;
+use crate::device_memory::IMemoryRequirements;
 use crate::physical_device::SharingMode;
 
 use ash::vk::Handle;
@@ -39,7 +39,6 @@ impl DerefMut for dyn Image {
 pub struct RawImage {
     pub device: Arc<Device>,
     pub(crate) vk_image: ash::vk::Image,
-    pub image_create_info: Arc<ImageCreateInfo>,
     pub(crate) presentable: bool,
     pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
     pub(crate) memory_requirements: ash::vk::MemoryRequirements,
@@ -75,7 +74,7 @@ impl crate::Handle for RawImage {
     }
 }
 
-impl MemoryRequirement for RawImage {
+impl IMemoryRequirements for RawImage {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         &self.memory_requirements
     }
@@ -98,7 +97,7 @@ impl MemoryRequirement for RawImage {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ImageCreateInfo {
     pub flags: ash::vk::ImageCreateFlags,
     pub image_type: ash::vk::ImageType,

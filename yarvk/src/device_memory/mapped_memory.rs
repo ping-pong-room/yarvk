@@ -70,6 +70,8 @@ impl DeviceMemory {
         }
         let ptr = {
             unsafe {
+                // Host Synchronization
+                // Host access to memory must be externally synchronized
                 self.device.ash_device.map_memory(
                     self.vk_device_memory,
                     real_offset,

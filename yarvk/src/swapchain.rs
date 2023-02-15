@@ -37,7 +37,7 @@ impl SwapchainBuilder {
     // While acquired by the application, presentable images can be used in any way that
     // equivalent non-presentable images can be used. A presentable image is equivalent to a
     // non-presentable image created with the following VkImageCreateInfo parameters:
-    fn get_image_create_info(&self) -> ImageCreateInfo {
+    pub fn get_image_create_info(&self) -> ImageCreateInfo {
         let mut image_create_info = ImageCreateInfo::default();
         if self
             .flags
@@ -144,7 +144,6 @@ impl SwapchainBuilder {
     }
 
     pub fn build(self) -> Result<Swapchain, ash::vk::Result> {
-        let image_create_info = Arc::new(self.get_image_create_info());
         // Done VUID-VkSwapchainCreateInfoKHR-surface-01270
         // Done VUID-VkSwapchainCreateInfoKHR-imageUsage-parameter
         // Done VUID-VkSwapchainCreateInfoKHR-imageUsage-requiredbitmask
@@ -222,7 +221,6 @@ impl SwapchainBuilder {
                         device: self.device.clone(),
                         vk_image,
                         presentable: true,
-                        image_create_info: image_create_info.clone(),
                         free_notification: None,
                         memory_requirements,
                     },
@@ -234,7 +232,6 @@ impl SwapchainBuilder {
             device: self.device,
             vk_swapchain,
             swapchain_loader,
-            image_create_info,
             images,
             image_extent: self.image_extent,
         })
@@ -343,7 +340,6 @@ pub struct Swapchain {
     pub device: Arc<Device>,
     vk_swapchain: ash::vk::SwapchainKHR,
     swapchain_loader: ash::extensions::khr::Swapchain,
-    pub image_create_info: Arc<ImageCreateInfo>,
     images: Vec<Arc<ContinuousImage<{ Bound }>>>,
     pub image_extent: Extent2D,
 }

@@ -1,14 +1,14 @@
 use crate::buffer::{Buffer, BufferCreateFlags, RawBuffer};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement, State};
+use crate::device_memory::{UnBoundMemory, DeviceMemory, IMemoryRequirements, State};
 use crate::physical_device::SharingMode;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 pub struct ContinuousBuffer<const STATE: State = Bound>(RawBuffer);
 
-impl<const STATE: State> MemoryRequirement for ContinuousBuffer<STATE> {
+impl<const STATE: State> IMemoryRequirements for ContinuousBuffer<STATE> {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         self.0.get_memory_requirements()
     }
@@ -79,7 +79,6 @@ impl ContinuousBuffer<{ Unbound }> {
     }
 }
 
-#[derive(Clone)]
 pub struct ContinuousBufferBuilder {
     device: Arc<Device>,
     flags: ash::vk::BufferCreateFlags,
@@ -89,34 +88,15 @@ pub struct ContinuousBufferBuilder {
 }
 
 impl ContinuousBufferBuilder {
-    pub fn add_flag(mut self, flag: BufferCreateFlags) -> Self {
+    pub fn add_flag(&mut self, flag: BufferCreateFlags) {
         self.flags |= flag.to_ash();
-        self
-    }
-
-    pub fn size(mut self, size: ash::vk::DeviceSize) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn usage(mut self, usage: ash::vk::BufferUsageFlags) -> Self {
-        self.usage = usage;
-        self
-    }
-
-    pub fn sharing_mode(mut self, sharing_mode: SharingMode) -> Self {
-        self.sharing_mode = sharing_mode;
-        self
-    }
-
-    pub fn build(mut self) -> Result<ContinuousBuffer<{ Unbound }>, ash::vk::Result> {
         // SILENCE VUID-VkBufferCreateInfo-flags-00918
         if self
             .flags
             .contains(ash::vk::BufferCreateFlags::SPARSE_RESIDENCY)
             || self
-                .flags
-                .contains(ash::vk::BufferCreateFlags::SPARSE_ALIASED)
+            .flags
+            .contains(ash::vk::BufferCreateFlags::SPARSE_ALIASED)
         {
             if !self
                 .flags
@@ -125,13 +105,28 @@ impl ContinuousBufferBuilder {
                 self.flags |= ash::vk::BufferCreateFlags::SPARSE_BINDING;
             }
         }
+    }
+
+    pub fn size(&mut self, size: ash::vk::DeviceSize) {
+        self.size = size;
+    }
+
+    pub fn usage(&mut self, usage: ash::vk::BufferUsageFlags) {
+        self.usage = usage;
+    }
+
+    pub fn sharing_mode(&mut self, sharing_mode: SharingMode) {
+        self.sharing_mode = sharing_mode;
+    }
+
+    pub fn build(&self) -> Result<ContinuousBuffer<{ Unbound }>, ash::vk::Result> {
         // DONE VUID-VkBufferCreateInfo-sharingMode-00913
         let mut create_info = ash::vk::BufferCreateInfo::builder()
             .flags(self.flags)
             .usage(self.usage)
             .size(self.size);
         let family_properties;
-        match self.sharing_mode {
+        match &self.sharing_mode {
             SharingMode::EXCLUSIVE => {
                 create_info = create_info.sharing_mode(ash::vk::SharingMode::EXCLUSIVE)
             }
@@ -155,7 +150,7 @@ impl ContinuousBufferBuilder {
         };
         Ok(ContinuousBuffer {
             0: RawBuffer {
-                device: self.device,
+                device: self.device.clone(),
                 ash_vk_buffer,
                 free_notification: None,
                 memory_requirements,

@@ -5,7 +5,6 @@ use crate::device_features::{
 };
 use crate::image::image_subresource_range::ImageSubresourceRange;
 use crate::image::Image;
-use ash::vk::{ComponentMapping, Format};
 use std::sync::Arc;
 
 pub enum ImageViewType {
@@ -103,9 +102,9 @@ pub struct ImageViewBuilder {
     device: Arc<Device>,
     image: Arc<dyn Image>,
     view_type: ash::vk::ImageViewType,
-    format: Format,
+    format: ash::vk::Format,
     flags: ash::vk::ImageViewCreateFlags,
-    components: ComponentMapping,
+    components: ash::vk::ComponentMapping,
     subresource_range: ImageSubresourceRange,
     vk_sampler_ycbcr_conversion_info: Option<ash::vk::SamplerYcbcrConversionInfo>,
 }
@@ -113,16 +112,12 @@ pub struct ImageViewBuilder {
 impl ImageViewBuilder {
     fn new(image: Arc<dyn Image>) -> Self {
         let device = image.device.clone();
-        let view_type =
-            ash::vk::ImageViewType::from_raw(image.image_create_info.image_type.as_raw());
-        // DONE VUID-VkImageViewCreateInfo-None-02273
-        let format = image.image_create_info.format;
         Self {
             device,
             image,
-            view_type,
+            view_type: Default::default(),
             flags: ash::vk::ImageViewCreateFlags::default(),
-            format,
+            format: Default::default(),
             components: ash::vk::ComponentMapping {
                 r: ash::vk::ComponentSwizzle::IDENTITY,
                 g: ash::vk::ComponentSwizzle::IDENTITY,
@@ -137,7 +132,7 @@ impl ImageViewBuilder {
         self.view_type = view_type.to_ash_type();
         self
     }
-    pub fn format(mut self, format: Format) -> Self {
+    pub fn format(mut self, format: ash::vk::Format) -> Self {
         self.format = format;
         self
     }
@@ -145,7 +140,7 @@ impl ImageViewBuilder {
         self.flags |= flag.to_ash_flags();
         self
     }
-    pub fn components(mut self, components: ComponentMapping) -> Self {
+    pub fn components(mut self, components: ash::vk::ComponentMapping) -> Self {
         self.components = components;
         self
     }

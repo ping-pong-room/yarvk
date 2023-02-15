@@ -9,12 +9,12 @@ pub mod dedicated_memory;
 pub mod mapped_memory;
 pub mod mapped_ranges;
 
-pub trait MemoryRequirement {
+pub trait IMemoryRequirements {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements;
     fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
 }
 
-pub trait UnBoundMemory {
+pub trait UnBoundMemory: IMemoryRequirements {
     type BoundType;
     fn device(&self) -> &Arc<Device>;
     fn bind_memory(

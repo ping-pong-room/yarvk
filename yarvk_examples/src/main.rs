@@ -30,7 +30,7 @@ use yarvk::descriptor_set::descriptor_variadic_generics::{
 };
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
-use yarvk::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement};
+use yarvk::device_memory::{DeviceMemory, IMemoryRequirements, UnBoundMemory};
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
@@ -331,18 +331,17 @@ fn main() {
         })
         .collect();
     let device_memory_properties = pdevice.memory_properties();
-    let depth_image = ContinuousImage::builder(device.clone())
-        .image_type(ImageType::TYPE_2D)
-        .format(Format::D16_UNORM)
-        .extent(surface_resolution.into())
-        .mip_levels(1)
-        .array_layers(1)
-        .samples(SampleCountFlags::TYPE_1)
-        .tiling(ImageTiling::OPTIMAL)
-        .usage(ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    let mut image_builder = ContinuousImage::builder(device.clone());
+    image_builder.image_type(ImageType::TYPE_2D);
+    image_builder.format(Format::D16_UNORM);
+    image_builder.extent(surface_resolution.into());
+    image_builder.mip_levels(1);
+    image_builder.array_layers(1);
+    image_builder.samples(SampleCountFlags::TYPE_1);
+    image_builder.tiling(ImageTiling::OPTIMAL);
+    image_builder.usage(ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT);
+    image_builder.sharing_mode(SharingMode::EXCLUSIVE);
+    let depth_image = image_builder.build().unwrap();
 
     let depth_image_memory_req = depth_image.get_memory_requirements();
     let depth_image_memory = find_memory_type_index(
@@ -406,7 +405,7 @@ fn main() {
                 .layer_count(1)
                 .build(),
         )
-        .format(depth_image.image_create_info.format)
+        .format(Format::D16_UNORM)
         .view_type(ImageViewType::Type2d)
         .build()
         .unwrap();
@@ -472,13 +471,13 @@ fn main() {
             (present_image_view.image.handle(), framebuffer)
         })
         .collect();
+    let mut buffer_builder = ContinuousBuffer::builder(device.clone());
+    buffer_builder.sharing_mode(SharingMode::EXCLUSIVE);
+
     let index_buffer_data = [0u32, 1, 2, 2, 3, 0];
-    let index_buffer = ContinuousBuffer::builder(device.clone())
-        .size(std::mem::size_of_val(&index_buffer_data) as u64)
-        .usage(BufferUsageFlags::INDEX_BUFFER)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    buffer_builder.size(std::mem::size_of_val(&index_buffer_data) as u64);
+    buffer_builder.usage(BufferUsageFlags::INDEX_BUFFER);
+    let index_buffer = buffer_builder.build().unwrap();
     let index_buffer_memory_req = index_buffer.get_memory_requirements();
     let index_buffer_memory_index = find_memory_type_index(
         &index_buffer_memory_req,
@@ -504,7 +503,7 @@ fn main() {
             .bind_memory(&mapped_memory.device_memory, 0)
             .unwrap(),
     );
-    let index_buffer_memory = mapped_memory.unmap_memory();
+    let _index_buffer_memory = mapped_memory.unmap_memory();
 
     let vertices = [
         Vertex {
@@ -525,12 +524,9 @@ fn main() {
         },
     ];
 
-    let vertex_input_buffer = ContinuousBuffer::builder(device.clone())
-        .size(std::mem::size_of_val(&vertices) as _)
-        .usage(BufferUsageFlags::VERTEX_BUFFER)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    buffer_builder.size(std::mem::size_of_val(&vertices) as _);
+    buffer_builder.usage(BufferUsageFlags::VERTEX_BUFFER);
+    let vertex_input_buffer = buffer_builder.build().unwrap();
 
     let vertex_input_buffer_memory_req = vertex_input_buffer.get_memory_requirements();
 
@@ -570,12 +566,9 @@ fn main() {
         _pad: 0.0,
     };
 
-    let uniform_color_buffer = ContinuousBuffer::builder(device.clone())
-        .size(std::mem::size_of_val(&uniform_color_buffer_data) as u64)
-        .usage(BufferUsageFlags::UNIFORM_BUFFER)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    buffer_builder.size(std::mem::size_of_val(&uniform_color_buffer_data) as u64);
+    buffer_builder.usage(BufferUsageFlags::UNIFORM_BUFFER);
+    let uniform_color_buffer = buffer_builder.build().unwrap();
     let uniform_color_buffer_memory_req = uniform_color_buffer.get_memory_requirements();
     let uniform_color_buffer_memory_index = find_memory_type_index(
         &uniform_color_buffer_memory_req,
@@ -613,12 +606,9 @@ fn main() {
     let image_extent = Extent2D { width, height };
     let image_data = image.into_raw();
 
-    let image_buffer = ContinuousBuffer::builder(device.clone())
-        .size(image_data.len() as _)
-        .usage(BufferUsageFlags::TRANSFER_SRC)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    buffer_builder.size(image_data.len() as _);
+    buffer_builder.usage(BufferUsageFlags::TRANSFER_SRC);
+    let image_buffer = buffer_builder.build().unwrap();
     let image_buffer_memory_req = image_buffer.get_memory_requirements();
     let image_buffer_memory_index = find_memory_type_index(
         &image_buffer_memory_req,
@@ -644,20 +634,17 @@ fn main() {
             .bind_memory(&mapped_memory.device_memory, 0)
             .unwrap(),
     );
-    let image_buffer_memory = mapped_memory.unmap_memory();
-
-    let texture_image = ContinuousImage::builder(device.clone())
-        .image_type(ImageType::TYPE_2D)
-        .format(Format::R8G8B8A8_UNORM)
-        .extent(image_extent.into())
-        .mip_levels(1)
-        .array_layers(1)
-        .samples(SampleCountFlags::TYPE_1)
-        .tiling(ImageTiling::OPTIMAL)
-        .usage(ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED)
-        .sharing_mode(SharingMode::EXCLUSIVE)
-        .build()
-        .unwrap();
+    let _image_buffer_memory = mapped_memory.unmap_memory();
+    image_builder.image_type(ImageType::TYPE_2D);
+    image_builder.format(Format::R8G8B8A8_UNORM);
+    image_builder.extent(image_extent.into());
+    image_builder.mip_levels(1);
+    image_builder.array_layers(1);
+    image_builder.samples(SampleCountFlags::TYPE_1);
+    image_builder.tiling(ImageTiling::OPTIMAL);
+    image_builder.usage(ImageUsageFlags::TRANSFER_DST | ImageUsageFlags::SAMPLED);
+    image_builder.sharing_mode(SharingMode::EXCLUSIVE);
+    let texture_image = image_builder.build().unwrap();
     let texture_memory_req = texture_image.get_memory_requirements();
     let texture_memory_index = find_memory_type_index(
         &texture_memory_req,
@@ -691,7 +678,7 @@ fn main() {
 
     let tex_image_view = ImageView::builder(texture_image.clone())
         .view_type(ImageViewType::Type2d)
-        .format(texture_image.image_create_info.format)
+        .format(Format::R8G8B8A8_UNORM)
         .components(ComponentMapping {
             r: ComponentSwizzle::R,
             g: ComponentSwizzle::G,

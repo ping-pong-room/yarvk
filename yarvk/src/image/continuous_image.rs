@@ -1,6 +1,6 @@
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{UnBoundMemory, DeviceMemory, MemoryRequirement, State};
+use crate::device_memory::{UnBoundMemory, DeviceMemory, IMemoryRequirements, State};
 use crate::image::{Image, ImageCreateInfo, RawImage};
 use crate::physical_device::SharingMode;
 use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
@@ -13,53 +13,42 @@ pub struct ContinuousImageBuilder {
 }
 
 impl ContinuousImageBuilder {
-    pub fn flags(mut self, flags: ash::vk::ImageCreateFlags) -> Self {
+    pub fn flags(&mut self, flags: ash::vk::ImageCreateFlags) {
         self.inner.flags = flags;
-        self
     }
-    pub fn image_type(mut self, image_type: ash::vk::ImageType) -> Self {
+    pub fn image_type(&mut self, image_type: ash::vk::ImageType) {
         self.inner.image_type = image_type;
-        self
     }
-    pub fn format(mut self, format: ash::vk::Format) -> Self {
+    pub fn format(&mut self, format: ash::vk::Format) {
         self.inner.format = format;
-        self
     }
-    pub fn extent(mut self, extent: ash::vk::Extent3D) -> Self {
+    pub fn extent(&mut self, extent: ash::vk::Extent3D) {
         self.inner.extent = extent;
-        self
     }
-    pub fn mip_levels(mut self, mip_levels: u32) -> Self {
+    pub fn mip_levels(&mut self, mip_levels: u32) {
         self.inner.mip_levels = mip_levels;
-        self
     }
-    pub fn array_layers(mut self, array_layers: u32) -> Self {
+    pub fn array_layers(&mut self, array_layers: u32) {
         self.inner.array_layers = array_layers;
-        self
     }
-    pub fn samples(mut self, samples: ash::vk::SampleCountFlags) -> Self {
+    pub fn samples(&mut self, samples: ash::vk::SampleCountFlags) {
         self.inner.samples = samples;
-        self
     }
-    pub fn tiling(mut self, tiling: ash::vk::ImageTiling) -> Self {
+    pub fn tiling(&mut self, tiling: ash::vk::ImageTiling) {
         self.inner.tiling = tiling;
-        self
     }
-    pub fn usage(mut self, usage: ash::vk::ImageUsageFlags) -> Self {
+    pub fn usage(&mut self, usage: ash::vk::ImageUsageFlags) {
         self.inner.usage = usage;
-        self
     }
-    pub fn sharing_mode(mut self, sharing_mode: SharingMode) -> Self {
+    pub fn sharing_mode(&mut self, sharing_mode: SharingMode) {
         self.inner.sharing_mode = sharing_mode;
-        self
     }
-    pub fn initial_layout(mut self, initial_layout: ash::vk::ImageLayout) -> Self {
+    pub fn initial_layout(&mut self, initial_layout: ash::vk::ImageLayout) {
         self.inner.initial_layout = initial_layout;
-        self
     }
-    pub fn build(self) -> Result<ContinuousImage<{ Unbound }>, ash::vk::Result> {
-        let image_create_info = self.inner;
-        let mut vk_iamge_create_info = ash::vk::ImageCreateInfo::builder()
+    pub fn build(&self) -> Result<ContinuousImage<{ Unbound }>, ash::vk::Result> {
+        let image_create_info = &self.inner;
+        let mut vk_image_create_info = ash::vk::ImageCreateInfo::builder()
             .flags(image_create_info.flags)
             .image_type(image_create_info.image_type)
             .format(image_create_info.format)
@@ -73,17 +62,17 @@ impl ContinuousImageBuilder {
         let mut _indices: Vec<u32> = Vec::default();
         match image_create_info.sharing_mode.clone() {
             SharingMode::EXCLUSIVE => {
-                vk_iamge_create_info.sharing_mode = ash::vk::SharingMode::EXCLUSIVE;
+                vk_image_create_info.sharing_mode = ash::vk::SharingMode::EXCLUSIVE;
             }
             SharingMode::CONCURRENT(queues) => {
-                vk_iamge_create_info.sharing_mode = ash::vk::SharingMode::CONCURRENT;
+                vk_image_create_info.sharing_mode = ash::vk::SharingMode::CONCURRENT;
                 _indices = queues.iter().map(|queue| queue.index).collect();
-                vk_iamge_create_info =
-                    vk_iamge_create_info.queue_family_indices(_indices.as_slice());
+                vk_image_create_info =
+                    vk_image_create_info.queue_family_indices(_indices.as_slice());
             }
         }
 
-        let vk_image_create_info = vk_iamge_create_info.build();
+        let vk_image_create_info = vk_image_create_info.build();
         let vk_image = unsafe {
             // Host Synchronization: none
             self.device
@@ -98,10 +87,9 @@ impl ContinuousImageBuilder {
         };
         Ok(ContinuousImage {
             0: RawImage {
-                device: self.device,
+                device: self.device.clone(),
                 vk_image,
                 presentable: false,
-                image_create_info: Arc::new(image_create_info),
                 free_notification: None,
                 memory_requirements,
             },
@@ -111,7 +99,7 @@ impl ContinuousImageBuilder {
 
 pub struct ContinuousImage<const STATE: State = Bound>(pub(crate) RawImage);
 
-impl<const STATE: State> MemoryRequirement for ContinuousImage<STATE> {
+impl<const STATE: State> IMemoryRequirements for ContinuousImage<STATE> {
     fn get_memory_requirements(&self) -> &MemoryRequirements {
         self.0.get_memory_requirements()
     }

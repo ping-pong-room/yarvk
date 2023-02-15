@@ -7,7 +7,7 @@ use crate::device_features::PhysicalDeviceFeatures::{
 };
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
-use crate::device_memory::MemoryRequirement;
+use crate::device_memory::IMemoryRequirements;
 
 use std::ops::{Deref, DerefMut};
 
@@ -67,7 +67,7 @@ impl crate::Handle for RawBuffer {
     }
 }
 
-impl MemoryRequirement for RawBuffer {
+impl IMemoryRequirements for RawBuffer {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         &self.memory_requirements
     }
