@@ -12,16 +12,18 @@ use crate::pipeline::vertex_input_state::PipelineVertexInputStateCreateInfo;
 use crate::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use crate::render_pass::RenderPass;
 
+use crate::descriptor_set::descriptor_set_layout::IDescriptorSetLayout;
+use crate::pipeline::pipeline_cache::PipelineCacheImpl;
 use crate::shader_module::ShaderModule;
+use ash::vk::Handle;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::sync::Arc;
-use ash::vk::Handle;
-use crate::descriptor_set::descriptor_set_layout::IDescriptorSetLayout;
 
 pub mod color_blend_state;
 pub mod depth_stencil_state;
 pub mod input_assembly_state;
 pub mod multisample_state;
+pub mod pipeline_cache;
 pub mod pipeline_stage_flags;
 pub mod primitive_topology;
 pub mod rasterization_state;
@@ -100,10 +102,7 @@ impl PipelineLayoutBuilder {
         self.set_layouts.push(set_layout);
         self
     }
-    pub fn add_push_constant_range(
-        mut self,
-        push_constant_range: PushConstantRange,
-    ) -> Self {
+    pub fn add_push_constant_range(mut self, push_constant_range: PushConstantRange) -> Self {
         self.push_constant_ranges.push(push_constant_range.to_ash());
         self
     }
@@ -172,6 +171,7 @@ impl Pipeline {
     pub fn builder<'a>(layout: Arc<PipelineLayout>) -> PipelineBuilder<'a> {
         PipelineBuilder {
             device: layout.device.clone(),
+            pipeline_cache: PipelineCacheType::None,
             flags: Default::default(),
             pipeline_vertex_input_state_create_info: Default::default(),
             stages: Default::default(),
@@ -189,8 +189,29 @@ impl Pipeline {
     }
 }
 
+enum PipelineCacheType<'a> {
+    ExternallySynchronized(&'a mut PipelineCacheImpl<true>),
+    InternallySynchronized(&'a PipelineCacheImpl<false>),
+    None,
+}
+
+impl<'a> PipelineCacheType<'a> {
+    unsafe fn to_vk_types(&self) -> ash::vk::PipelineCache {
+        match self {
+            PipelineCacheType::ExternallySynchronized(pipeline_cache) => {
+                pipeline_cache.vk_pipeline_cache
+            }
+            PipelineCacheType::InternallySynchronized(pipeline_cache) => {
+                pipeline_cache.vk_pipeline_cache
+            }
+            PipelineCacheType::None => ash::vk::PipelineCache::null(),
+        }
+    }
+}
+
 pub struct PipelineBuilder<'a> {
     device: Arc<Device>,
+    pipeline_cache: PipelineCacheType<'a>,
     flags: ash::vk::PipelineCreateFlags,
     pipeline_vertex_input_state_create_info: PipelineVertexInputStateCreateInfo,
     stages: FxHashMap<ash::vk::ShaderStageFlags, PipelineShaderStageCreateInfo<'a>>,
@@ -207,6 +228,17 @@ pub struct PipelineBuilder<'a> {
 }
 
 impl<'a> PipelineBuilder<'a> {
+    pub fn externally_synchronized_pipeline_cache(
+        mut self,
+        pipeline_cache: &'a mut PipelineCacheImpl<true>,
+    ) -> Self {
+        self.pipeline_cache = PipelineCacheType::ExternallySynchronized(pipeline_cache);
+        self
+    }
+    pub fn pipeline_cache(mut self, pipeline_cache: &'a PipelineCacheImpl<false>) -> Self {
+        self.pipeline_cache = PipelineCacheType::InternallySynchronized(pipeline_cache);
+        self
+    }
     pub fn flags(mut self, flags: ash::vk::PipelineCreateFlags) -> Self {
         self.flags = flags;
         self
@@ -361,7 +393,7 @@ impl<'a> PipelineBuilder<'a> {
         // TODO pipeline caching
         let ash_vk_pipeline = unsafe {
             match self.device.ash_device.create_graphics_pipelines(
-                ash::vk::PipelineCache::null(),
+                self.pipeline_cache.to_vk_types(),
                 &[create_info],
                 None,
             ) {
@@ -392,9 +424,7 @@ impl Drop for Pipeline {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
-{
+impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdBindPipeline-commandBuffer-recording
     pub fn cmd_bind_pipeline(
         &mut self,
@@ -409,7 +439,9 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope>
                 pipeline.ash_vk_pipeline,
             );
         }
-        self.holding_resources.pipelines.insert(pipeline.ash_vk_pipeline.as_raw(), pipeline);
+        self.holding_resources
+            .pipelines
+            .insert(pipeline.ash_vk_pipeline.as_raw(), pipeline);
     }
 
     pub fn cmd_push_constants(

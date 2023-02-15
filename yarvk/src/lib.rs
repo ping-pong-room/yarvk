@@ -128,6 +128,7 @@ pub use ash::vk::PhysicalDeviceVulkan11Properties;
 pub use ash::vk::PhysicalDeviceVulkan12Properties;
 pub use ash::vk::PhysicalDeviceVulkan13Properties;
 pub use ash::vk::PipelineBindPoint;
+pub use ash::vk::PipelineCacheHeaderVersionOne;
 pub use ash::vk::PresentModeKHR;
 pub use ash::vk::QueryControlFlags;
 pub use ash::vk::QueryPipelineStatisticFlags;
