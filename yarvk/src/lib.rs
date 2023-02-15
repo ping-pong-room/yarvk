@@ -147,6 +147,8 @@ pub use ash::vk::SurfaceTransformFlagsKHR;
 pub use ash::vk::SwapchainCreateFlagsKHR;
 pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
+pub use ash::vk::SpecializationMapEntry;
+pub use ash::vk::SpecializationMapEntryBuilder;
 
 pub use ash::vk::SUBPASS_EXTERNAL;
 pub use ash::vk::WHOLE_SIZE;
