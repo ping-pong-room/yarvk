@@ -2,7 +2,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 #![feature(specialization)]
-#![feature(once_cell)]
 pub mod buffer;
 pub mod command;
 pub mod debug_utils_messenger;
@@ -103,6 +102,7 @@ pub use ash::vk::PhysicalDevicePCIBusInfoPropertiesEXT;
 pub use ash::vk::PhysicalDevicePerformanceQueryPropertiesKHR;
 pub use ash::vk::PhysicalDevicePointClippingProperties;
 pub use ash::vk::PhysicalDevicePortabilitySubsetPropertiesKHR;
+pub use ash::vk::PhysicalDeviceProperties;
 pub use ash::vk::PhysicalDeviceProtectedMemoryProperties;
 pub use ash::vk::PhysicalDeviceProvokingVertexPropertiesEXT;
 pub use ash::vk::PhysicalDevicePushDescriptorPropertiesKHR;
@@ -128,6 +128,7 @@ pub use ash::vk::PhysicalDeviceVulkan11Properties;
 pub use ash::vk::PhysicalDeviceVulkan12Properties;
 pub use ash::vk::PhysicalDeviceVulkan13Properties;
 pub use ash::vk::PipelineBindPoint;
+pub use ash::vk::PipelineCacheHeaderVersion;
 pub use ash::vk::PipelineCacheHeaderVersionOne;
 pub use ash::vk::PresentModeKHR;
 pub use ash::vk::QueryControlFlags;
@@ -139,6 +140,8 @@ pub use ash::vk::SampleCountFlags;
 pub use ash::vk::SamplerAddressMode;
 pub use ash::vk::SamplerCreateFlags;
 pub use ash::vk::SamplerMipmapMode;
+pub use ash::vk::SpecializationMapEntry;
+pub use ash::vk::SpecializationMapEntryBuilder;
 pub use ash::vk::StencilOp;
 pub use ash::vk::StencilOpState;
 pub use ash::vk::SubpassContents;
@@ -147,11 +150,10 @@ pub use ash::vk::SurfaceTransformFlagsKHR;
 pub use ash::vk::SwapchainCreateFlagsKHR;
 pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
-pub use ash::vk::SpecializationMapEntry;
-pub use ash::vk::SpecializationMapEntryBuilder;
 
 pub use ash::vk::SUBPASS_EXTERNAL;
 pub use ash::vk::WHOLE_SIZE;
+pub use ash::vk::UUID_SIZE;
 
 pub use buffer::*;
 pub use image::*;

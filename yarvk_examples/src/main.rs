@@ -30,7 +30,7 @@ use yarvk::descriptor_set::descriptor_variadic_generics::{
 };
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
-use yarvk::device_memory::{DeviceMemory, IMemoryRequirements, UnBoundMemory};
+use yarvk::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
 use yarvk::entry::Entry;
 use yarvk::extensions::{
     DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
@@ -133,20 +133,21 @@ pub fn submit(
     (fence, buffer)
 }
 
-pub fn find_memory_type_index(
+pub fn find_memory_type_index<'a>(
     memory_req: &MemoryRequirements,
-    memory_prop: &PhysicalDeviceMemoryProperties,
+    memory_prop: &'a PhysicalDeviceMemoryProperties,
     flags: MemoryPropertyFlags,
-) -> Option<MemoryType> {
-    memory_prop
-        .memory_types
-        .iter()
-        .enumerate()
-        .find(|(index, memory_type)| {
-            (1 << index) & memory_req.memory_type_bits != 0
+) -> Option<&'a MemoryType> {
+    for (_, heap) in &memory_prop.heaps {
+        for memory_type in &heap.memory_types {
+            if (1 << memory_type.index) & memory_req.memory_type_bits != 0
                 && memory_type.property_flags & flags == flags
-        })
-        .map(|(_index, memory_type)| memory_type.clone())
+            {
+                return Some(memory_type);
+            }
+        }
+    }
+    None
 }
 
 type MyDescriptorLayout = DescriptorSetValue2<
@@ -339,7 +340,8 @@ fn main() {
     image_builder.array_layers(1);
     image_builder.samples(SampleCountFlags::TYPE_1);
     image_builder.tiling(ImageTiling::OPTIMAL);
-    image_builder.usage(ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT);
+    image_builder
+        .usage(ImageUsageFlags::DEPTH_STENCIL_ATTACHMENT | ImageUsageFlags::TRANSIENT_ATTACHMENT);
     image_builder.sharing_mode(SharingMode::EXCLUSIVE);
     let depth_image = image_builder.build().unwrap();
 
@@ -425,6 +427,7 @@ fn main() {
                 .format(Format::D16_UNORM)
                 .samples(SampleCountFlags::TYPE_1)
                 .load_op(AttachmentLoadOp::CLEAR)
+                .store_op(AttachmentStoreOp::DONT_CARE)
                 .initial_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .final_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .build(),

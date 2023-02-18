@@ -14,7 +14,7 @@ pub trait IMemoryRequirements: Send + Sync {
     fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
 }
 
-pub trait UnBoundMemory: IMemoryRequirements + Send + Sync {
+pub trait UnboundResource: IMemoryRequirements + Send + Sync {
     type BoundType: IMemoryRequirements + Send + Sync;
     fn device(&self) -> &Arc<Device>;
     fn bind_memory(

@@ -1,7 +1,7 @@
 use crate::buffer::{Buffer, BufferCreateFlags, RawBuffer};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{UnBoundMemory, DeviceMemory, IMemoryRequirements, State};
+use crate::device_memory::{DeviceMemory, IMemoryRequirements, State, UnboundResource};
 use crate::physical_device::SharingMode;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -43,7 +43,7 @@ impl Buffer for ContinuousBuffer<{ Bound }> {
     }
 }
 
-impl UnBoundMemory for ContinuousBuffer<{ Unbound }> {
+impl UnboundResource for ContinuousBuffer<{ Unbound }> {
     type BoundType = ContinuousBuffer<{ Bound }>;
 
     fn device(&self) -> &Arc<Device> {
@@ -95,8 +95,8 @@ impl ContinuousBufferBuilder {
             .flags
             .contains(ash::vk::BufferCreateFlags::SPARSE_RESIDENCY)
             || self
-            .flags
-            .contains(ash::vk::BufferCreateFlags::SPARSE_ALIASED)
+                .flags
+                .contains(ash::vk::BufferCreateFlags::SPARSE_ALIASED)
         {
             if !self
                 .flags
@@ -110,7 +110,7 @@ impl ContinuousBufferBuilder {
     pub fn size(&mut self, size: ash::vk::DeviceSize) {
         self.size = size;
     }
-
+    // TODO feature safety BufferUsageFlags
     pub fn usage(&mut self, usage: ash::vk::BufferUsageFlags) {
         self.usage = usage;
     }

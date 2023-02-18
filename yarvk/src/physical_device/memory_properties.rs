@@ -1,11 +1,14 @@
 use crate::physical_device::PhysicalDevice;
 use crate::Handle;
+use std::collections::btree_map::Entry;
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct MemoryType {
-    pub(crate) index: u32,
+    pub index: u32,
     pub property_flags: ash::vk::MemoryPropertyFlags,
-    pub heap: ash::vk::MemoryHeap,
+    pub heap_index: u32,
+    pub heap_size: u64,
 }
 
 impl Handle for MemoryType {
@@ -14,8 +17,14 @@ impl Handle for MemoryType {
     }
 }
 
-pub struct PhysicalDeviceMemoryProperties {
+pub struct MemoryHeap {
+    pub size: ash::vk::DeviceSize,
+    pub flags: ash::vk::MemoryHeapFlags,
     pub memory_types: Vec<MemoryType>,
+}
+
+pub struct PhysicalDeviceMemoryProperties {
+    pub heaps: BTreeMap<u32, MemoryHeap>,
 }
 
 impl PhysicalDevice {
@@ -27,23 +36,35 @@ impl PhysicalDevice {
             // Host Synchronization: none
             instance.get_physical_device_memory_properties(physical_device)
         };
-        let mut memory_properties =
-            Vec::with_capacity(vk_physical_device_memory_properties.memory_type_count as _);
+        let mut heaps = BTreeMap::new();
         vk_physical_device_memory_properties.memory_types
             [..vk_physical_device_memory_properties.memory_type_count as _]
             .iter()
             .enumerate()
             .for_each(|(index, vk_memory_type)| {
-                memory_properties.push(MemoryType {
-                    index: index as u32,
+                let memory_type = MemoryType {
+                    index: index as _,
                     property_flags: vk_memory_type.property_flags,
-                    heap: vk_physical_device_memory_properties.memory_heaps
-                        [vk_memory_type.heap_index as usize],
-                })
+                    heap_index: vk_memory_type.heap_index,
+                    heap_size: vk_physical_device_memory_properties.memory_heaps[vk_memory_type.heap_index as usize].size,
+                };
+                match heaps.entry(vk_memory_type.heap_index) {
+                    Entry::Vacant(entry) => {
+                        let vk_memory_heap =
+                            vk_physical_device_memory_properties.memory_heaps[index];
+                        let memory_heap = MemoryHeap {
+                            size: vk_memory_heap.size,
+                            flags: vk_memory_heap.flags,
+                            memory_types: vec![memory_type],
+                        };
+                        entry.insert(memory_heap);
+                    }
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().memory_types.push(memory_type);
+                    }
+                }
             });
-        PhysicalDeviceMemoryProperties {
-            memory_types: memory_properties,
-        }
+        PhysicalDeviceMemoryProperties { heaps }
     }
 
     pub fn memory_properties(&self) -> &PhysicalDeviceMemoryProperties {
