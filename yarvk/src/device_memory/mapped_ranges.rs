@@ -1,10 +1,10 @@
 use crate::device::Device;
-use crate::device_memory::mapped_memory::MappedMemory;
 use std::sync::Arc;
+use crate::device_memory::DeviceMemory;
 
 pub struct MappedRanges<'a> {
     device: Arc<Device>,
-    _device_memories: Vec<&'a MappedMemory>,
+    _device_memories: Vec<&'a DeviceMemory>,
     ash_vk_mapped_ranges: Vec<ash::vk::MappedMemoryRange>,
 }
 
@@ -22,12 +22,11 @@ impl<'a> MappedRanges<'a> {
     }
     pub fn add_range(
         &mut self,
-        mapped_memory: &'a MappedMemory,
+        device_memory: &'a DeviceMemory,
         mut offset: ash::vk::DeviceSize,
         mut size: ash::vk::DeviceSize,
     ) {
-        if mapped_memory
-            .device_memory
+        if device_memory
             .memory_type
             .property_flags
             .contains(ash::vk::MemoryPropertyFlags::HOST_COHERENT)
@@ -35,8 +34,8 @@ impl<'a> MappedRanges<'a> {
             return;
         }
         let end = offset.overflowing_add(size);
-        if end.1 || end.0 > mapped_memory.device_memory.size {
-            size = mapped_memory.device_memory.size - offset;
+        if end.1 || end.0 > device_memory.size {
+            size = device_memory.size - offset;
         }
         let non_coherent_atom_size = self
             .device
@@ -48,13 +47,13 @@ impl<'a> MappedRanges<'a> {
         offset = offset - offset % non_coherent_atom_size;
         // DONE VUID-VkMappedMemoryRange-size-01390
         let edge = offset + size + non_coherent_atom_size - size % non_coherent_atom_size;
-        let edge = std::cmp::min(edge, mapped_memory.device_memory.size);
+        let edge = std::cmp::min(edge, device_memory.size);
         size = edge - offset;
 
-        self._device_memories.push(mapped_memory);
+        self._device_memories.push(device_memory);
         self.ash_vk_mapped_ranges.push(
             ash::vk::MappedMemoryRange::builder()
-                .memory(mapped_memory.device_memory.vk_device_memory)
+                .memory(device_memory.vk_device_memory)
                 .offset(offset)
                 .size(size)
                 .build(),

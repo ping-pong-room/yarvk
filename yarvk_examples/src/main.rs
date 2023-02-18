@@ -71,7 +71,7 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
-use yarvk::{read_spv, Handle};
+use yarvk::{read_spv, Handle, WHOLE_SIZE};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
@@ -485,12 +485,15 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the index buffer.");
-    let index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
+    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
-    let mut mapped_memory = index_buffer_memory
+    index_buffer_memory
         .map_memory(0, index_buffer_memory_req.size)
+        .unwrap();
+    let mapped_memory = index_buffer_memory
+        .get_memory(0, index_buffer_memory_req.size)
         .unwrap();
     mapped_memory[0..std::mem::size_of_val(&index_buffer_data)].copy_from_slice(unsafe {
         std::slice::from_raw_parts(
@@ -498,12 +501,7 @@ fn main() {
             std::mem::size_of_val(&index_buffer_data),
         )
     });
-    let index_buffer = Arc::new(
-        index_buffer
-            .bind_memory(&mapped_memory.device_memory, 0)
-            .unwrap(),
-    );
-    let _index_buffer_memory = mapped_memory.unmap_memory();
+    let index_buffer = Arc::new(index_buffer.bind_memory(&index_buffer_memory, 0).unwrap());
 
     let vertices = [
         Vertex {
@@ -537,14 +535,16 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let vertex_input_buffer_memory =
+    let mut vertex_input_buffer_memory =
         DeviceMemory::builder(&vertex_input_buffer_memory_index, device.clone())
             .allocation_size(vertex_input_buffer_memory_req.size)
             .build()
             .unwrap();
-
-    let mut mapped_memory = vertex_input_buffer_memory
-        .map_memory(0, vertex_input_buffer_memory_req.size)
+    vertex_input_buffer_memory
+        .map_memory(0, WHOLE_SIZE)
+        .unwrap();
+    let mapped_memory = vertex_input_buffer_memory
+        .get_memory(0, vertex_input_buffer_memory_req.size)
         .unwrap();
     mapped_memory[0..std::mem::size_of_val(&vertices)].copy_from_slice(unsafe {
         std::slice::from_raw_parts(
@@ -552,7 +552,6 @@ fn main() {
             std::mem::size_of_val(&vertices),
         )
     });
-    let vertex_input_buffer_memory = mapped_memory.unmap_memory();
     let vertex_input_buffer = Arc::new(
         vertex_input_buffer
             .bind_memory(&vertex_input_buffer_memory, 0)
@@ -576,23 +575,23 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
-    let uniform_color_buffer_memory =
+    let mut uniform_color_buffer_memory =
         DeviceMemory::builder(&uniform_color_buffer_memory_index, device.clone())
             .allocation_size(uniform_color_buffer_memory_req.size)
             .build()
             .unwrap();
-
-    let mut mapped_memory = uniform_color_buffer_memory
-        .map_memory(0, uniform_color_buffer_memory_req.size)
+    uniform_color_buffer_memory
+        .map_memory(0, WHOLE_SIZE)
         .unwrap();
-
+    let mapped_memory = uniform_color_buffer_memory
+        .get_memory(0, uniform_color_buffer_memory_req.size)
+        .unwrap();
     mapped_memory[0..std::mem::size_of_val(&uniform_color_buffer_data)].copy_from_slice(unsafe {
         std::slice::from_raw_parts(
             &uniform_color_buffer_data as *const _ as *const u8,
             std::mem::size_of_val(&uniform_color_buffer_data),
         )
     });
-    let uniform_color_buffer_memory = mapped_memory.unmap_memory();
     let uniform_color_buffer = Arc::new(
         uniform_color_buffer
             .bind_memory(&uniform_color_buffer_memory, 0)
@@ -617,24 +616,22 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
+    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
         .allocation_size(image_buffer_memory_req.size)
         .build()
         .unwrap();
-    let mut mapped_memory = image_buffer_memory
+    image_buffer_memory
         .map_memory(0, image_buffer_memory_req.size)
+        .unwrap();
+    let mapped_memory = image_buffer_memory
+        .get_memory(0, image_buffer_memory_req.size)
         .unwrap();
     mapped_memory[0..image_data.len()].copy_from_slice(image_data.as_slice());
     // flush example if you used a non-coherent device memory
     // let mut mapped_ranges = MappedRanges::new(&device);
     // mapped_ranges.add_range(&mapped_memory, 0, image_buffer_memory_req.size);
     // mapped_ranges.flush().unwrap();
-    let image_buffer = Arc::new(
-        image_buffer
-            .bind_memory(&mapped_memory.device_memory, 0)
-            .unwrap(),
-    );
-    let _image_buffer_memory = mapped_memory.unmap_memory();
+    let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
     image_builder.image_type(ImageType::TYPE_2D);
     image_builder.format(Format::R8G8B8A8_UNORM);
     image_builder.extent(image_extent.into());

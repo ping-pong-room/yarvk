@@ -2,20 +2,20 @@ use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
 use ash::vk::Handle;
+use std::ffi::c_void;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 pub mod dedicated_memory;
-pub mod mapped_memory;
 pub mod mapped_ranges;
 
-pub trait IMemoryRequirements {
+pub trait IMemoryRequirements: Send + Sync {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements;
     fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T;
 }
 
-pub trait UnBoundMemory: IMemoryRequirements {
-    type BoundType;
+pub trait UnBoundMemory: IMemoryRequirements + Send + Sync {
+    type BoundType: IMemoryRequirements + Send + Sync;
     fn device(&self) -> &Arc<Device>;
     fn bind_memory(
         self,
@@ -35,6 +35,7 @@ pub struct DeviceMemory {
     pub(crate) vk_device_memory: ash::vk::DeviceMemory,
     pub size: ash::vk::DeviceSize,
     pub memory_type: MemoryType,
+    map_range: Option<(*mut c_void, ash::vk::DeviceSize, ash::vk::DeviceSize)>,
 }
 
 unsafe impl Sync for DeviceMemory {}
@@ -67,6 +68,110 @@ impl DeviceMemory {
             memory_type,
             dedicated_allocate_info: None,
         }
+    }
+    pub fn unmap_memory(&mut self) {
+        // DONE VUID-vkUnmapMemory-memory-00689
+        if self.map_range.is_none() {
+            return;
+        }
+        unsafe {
+            // Host Synchronization
+            // Host access to memory must be externally synchronized
+            self.device.ash_device.unmap_memory(self.vk_device_memory)
+        }
+    }
+    fn map_exact_memory(
+        &mut self,
+        offset: ash::vk::DeviceSize,
+        mut size: ash::vk::DeviceSize,
+    ) -> Result<(), ash::vk::Result> {
+        let end = offset.overflowing_add(size);
+        if end.1 || end.0 > self.size {
+            size = self.size - offset;
+        }
+        let mut real_offset = offset;
+        let mut real_size = size;
+        if !self
+            .memory_type
+            .property_flags
+            .contains(ash::vk::MemoryPropertyFlags::HOST_COHERENT)
+        {
+            // DONE VUID-VkMappedMemoryRange-size-01389
+            let non_coherent_atom_size = self
+                .device
+                .physical_device
+                .get_physical_device_properties()
+                .limits
+                .non_coherent_atom_size;
+            let edge = offset + size + non_coherent_atom_size - (size % non_coherent_atom_size);
+            let edge = std::cmp::min(edge, self.size);
+            real_offset = offset - offset % non_coherent_atom_size;
+            real_size = edge - real_offset;
+        }
+        unsafe {
+            let ptr = self.device.ash_device.map_memory(
+                self.vk_device_memory,
+                real_offset,
+                real_size,
+                ash::vk::MemoryMapFlags::empty(),
+            )?;
+            self.map_range = Some((ptr, real_offset, real_size));
+            Ok(())
+        }
+    }
+    fn get_memory_inner(
+        &self,
+        offset: ash::vk::DeviceSize,
+        size: ash::vk::DeviceSize,
+    ) -> Option<&mut [u8]> {
+        if let Some((ptr, self_offset, self_size)) = &self.map_range {
+            // required address is in the mapped address range
+            if offset >= *self_offset
+                && offset < self_offset + self_size
+                && offset + size <= self_offset + self_size
+            {
+                unsafe {
+                    let ptr = ptr.add((offset - self_offset) as usize);
+                    return Some(std::slice::from_raw_parts_mut(ptr as _, size as _));
+                }
+            }
+        }
+        None
+    }
+    pub fn get_memory(
+        &self,
+        offset: ash::vk::DeviceSize,
+        mut size: ash::vk::DeviceSize,
+    ) -> Option<&mut [u8]> {
+        if !self
+            .memory_type
+            .property_flags
+            .contains(ash::vk::MemoryPropertyFlags::HOST_VISIBLE)
+        {
+            return None;
+        }
+        if size == ash::vk::WHOLE_SIZE {
+            size = self.size - offset;
+        }
+        self.get_memory_inner(offset, size)
+    }
+    pub fn map_memory(
+        &mut self,
+        offset: ash::vk::DeviceSize,
+        mut size: ash::vk::DeviceSize,
+    ) -> Result<(), ash::vk::Result> {
+        if !self
+            .memory_type
+            .property_flags
+            .contains(ash::vk::MemoryPropertyFlags::HOST_VISIBLE)
+        {
+            return Err(ash::vk::Result::ERROR_MEMORY_MAP_FAILED);
+        }
+        if size == ash::vk::WHOLE_SIZE {
+            size = self.size - offset;
+        }
+        self.unmap_memory();
+        self.map_exact_memory(offset, size)
     }
 }
 
@@ -128,6 +233,7 @@ impl<'a> DeviceMemoryBuilder<'a> {
             vk_device_memory,
             size: self.allocation_size,
             memory_type: self.memory_type.clone(),
+            map_range: None,
         })
     }
 }

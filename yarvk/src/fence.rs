@@ -1,5 +1,6 @@
 use crate::device::Device;
 use derive_more::Deref;
+use std::fmt::{Debug, Formatter};
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
 
@@ -61,20 +62,37 @@ pub struct SignalingFence<T> {
     pub(crate) t: T,
 }
 
+pub struct TimeoutError<T> {
+    pub error: ash::vk::Result,
+    pub fence: SignalingFence<T>,
+}
+
+impl<T> Debug for TimeoutError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.error.fmt(f)
+    }
+}
+
 impl<T> SignalingFence<T> {
-    pub fn wait(self) -> Result<(SignaledFence, T), ash::vk::Result> {
+    pub fn wait(self) -> Result<(SignaledFence, T), TimeoutError<T>> {
         self.wait_timeout(u64::MAX)
     }
-    pub fn wait_timeout(self, timeout: u64) -> Result<(SignaledFence, T), ash::vk::Result> {
+    pub fn wait_timeout(self, timeout: u64) -> Result<(SignaledFence, T), TimeoutError<T>> {
         unsafe {
             // Host Synchronization: none
-            self.device
+            match self
+                .device
                 .ash_device
-                .wait_for_fences(&[self.vk_fence], true, timeout)?;
-            let fence = ManuallyDrop::new(self);
-            let fence_inner = std::ptr::read(&fence.inner);
-            let t = std::ptr::read(&fence.t);
-            Ok((SignaledFence(fence_inner), t))
+                .wait_for_fences(&[self.vk_fence], true, timeout)
+            {
+                Ok(_) => {
+                    let fence = ManuallyDrop::new(self);
+                    let fence_inner = std::ptr::read(&fence.inner);
+                    let t = std::ptr::read(&fence.t);
+                    Ok((SignaledFence(fence_inner), t))
+                }
+                Err(error) => Err(TimeoutError { error, fence: self }),
+            }
         }
     }
 }
