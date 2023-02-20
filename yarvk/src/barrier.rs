@@ -48,7 +48,7 @@ impl MemoryBarrierBuilder {
 
 pub struct ImageMemoryBarrier {
     pub(crate) ash_vk_image_memory_barrier: ash::vk::ImageMemoryBarrier,
-    pub image: Arc<dyn Image>,
+    pub image: Arc<Image>,
 }
 // TODO handle p_next
 unsafe impl Sync for ImageMemoryBarrier {}
@@ -56,7 +56,7 @@ unsafe impl Send for ImageMemoryBarrier {}
 
 impl ImageMemoryBarrier {
     // DONE VUID-VkImageMemoryBarrier-image-01932
-    pub fn builder(image: Arc<dyn Image>) -> ImageMemoryBarrierBuilder {
+    pub fn builder(image: Arc<Image>) -> ImageMemoryBarrierBuilder {
         ImageMemoryBarrierBuilder {
             src_access_mask: Default::default(),
             dst_access_mask: Default::default(),
@@ -77,7 +77,7 @@ pub struct ImageMemoryBarrierBuilder {
     new_layout: ash::vk::ImageLayout,
     src_queue_family: Option<QueueFamilyProperties>,
     dst_queue_family: Option<QueueFamilyProperties>,
-    image: Arc<dyn Image>,
+    image: Arc<Image>,
     subresource_range: ImageSubresourceRange,
 }
 
@@ -134,7 +134,7 @@ impl ImageMemoryBarrierBuilder {
 }
 
 pub struct BufferMemoryBarrier {
-    pub buffer: Arc<dyn Buffer>,
+    pub buffer: Arc<Buffer>,
     pub(crate) ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier,
 }
 
@@ -143,7 +143,7 @@ unsafe impl Sync for BufferMemoryBarrier {}
 unsafe impl Send for BufferMemoryBarrier {}
 
 impl BufferMemoryBarrier {
-    pub fn builder(buffer: Arc<dyn Buffer>) -> BufferMemoryBarrierBuilder {
+    pub fn builder(buffer: Arc<Buffer>) -> BufferMemoryBarrierBuilder {
         BufferMemoryBarrierBuilder {
             ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier::builder()
                 .buffer(buffer.ash_vk_buffer)
@@ -157,7 +157,7 @@ impl BufferMemoryBarrier {
 
 pub struct BufferMemoryBarrierBuilder {
     ash_vk_buffer_memory_barrier: ash::vk::BufferMemoryBarrier,
-    buffer: Arc<dyn Buffer>,
+    buffer: Arc<Buffer>,
     src_queue_family: Option<QueueFamilyProperties>,
     dst_queue_family: Option<QueueFamilyProperties>,
 }

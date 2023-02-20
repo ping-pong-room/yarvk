@@ -19,13 +19,11 @@ pub mod continuous_buffer;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 pub use buffer_view::*;
 pub use continuous_buffer::*;
+use crate::binding_resource::BindingResource;
 
-pub trait Buffer: Send + Sync {
-    fn raw(&self) -> &RawBuffer;
-    fn raw_mut(&mut self) -> &mut RawBuffer;
-}
+pub type Buffer = dyn BindingResource<RawTy = RawBuffer>;
 
-impl PartialEq for dyn Buffer {
+impl PartialEq for Buffer {
     fn eq(&self, other: &Self) -> bool {
         self.device == other.device && self.ash_vk_buffer == other.ash_vk_buffer
     }
@@ -38,7 +36,9 @@ pub struct RawBuffer {
     memory_requirements: ash::vk::MemoryRequirements,
 }
 
-impl Buffer for RawBuffer {
+impl BindingResource for RawBuffer {
+    type RawTy = Self;
+
     fn raw(&self) -> &RawBuffer {
         self
     }
@@ -47,7 +47,7 @@ impl Buffer for RawBuffer {
     }
 }
 
-impl Deref for dyn Buffer {
+impl Deref for Buffer {
     type Target = RawBuffer;
 
     fn deref(&self) -> &Self::Target {
@@ -55,7 +55,7 @@ impl Deref for dyn Buffer {
     }
 }
 
-impl DerefMut for dyn Buffer {
+impl DerefMut for Buffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw_mut()
     }
@@ -133,7 +133,7 @@ impl BufferCreateFlags {
 
 impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
-    pub fn cmd_bind_vertex_buffers<T: Buffer + 'static, It: IntoIterator<Item = Arc<T>>>(
+    pub fn cmd_bind_vertex_buffers<It: IntoIterator<Item = Arc<Buffer>>>(
         &mut self,
         first_binding: u32,
         buffers: It,
@@ -162,7 +162,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     // DONE VUID-vkCmdBindIndexBuffer-commandBuffer-recording
     pub fn cmd_bind_index_buffer(
         &mut self,
-        buffer: Arc<dyn Buffer>,
+        buffer: Arc<Buffer>,
         offset: ash::vk::DeviceSize,
         index_type: ash::vk::IndexType,
     ) {
@@ -227,7 +227,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
 impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
     pub fn cmd_update_buffer(
         &mut self,
-        dst_buffer: &Arc<dyn Buffer>,
+        dst_buffer: &Arc<Buffer>,
         dst_offset: ash::vk::DeviceSize,
         data: &[u8],
     ) {

@@ -67,22 +67,22 @@ impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageTexelBuffe
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::UniformBuffer }> {
-    type ValueType = (Arc<dyn Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageBuffer }> {
-    type ValueType = (Arc<dyn Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::UniformBufferDynamic }> {
-    type ValueType = (Arc<dyn Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageBufferDynamic }> {
-    type ValueType = (Arc<dyn Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 

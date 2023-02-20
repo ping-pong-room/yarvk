@@ -5,6 +5,7 @@ use ash::vk::Handle;
 use std::ffi::c_void;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use crate::binding_resource::BindingResource;
 
 pub mod dedicated_memory;
 pub mod mapped_ranges;
@@ -15,7 +16,8 @@ pub trait IMemoryRequirements: Send + Sync {
 }
 
 pub trait UnboundResource: IMemoryRequirements + Send + Sync {
-    type BoundType: IMemoryRequirements + Send + Sync;
+    type RawTy;
+    type BoundType: IMemoryRequirements + BindingResource<RawTy=Self::RawTy> + Send + Sync;
     fn device(&self) -> &Arc<Device>;
     fn bind_memory(
         self,

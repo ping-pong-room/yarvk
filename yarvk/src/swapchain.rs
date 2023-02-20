@@ -390,7 +390,7 @@ impl Swapchain {
         timeout: u64,
         semaphore: &Semaphore,
         fence: UnsignaledFence,
-    ) -> Result<(Arc<dyn Image>, SignalingFence<()>), ash::vk::Result> {
+    ) -> Result<(Arc<Image>, SignalingFence<()>), ash::vk::Result> {
         unsafe {
             // Host Synchronization: swapchain semaphore fence
             let (index, _) = self.swapchain_loader.acquire_next_image(
@@ -427,7 +427,7 @@ impl Swapchain {
         &mut self,
         timeout: u64,
         fence: UnsignaledFence,
-    ) -> Result<(Arc<dyn Image>, SignalingFence<()>), ash::vk::Result> {
+    ) -> Result<(Arc<Image>, SignalingFence<()>), ash::vk::Result> {
         let (index, _) = unsafe {
             // Host Synchronization: swapchain, semaphore, fence
             self.swapchain_loader.acquire_next_image(

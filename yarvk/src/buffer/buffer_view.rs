@@ -2,7 +2,7 @@ use crate::buffer::Buffer;
 use std::sync::Arc;
 
 pub struct BufferView {
-    pub buffer: Arc<dyn Buffer>,
+    pub buffer: Arc<Buffer>,
     pub(crate) ash_vk_buffer_view: ash::vk::BufferView,
 }
 
@@ -14,7 +14,7 @@ impl PartialEq for BufferView {
 }
 
 impl BufferView {
-    pub fn builder(buffer: Arc<dyn Buffer>) -> BufferViewBuilder {
+    pub fn builder(buffer: Arc<Buffer>) -> BufferViewBuilder {
         BufferViewBuilder {
             buffer,
             flags: Default::default(),
@@ -38,7 +38,7 @@ impl Drop for BufferView {
 }
 
 pub struct BufferViewBuilder {
-    buffer: Arc<dyn Buffer>,
+    buffer: Arc<Buffer>,
     pub flags: ash::vk::BufferViewCreateFlags,
     pub format: ash::vk::Format,
     pub offset: ash::vk::DeviceSize,

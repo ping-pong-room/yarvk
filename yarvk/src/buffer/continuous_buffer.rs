@@ -1,12 +1,13 @@
-use crate::buffer::{Buffer, BufferCreateFlags, RawBuffer};
+use crate::buffer::{BufferCreateFlags, RawBuffer};
 use crate::device::Device;
 use crate::device_memory::State::{Bound, Unbound};
 use crate::device_memory::{DeviceMemory, IMemoryRequirements, State, UnboundResource};
 use crate::physical_device::SharingMode;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use crate::binding_resource::BindingResource;
 
-pub struct ContinuousBuffer<const STATE: State = Bound>(RawBuffer);
+pub struct ContinuousBuffer<const STATE: State = Bound>(pub(crate) RawBuffer);
 
 impl<const STATE: State> IMemoryRequirements for ContinuousBuffer<STATE> {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
@@ -32,19 +33,21 @@ impl<const STATE: State> DerefMut for ContinuousBuffer<STATE> {
     }
 }
 
-// Do not impl Buffer for unbound buffer
-impl Buffer for ContinuousBuffer<{ Bound }> {
-    fn raw(&self) -> &RawBuffer {
-        &self.0
+impl BindingResource for ContinuousBuffer<{ Bound }> {
+    type RawTy = RawBuffer;
+
+    fn raw(&self) -> &Self::RawTy {
+        self.0.raw()
     }
 
-    fn raw_mut(&mut self) -> &mut RawBuffer {
-        &mut self.0
+    fn raw_mut(&mut self) -> &mut Self::RawTy {
+        self.0.raw_mut()
     }
 }
 
 impl UnboundResource for ContinuousBuffer<{ Unbound }> {
     type BoundType = ContinuousBuffer<{ Bound }>;
+    type RawTy = RawBuffer;
 
     fn device(&self) -> &Arc<Device> {
         &self.device

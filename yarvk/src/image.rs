@@ -14,15 +14,12 @@ use std::sync::Arc;
 pub mod continuous_image;
 pub mod image_subresource_range;
 pub mod image_view;
-
 pub use continuous_image::*;
+use crate::binding_resource::BindingResource;
 
-pub trait Image: Send + Sync {
-    fn raw(&self) -> &RawImage;
-    fn raw_mut(&mut self) -> &mut RawImage;
-}
+pub type Image = dyn BindingResource<RawTy = RawImage>;
 
-impl Deref for dyn Image {
+impl Deref for Image {
     type Target = RawImage;
 
     fn deref(&self) -> &Self::Target {
@@ -30,7 +27,7 @@ impl Deref for dyn Image {
     }
 }
 
-impl DerefMut for dyn Image {
+impl DerefMut for Image {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw_mut()
     }
@@ -58,7 +55,9 @@ impl Drop for RawImage {
     }
 }
 
-impl Image for RawImage {
+impl BindingResource for RawImage {
+    type RawTy = Self;
+
     fn raw(&self) -> &RawImage {
         self
     }
@@ -114,14 +113,12 @@ pub struct ImageCreateInfo {
 
 pub type ImageFormatListCreateInfo = Vec<ash::vk::Format>;
 
-impl<const LEVEL: Level>
-    CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }>
-{
+impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
     // DONE VUID-vkCmdCopyBufferToImage-commandBuffer-recording
     pub fn cmd_copy_buffer_to_image(
         &mut self,
-        src_buffer: Arc<dyn Buffer>,
-        dst_image: Arc<dyn Image>,
+        src_buffer: Arc<Buffer>,
+        dst_image: Arc<Image>,
         dst_image_layout: ash::vk::ImageLayout,
         regions: &[ash::vk::BufferImageCopy],
     ) {

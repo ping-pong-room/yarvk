@@ -11,14 +11,13 @@ use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
-use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
-use yarvk::device::{Device, DeviceQueueCreateInfo};
-
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
+use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_set::desccriptor_pool::DescriptorPool;
 use yarvk::descriptor_set::descriptor_set::{DescriptorSetValue, IDescriptorSet};
 use yarvk::descriptor_set::descriptor_type::DescriptorKind;
+use yarvk::device::{Device, DeviceQueueCreateInfo};
 
 use yarvk::command::command_buffer::{
     CommandBuffer, CommandBufferInheritanceInfo, TransientCommandBuffer,
@@ -1027,7 +1026,7 @@ fn main() {
                                                 );
                                                 command_buffer.cmd_bind_vertex_buffers(
                                                     0,
-                                                    [vertex_input_buffer.clone()],
+                                                    [vertex_input_buffer.clone() as _],
                                                     &[0],
                                                 );
                                                 command_buffer.cmd_bind_index_buffer(

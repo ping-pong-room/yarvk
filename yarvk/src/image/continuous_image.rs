@@ -1,7 +1,8 @@
 use crate::device::Device;
+use crate::binding_resource::BindingResource;
 use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{UnboundResource, DeviceMemory, IMemoryRequirements, State};
-use crate::image::{Image, ImageCreateInfo, RawImage};
+use crate::device_memory::{DeviceMemory, IMemoryRequirements, State, UnboundResource};
+use crate::image::{ImageCreateInfo, RawImage};
 use crate::physical_device::SharingMode;
 use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
 use std::ops::{Deref, DerefMut};
@@ -123,19 +124,21 @@ impl<const STATE: State> DerefMut for ContinuousImage<STATE> {
     }
 }
 
-// Do not impl Buffer for unbound buffer
-impl Image for ContinuousImage<{ Bound }> {
-    fn raw(&self) -> &RawImage {
+impl BindingResource for ContinuousImage<{ Bound }> {
+    type RawTy = RawImage;
+
+    fn raw(&self) -> &Self::RawTy {
         self.0.raw()
     }
 
-    fn raw_mut(&mut self) -> &mut RawImage {
+    fn raw_mut(&mut self) -> &mut Self::RawTy {
         self.0.raw_mut()
     }
 }
 
 impl UnboundResource for ContinuousImage<{ Unbound }> {
     type BoundType = ContinuousImage<{ Bound }>;
+    type RawTy = RawImage;
 
     fn device(&self) -> &Arc<Device> {
         &self.device

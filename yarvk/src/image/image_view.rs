@@ -69,7 +69,7 @@ impl ImageViewCreateFlags {
 }
 
 pub struct ImageView {
-    pub image: Arc<dyn Image>,
+    pub image: Arc<Image>,
     pub(crate) ash_vk_image_view: ash::vk::ImageView,
 }
 
@@ -81,7 +81,7 @@ impl PartialEq for ImageView {
 }
 
 impl ImageView {
-    pub fn builder(image: Arc<dyn Image>) -> ImageViewBuilder {
+    pub fn builder(image: Arc<Image>) -> ImageViewBuilder {
         ImageViewBuilder::new(image)
     }
 }
@@ -100,7 +100,7 @@ impl Drop for ImageView {
 
 pub struct ImageViewBuilder {
     device: Arc<Device>,
-    image: Arc<dyn Image>,
+    image: Arc<Image>,
     view_type: ash::vk::ImageViewType,
     format: ash::vk::Format,
     flags: ash::vk::ImageViewCreateFlags,
@@ -110,7 +110,7 @@ pub struct ImageViewBuilder {
 }
 
 impl ImageViewBuilder {
-    fn new(image: Arc<dyn Image>) -> Self {
+    fn new(image: Arc<Image>) -> Self {
         let device = image.device.clone();
         Self {
             device,

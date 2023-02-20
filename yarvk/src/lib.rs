@@ -27,6 +27,7 @@ pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
+pub mod binding_resource;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;

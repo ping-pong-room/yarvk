@@ -67,7 +67,7 @@ impl FnVkUpdateInfo for Arc<BufferView> {
     }
 }
 
-impl FnVkUpdateInfo for (Arc<dyn Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize) {
+impl FnVkUpdateInfo for (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize) {
     type VkValueType = ash::vk::DescriptorBufferInfo;
 
     fn to_vk_update_ty(&self) -> Self::VkValueType {
