@@ -4,7 +4,7 @@ use crate::device_features::{
     PhysicalDeviceFragmentDensityMapFeaturesEXT,
 };
 use crate::image::image_subresource_range::ImageSubresourceRange;
-use crate::image::Image;
+use crate::image::IImage;
 use std::sync::Arc;
 
 pub enum ImageViewType {
@@ -69,7 +69,7 @@ impl ImageViewCreateFlags {
 }
 
 pub struct ImageView {
-    pub image: Arc<Image>,
+    pub image: Arc<IImage>,
     pub(crate) ash_vk_image_view: ash::vk::ImageView,
 }
 
@@ -81,7 +81,7 @@ impl PartialEq for ImageView {
 }
 
 impl ImageView {
-    pub fn builder(image: Arc<Image>) -> ImageViewBuilder {
+    pub fn builder(image: Arc<IImage>) -> ImageViewBuilder {
         ImageViewBuilder::new(image)
     }
 }
@@ -100,7 +100,7 @@ impl Drop for ImageView {
 
 pub struct ImageViewBuilder {
     device: Arc<Device>,
-    image: Arc<Image>,
+    image: Arc<IImage>,
     view_type: ash::vk::ImageViewType,
     format: ash::vk::Format,
     flags: ash::vk::ImageViewCreateFlags,
@@ -110,7 +110,7 @@ pub struct ImageViewBuilder {
 }
 
 impl ImageViewBuilder {
-    fn new(image: Arc<Image>) -> Self {
+    fn new(image: Arc<IImage>) -> Self {
         let device = image.device.clone();
         Self {
             device,

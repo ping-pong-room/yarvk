@@ -1,15 +1,12 @@
-use crate::buffer::ContinuousBuffer;
-use crate::image::ContinuousImage;
-
-use crate::device_memory::State::Unbound;
+use crate::{UnboundContinuousBuffer, UnboundContinuousImage};
 
 // DONE VUID-VkMemoryDedicatedAllocateInfo-image-01432
 // TODO can image and buffer both be null?
-// TODO VUID-VkMemoryDedicatedAllocateInfo-image-01434
-// TODO VUID-VkMemoryDedicatedAllocateInfo-buffer-01436
+// DONE VUID-VkMemoryDedicatedAllocateInfo-image-01434
+// DONE VUID-VkMemoryDedicatedAllocateInfo-buffer-01436
 pub enum DedicatedResource<'a> {
-    Image(&'a ContinuousImage<{ Unbound }>),
-    Buffer(&'a ContinuousBuffer<{ Unbound }>),
+    Image(&'a UnboundContinuousImage),
+    Buffer(&'a UnboundContinuousBuffer),
 }
 
 pub struct MemoryDedicatedAllocateInfo<'a> {

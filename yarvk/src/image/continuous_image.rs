@@ -1,12 +1,27 @@
+use crate::binding_resource::{BindMemoryInfo, BindingResource};
 use crate::device::Device;
-use crate::binding_resource::BindingResource;
-use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{DeviceMemory, IMemoryRequirements, State, UnboundResource};
-use crate::image::{ImageCreateInfo, RawImage};
+use crate::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
+use crate::image::{Image, ImageCreateInfo};
 use crate::physical_device::SharingMode;
 use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
-use std::ops::{Deref, DerefMut};
+use derive_more::{Deref, DerefMut};
+use std::marker::PhantomData;
 use std::sync::Arc;
+use crate::device_memory::dedicated_memory::DedicatedResource;
+use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
+
+pub struct ContinuousImage {
+    _phantom: PhantomData<usize>,
+}
+
+impl ContinuousImage {
+    pub fn builder(device: Arc<Device>) -> ContinuousImageBuilder {
+        ContinuousImageBuilder {
+            device,
+            inner: Default::default(),
+        }
+    }
+}
 
 pub struct ContinuousImageBuilder {
     device: Arc<Device>,
@@ -47,7 +62,7 @@ impl ContinuousImageBuilder {
     pub fn initial_layout(&mut self, initial_layout: ash::vk::ImageLayout) {
         self.inner.initial_layout = initial_layout;
     }
-    pub fn build(&self) -> Result<ContinuousImage<{ Unbound }>, ash::vk::Result> {
+    pub fn build(&self) -> Result<UnboundContinuousImage, ash::vk::Result> {
         let image_create_info = &self.inner;
         let mut vk_image_create_info = ash::vk::ImageCreateInfo::builder()
             .flags(image_create_info.flags)
@@ -86,8 +101,8 @@ impl ContinuousImageBuilder {
                 .ash_device
                 .get_image_memory_requirements(vk_image)
         };
-        Ok(ContinuousImage {
-            0: RawImage {
+        Ok(UnboundContinuousImage {
+            0: Image {
                 device: self.device.clone(),
                 vk_image,
                 presentable: false,
@@ -98,9 +113,18 @@ impl ContinuousImageBuilder {
     }
 }
 
-pub struct ContinuousImage<const STATE: State = Bound>(pub(crate) RawImage);
+#[derive(Deref, DerefMut)]
+pub struct UnboundContinuousImage(pub(crate) Image);
 
-impl<const STATE: State> IMemoryRequirements for ContinuousImage<STATE> {
+#[derive(Deref, DerefMut)]
+pub struct BoundContinuousImage {
+    #[deref]
+    #[deref_mut]
+    pub(crate) image: Image,
+    pub(crate) offset: DeviceSize,
+}
+
+impl IMemoryRequirements for UnboundContinuousImage {
     fn get_memory_requirements(&self) -> &MemoryRequirements {
         self.0.get_memory_requirements()
     }
@@ -110,38 +134,44 @@ impl<const STATE: State> IMemoryRequirements for ContinuousImage<STATE> {
     }
 }
 
-impl<const STATE: State> Deref for ContinuousImage<STATE> {
-    type Target = RawImage;
+impl IMemoryRequirements for BoundContinuousImage {
+    fn get_memory_requirements(&self) -> &MemoryRequirements {
+        self.image.get_memory_requirements()
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn get_memory_requirements2<T: ExtendsMemoryRequirements2 + Default>(&self) -> T {
+        self.image.get_memory_requirements2()
     }
 }
 
-impl<const STATE: State> DerefMut for ContinuousImage<STATE> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl BindingResource for ContinuousImage<{ Bound }> {
-    type RawTy = RawImage;
+impl BindingResource for BoundContinuousImage {
+    type RawTy = Image;
 
     fn raw(&self) -> &Self::RawTy {
-        self.0.raw()
+        self.image.raw()
     }
 
     fn raw_mut(&mut self) -> &mut Self::RawTy {
-        self.0.raw_mut()
+        self.image.raw_mut()
+    }
+
+    fn offset(&self) -> DeviceSize {
+        self.offset
     }
 }
 
-impl UnboundResource for ContinuousImage<{ Unbound }> {
-    type BoundType = ContinuousImage<{ Bound }>;
-    type RawTy = RawImage;
+impl UnboundResource for UnboundContinuousImage {
+    type RawTy = Image;
+    type BoundType = BoundContinuousImage;
 
     fn device(&self) -> &Arc<Device> {
         &self.device
+    }
+
+    fn dedicated_info(&self) -> MemoryDedicatedAllocateInfo {
+        MemoryDedicatedAllocateInfo {
+            resource: DedicatedResource::Image(self),
+        }
     }
 
     fn bind_memory(
@@ -158,15 +188,36 @@ impl UnboundResource for ContinuousImage<{ Unbound }> {
                 memory_offset,
             )?;
         }
-        Ok(unsafe { std::mem::transmute(self) })
+        Ok(BoundContinuousImage {
+            image: self.0,
+            offset: memory_offset,
+        })
     }
-}
 
-impl ContinuousImage<{ Unbound }> {
-    pub fn builder(device: Arc<Device>) -> ContinuousImageBuilder {
-        ContinuousImageBuilder {
-            device,
-            inner: Default::default(),
-        }
+    fn bind_memories<'a, It: IntoIterator<Item = BindMemoryInfo<'a, Self>>>(
+        device: &Arc<Device>,
+        it: It,
+    ) -> Result<Vec<Self::BoundType>, ash::vk::Result>
+    where
+        Self: Sized,
+    {
+        let it = it.into_iter();
+        let mut bounds = Vec::with_capacity(it.size_hint().0);
+        let infos = it
+            .map(|info| {
+                let vk_infos = ash::vk::BindImageMemoryInfo::builder()
+                    .image(info.resource.vk_image)
+                    .memory_offset(info.memory_offset)
+                    .memory(info.memory.vk_device_memory)
+                    .build();
+                bounds.push(BoundContinuousImage {
+                    image: info.resource.0,
+                    offset: info.memory_offset,
+                });
+                vk_infos
+            })
+            .collect::<Vec<_>>();
+        unsafe { device.ash_device.bind_image_memory2(infos.as_slice())? };
+        Ok(bounds)
     }
 }

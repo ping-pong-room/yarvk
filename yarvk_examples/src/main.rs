@@ -9,7 +9,6 @@ use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEve
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use yarvk::barrier::ImageMemoryBarrier;
-use yarvk::buffer::ContinuousBuffer;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
@@ -38,7 +37,6 @@ use yarvk::fence::{Fence, UnsignaledFence};
 use yarvk::frame_buffer::Framebuffer;
 use yarvk::image::image_subresource_range::ImageSubresourceRange;
 use yarvk::image::image_view::{ImageView, ImageViewType};
-use yarvk::image::ContinuousImage;
 use yarvk::instance::{ApplicationInfo, Instance};
 use yarvk::physical_device::memory_properties::{MemoryType, PhysicalDeviceMemoryProperties};
 use yarvk::physical_device::SharingMode;
@@ -70,7 +68,7 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
-use yarvk::{read_spv, Handle, WHOLE_SIZE};
+use yarvk::{read_spv, Handle, WHOLE_SIZE, ContinuousImage, ContinuousBuffer};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,

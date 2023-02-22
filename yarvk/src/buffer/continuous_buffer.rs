@@ -1,15 +1,41 @@
-use crate::buffer::{BufferCreateFlags, RawBuffer};
+use crate::binding_resource::{BindMemoryInfo, BindingResource};
+use crate::buffer::{Buffer, BufferCreateFlags};
 use crate::device::Device;
-use crate::device_memory::State::{Bound, Unbound};
-use crate::device_memory::{DeviceMemory, IMemoryRequirements, State, UnboundResource};
+use crate::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
+use crate::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
 use crate::physical_device::SharingMode;
-use std::ops::{Deref, DerefMut};
+use ash::vk::DeviceSize;
+use derive_more::{Deref, DerefMut};
+use std::marker::PhantomData;
 use std::sync::Arc;
-use crate::binding_resource::BindingResource;
 
-pub struct ContinuousBuffer<const STATE: State = Bound>(pub(crate) RawBuffer);
+pub struct ContinuousBuffer {
+    _phantom: PhantomData<usize>,
+}
 
-impl<const STATE: State> IMemoryRequirements for ContinuousBuffer<STATE> {
+impl ContinuousBuffer {
+    pub fn builder(device: Arc<Device>) -> ContinuousBufferBuilder {
+        ContinuousBufferBuilder {
+            device,
+            flags: Default::default(),
+            size: 0,
+            usage: Default::default(),
+            sharing_mode: Default::default(),
+        }
+    }
+}
+
+#[derive(Deref, DerefMut)]
+pub struct UnboundContinuousBuffer(pub(crate) Buffer);
+#[derive(Deref, DerefMut)]
+pub struct BoundContinuousBuffer {
+    #[deref]
+    #[deref_mut]
+    buffer: Buffer,
+    offset: ash::vk::DeviceSize,
+}
+
+impl IMemoryRequirements for UnboundContinuousBuffer {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         self.0.get_memory_requirements()
     }
@@ -19,38 +45,44 @@ impl<const STATE: State> IMemoryRequirements for ContinuousBuffer<STATE> {
     }
 }
 
-impl<const STATE: State> Deref for ContinuousBuffer<STATE> {
-    type Target = RawBuffer;
+impl IMemoryRequirements for BoundContinuousBuffer {
+    fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
+        self.buffer.get_memory_requirements()
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    fn get_memory_requirements2<T: ash::vk::ExtendsMemoryRequirements2 + Default>(&self) -> T {
+        self.buffer.get_memory_requirements2()
     }
 }
 
-impl<const STATE: State> DerefMut for ContinuousBuffer<STATE> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl BindingResource for ContinuousBuffer<{ Bound }> {
-    type RawTy = RawBuffer;
+impl BindingResource for BoundContinuousBuffer {
+    type RawTy = Buffer;
 
     fn raw(&self) -> &Self::RawTy {
-        self.0.raw()
+        self.buffer.raw()
     }
 
     fn raw_mut(&mut self) -> &mut Self::RawTy {
-        self.0.raw_mut()
+        self.buffer.raw_mut()
+    }
+
+    fn offset(&self) -> DeviceSize {
+        self.offset
     }
 }
 
-impl UnboundResource for ContinuousBuffer<{ Unbound }> {
-    type BoundType = ContinuousBuffer<{ Bound }>;
-    type RawTy = RawBuffer;
+impl UnboundResource for UnboundContinuousBuffer {
+    type RawTy = Buffer;
+    type BoundType = BoundContinuousBuffer;
 
     fn device(&self) -> &Arc<Device> {
         &self.device
+    }
+
+    fn dedicated_info(&self) -> MemoryDedicatedAllocateInfo {
+        MemoryDedicatedAllocateInfo {
+            resource: DedicatedResource::Buffer(self),
+        }
     }
 
     fn bind_memory(
@@ -66,19 +98,38 @@ impl UnboundResource for ContinuousBuffer<{ Unbound }> {
                 memory_offset,
             )?;
         }
-        Ok(unsafe { std::mem::transmute(self) })
+        Ok(BoundContinuousBuffer {
+            buffer: self.0,
+            offset: memory_offset,
+        })
     }
-}
 
-impl ContinuousBuffer<{ Unbound }> {
-    pub fn builder(device: Arc<Device>) -> ContinuousBufferBuilder {
-        ContinuousBufferBuilder {
-            device,
-            flags: Default::default(),
-            size: 0,
-            usage: Default::default(),
-            sharing_mode: Default::default(),
-        }
+    // TODO return original unbound resources if failed
+    fn bind_memories<'a, It: IntoIterator<Item = BindMemoryInfo<'a, Self>>>(
+        device: &Arc<Device>,
+        it: It,
+    ) -> Result<Vec<Self::BoundType>, ash::vk::Result>
+    where
+        Self: Sized,
+    {
+        let it = it.into_iter();
+        let mut bounds = Vec::with_capacity(it.size_hint().0);
+        let infos = it
+            .map(|info| {
+                let vk_infos = ash::vk::BindBufferMemoryInfo::builder()
+                    .buffer(info.resource.ash_vk_buffer)
+                    .memory_offset(info.memory_offset)
+                    .memory(info.memory.vk_device_memory)
+                    .build();
+                bounds.push(BoundContinuousBuffer {
+                    buffer: info.resource.0,
+                    offset: info.memory_offset,
+                });
+                vk_infos
+            })
+            .collect::<Vec<_>>();
+        unsafe { device.ash_device.bind_buffer_memory2(infos.as_slice())? };
+        Ok(bounds)
     }
 }
 
@@ -122,7 +173,7 @@ impl ContinuousBufferBuilder {
         self.sharing_mode = sharing_mode;
     }
 
-    pub fn build(&self) -> Result<ContinuousBuffer<{ Unbound }>, ash::vk::Result> {
+    pub fn build(&self) -> Result<UnboundContinuousBuffer, ash::vk::Result> {
         // DONE VUID-VkBufferCreateInfo-sharingMode-00913
         let mut create_info = ash::vk::BufferCreateInfo::builder()
             .flags(self.flags)
@@ -151,8 +202,8 @@ impl ContinuousBufferBuilder {
                 .ash_device
                 .get_buffer_memory_requirements(ash_vk_buffer)
         };
-        Ok(ContinuousBuffer {
-            0: RawBuffer {
+        Ok(UnboundContinuousBuffer {
+            0: Buffer {
                 device: self.device.clone(),
                 ash_vk_buffer,
                 free_notification: None,

@@ -1,3 +1,4 @@
+use crate::binding_resource::{BindingResource, BindMemoryInfo};
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
@@ -5,7 +6,6 @@ use ash::vk::Handle;
 use std::ffi::c_void;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
-use crate::binding_resource::BindingResource;
 
 pub mod dedicated_memory;
 pub mod mapped_ranges;
@@ -16,20 +16,16 @@ pub trait IMemoryRequirements: Send + Sync {
 }
 
 pub trait UnboundResource: IMemoryRequirements + Send + Sync {
-    type RawTy;
-    type BoundType: IMemoryRequirements + BindingResource<RawTy=Self::RawTy> + Send + Sync;
+    type RawTy: IMemoryRequirements;
+    type BoundType: IMemoryRequirements + BindingResource<RawTy = Self::RawTy> + Send + Sync;
     fn device(&self) -> &Arc<Device>;
+    fn dedicated_info(&self) -> MemoryDedicatedAllocateInfo;
     fn bind_memory(
         self,
         memory: &DeviceMemory,
         memory_offset: ash::vk::DeviceSize,
     ) -> Result<Self::BoundType, ash::vk::Result>;
-}
-
-#[derive(PartialEq, Eq)]
-pub enum State {
-    Unbound,
-    Bound,
+    fn bind_memories<'a, It: IntoIterator<Item=BindMemoryInfo<'a, Self>>>(device: &Arc<Device>, it: It) -> Result<Vec<Self::BoundType>, ash::vk::Result> where Self: Sized;
 }
 
 pub struct DeviceMemory {
@@ -125,7 +121,7 @@ impl DeviceMemory {
         &self,
         offset: ash::vk::DeviceSize,
         size: ash::vk::DeviceSize,
-    ) -> Option<&mut [u8]> {
+    ) -> Result<&mut [u8], ash::vk::Result> {
         if let Some((ptr, self_offset, self_size)) = &self.map_range {
             // required address is in the mapped address range
             if offset >= *self_offset
@@ -134,24 +130,21 @@ impl DeviceMemory {
             {
                 unsafe {
                     let ptr = ptr.add((offset - self_offset) as usize);
-                    return Some(std::slice::from_raw_parts_mut(ptr as _, size as _));
+                    return Ok(std::slice::from_raw_parts_mut(ptr as _, size as _));
                 }
             }
         }
-        None
+        Err(ash::vk::Result::ERROR_MEMORY_MAP_FAILED)
     }
     pub fn get_memory(
         &self,
         offset: ash::vk::DeviceSize,
         mut size: ash::vk::DeviceSize,
-    ) -> Option<&mut [u8]> {
-        if !self
+    ) -> Result<&mut [u8], ash::vk::Result> {
+        assert!(self
             .memory_type
             .property_flags
-            .contains(ash::vk::MemoryPropertyFlags::HOST_VISIBLE)
-        {
-            return None;
-        }
+            .contains(ash::vk::MemoryPropertyFlags::HOST_VISIBLE));
         if size == ash::vk::WHOLE_SIZE {
             size = self.size - offset;
         }

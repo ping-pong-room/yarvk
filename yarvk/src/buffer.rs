@@ -8,66 +8,68 @@ use crate::device_features::PhysicalDeviceFeatures::{
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
 use crate::device_memory::IMemoryRequirements;
-
-use std::ops::{Deref, DerefMut};
-
 use ash::vk::Handle;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 pub mod buffer_view;
 pub mod continuous_buffer;
+use crate::binding_resource::BindingResource;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 pub use buffer_view::*;
 pub use continuous_buffer::*;
-use crate::binding_resource::BindingResource;
 
-pub type Buffer = dyn BindingResource<RawTy = RawBuffer>;
+pub type IBuffer = dyn BindingResource<RawTy = Buffer>;
 
-impl PartialEq for Buffer {
+impl PartialEq for IBuffer {
     fn eq(&self, other: &Self) -> bool {
         self.device == other.device && self.ash_vk_buffer == other.ash_vk_buffer
     }
 }
 
-pub struct RawBuffer {
+pub struct Buffer {
     pub device: Arc<Device>,
     pub(crate) ash_vk_buffer: ash::vk::Buffer,
     pub(crate) free_notification: Option<Box<dyn FnOnce(&Self) + Sync + Send>>,
     memory_requirements: ash::vk::MemoryRequirements,
 }
 
-impl BindingResource for RawBuffer {
+impl BindingResource for Buffer {
     type RawTy = Self;
 
-    fn raw(&self) -> &RawBuffer {
+    fn raw(&self) -> &Buffer {
         self
     }
-    fn raw_mut(&mut self) -> &mut RawBuffer {
+    fn raw_mut(&mut self) -> &mut Buffer {
         self
+    }
+
+    fn offset(&self) -> ash::vk::DeviceSize {
+        ash::vk::DeviceSize::MAX
     }
 }
 
-impl Deref for Buffer {
-    type Target = RawBuffer;
+impl Deref for IBuffer {
+    type Target = Buffer;
 
     fn deref(&self) -> &Self::Target {
         self.raw()
     }
 }
 
-impl DerefMut for Buffer {
+impl DerefMut for IBuffer {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw_mut()
     }
 }
 
-impl crate::Handle for RawBuffer {
+impl crate::Handle for Buffer {
     fn handle(&self) -> u64 {
         self.ash_vk_buffer.as_raw()
     }
 }
 
-impl IMemoryRequirements for RawBuffer {
+impl IMemoryRequirements for Buffer {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         &self.memory_requirements
     }
@@ -90,7 +92,7 @@ impl IMemoryRequirements for RawBuffer {
     }
 }
 
-impl Drop for RawBuffer {
+impl Drop for Buffer {
     fn drop(&mut self) {
         unsafe {
             // TODO execution VUID-vkDestroyBuffer-buffer-00922
@@ -133,7 +135,7 @@ impl BufferCreateFlags {
 
 impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdBindVertexBuffers-commandBuffer-recording
-    pub fn cmd_bind_vertex_buffers<It: IntoIterator<Item = Arc<Buffer>>>(
+    pub fn cmd_bind_vertex_buffers<It: IntoIterator<Item = Arc<IBuffer>>>(
         &mut self,
         first_binding: u32,
         buffers: It,
@@ -162,7 +164,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     // DONE VUID-vkCmdBindIndexBuffer-commandBuffer-recording
     pub fn cmd_bind_index_buffer(
         &mut self,
-        buffer: Arc<Buffer>,
+        buffer: Arc<IBuffer>,
         offset: ash::vk::DeviceSize,
         index_type: ash::vk::IndexType,
     ) {
@@ -227,7 +229,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
 impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
     pub fn cmd_update_buffer(
         &mut self,
-        dst_buffer: &Arc<Buffer>,
+        dst_buffer: &Arc<IBuffer>,
         dst_offset: ash::vk::DeviceSize,
         data: &[u8],
     ) {
@@ -238,6 +240,22 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
                 dst_offset,
                 data,
             )
+        }
+    }
+
+    pub fn cmd_copy_buffer(
+        &mut self,
+        src_buffer: Arc<IBuffer>,
+        dst_buffer: Arc<IBuffer>,
+        regions: &[ash::vk::BufferCopy],
+    ) {
+        unsafe {
+            self.device.ash_device.cmd_copy_buffer(
+                self.vk_command_buffer,
+                src_buffer.ash_vk_buffer,
+                dst_buffer.ash_vk_buffer,
+                regions,
+            );
         }
     }
 }

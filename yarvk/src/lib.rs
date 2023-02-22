@@ -20,7 +20,6 @@ pub mod render_pass;
 pub mod surface;
 pub mod swapchain;
 pub mod window;
-
 pub mod barrier;
 pub mod descriptor_set;
 pub mod pipeline;

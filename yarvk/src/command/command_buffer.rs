@@ -1,4 +1,4 @@
-use crate::buffer::Buffer;
+use crate::buffer::IBuffer;
 use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID, RECORDING};
@@ -14,7 +14,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
-use crate::Image;
+use crate::IImage;
 
 #[derive(PartialEq, Eq)]
 pub enum State {
@@ -135,10 +135,10 @@ impl CommandBufferInheritanceInfoBuilder {
 
 #[derive(Default)]
 pub(crate) struct HoldingResources {
-    pub write_images: FxHashMap<u64, Arc<Image>>,
-    pub write_buffers: FxHashMap<u64, Arc<Buffer>>,
-    pub read_images: FxHashMap<u64, Arc<Image>>,
-    pub read_buffers: FxHashMap<u64, Arc<Buffer>>,
+    pub write_images: FxHashMap<u64, Arc<IImage>>,
+    pub write_buffers: FxHashMap<u64, Arc<IBuffer>>,
+    pub read_images: FxHashMap<u64, Arc<IImage>>,
+    pub read_buffers: FxHashMap<u64, Arc<IBuffer>>,
     pub pipeline_layouts: FxHashMap<u64, Arc<PipelineLayout>>,
     pub pipelines: FxHashMap<u64, Arc<Pipeline>>,
     pub descriptor_sets: FxHashMap<u64, Arc<dyn IDescriptorSet>>,

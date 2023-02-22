@@ -2,7 +2,7 @@ use crate::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
 use crate::device::Device;
 use crate::image_view::ImageView;
 use crate::sampler::Sampler;
-use crate::{Buffer, BufferView};
+use crate::{IBuffer, BufferView};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -67,7 +67,7 @@ impl FnVkUpdateInfo for Arc<BufferView> {
     }
 }
 
-impl FnVkUpdateInfo for (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize) {
+impl FnVkUpdateInfo for (Arc<IBuffer>, ash::vk::DeviceSize, ash::vk::DeviceSize) {
     type VkValueType = ash::vk::DescriptorBufferInfo;
 
     fn to_vk_update_ty(&self) -> Self::VkValueType {

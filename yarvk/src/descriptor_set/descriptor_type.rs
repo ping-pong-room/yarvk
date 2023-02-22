@@ -1,6 +1,6 @@
 use crate::image_view::ImageView;
 use crate::sampler::Sampler;
-use crate::{Buffer, BufferView};
+use crate::{IBuffer, BufferView};
 use std::sync::Arc;
 use crate::descriptor_set::private::FnVkUpdateInfo;
 
@@ -67,22 +67,22 @@ impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageTexelBuffe
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::UniformBuffer }> {
-    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<IBuffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageBuffer }> {
-    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<IBuffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::UniformBufferDynamic }> {
-    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<IBuffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 
 impl DescriptorType for DescriptorTypeDetail<{ DescriptorKind::StorageBufferDynamic }> {
-    type ValueType = (Arc<Buffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
+    type ValueType = (Arc<IBuffer>, ash::vk::DeviceSize, ash::vk::DeviceSize);
     type ConstValueType = ();
 }
 

@@ -1,13 +1,12 @@
-use crate::buffer::Buffer;
+use crate::binding_resource::BindingResource;
+use crate::buffer::IBuffer;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level};
 use crate::device::Device;
-
 use crate::device_memory::IMemoryRequirements;
 use crate::physical_device::SharingMode;
-
-use ash::vk::Handle;
+use ash::vk::{DeviceSize, Handle};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
@@ -15,25 +14,24 @@ pub mod continuous_image;
 pub mod image_subresource_range;
 pub mod image_view;
 pub use continuous_image::*;
-use crate::binding_resource::BindingResource;
 
-pub type Image = dyn BindingResource<RawTy = RawImage>;
+pub type IImage = dyn BindingResource<RawTy = Image>;
 
-impl Deref for Image {
-    type Target = RawImage;
+impl Deref for IImage {
+    type Target = Image;
 
     fn deref(&self) -> &Self::Target {
         self.raw()
     }
 }
 
-impl DerefMut for Image {
+impl DerefMut for IImage {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.raw_mut()
     }
 }
 
-pub struct RawImage {
+pub struct Image {
     pub device: Arc<Device>,
     pub(crate) vk_image: ash::vk::Image,
     pub(crate) presentable: bool,
@@ -41,7 +39,7 @@ pub struct RawImage {
     pub(crate) memory_requirements: ash::vk::MemoryRequirements,
 }
 
-impl Drop for RawImage {
+impl Drop for Image {
     fn drop(&mut self) {
         // Host Synchronization: image
         unsafe {
@@ -55,25 +53,29 @@ impl Drop for RawImage {
     }
 }
 
-impl BindingResource for RawImage {
+impl BindingResource for Image {
     type RawTy = Self;
 
-    fn raw(&self) -> &RawImage {
+    fn raw(&self) -> &Image {
         self
     }
 
-    fn raw_mut(&mut self) -> &mut RawImage {
+    fn raw_mut(&mut self) -> &mut Image {
         self
+    }
+
+    fn offset(&self) -> DeviceSize {
+        ash::vk::DeviceSize::MAX
     }
 }
 
-impl crate::Handle for RawImage {
+impl crate::Handle for Image {
     fn handle(&self) -> u64 {
         self.vk_image.as_raw()
     }
 }
 
-impl IMemoryRequirements for RawImage {
+impl IMemoryRequirements for Image {
     fn get_memory_requirements(&self) -> &ash::vk::MemoryRequirements {
         &self.memory_requirements
     }
@@ -117,8 +119,8 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
     // DONE VUID-vkCmdCopyBufferToImage-commandBuffer-recording
     pub fn cmd_copy_buffer_to_image(
         &mut self,
-        src_buffer: Arc<Buffer>,
-        dst_image: Arc<Image>,
+        src_buffer: Arc<IBuffer>,
+        dst_image: Arc<IImage>,
         dst_image_layout: ash::vk::ImageLayout,
         regions: &[ash::vk::BufferImageCopy],
     ) {
