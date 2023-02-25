@@ -1,5 +1,6 @@
 use crate::physical_device::PhysicalDevice;
 use crate::Handle;
+use ash::vk::MemoryPropertyFlags;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -24,7 +25,14 @@ pub struct MemoryHeap {
 }
 
 pub struct PhysicalDeviceMemoryProperties {
-    pub heaps: BTreeMap<u32, MemoryHeap>,
+    heaps: BTreeMap<u32, MemoryHeap>,
+    memory_type_in_order: Vec<MemoryType>,
+}
+
+impl PhysicalDeviceMemoryProperties {
+    pub fn memory_type_in_order(&self) -> &[MemoryType] {
+        self.memory_type_in_order.as_slice()
+    }
 }
 
 impl PhysicalDevice {
@@ -37,6 +45,7 @@ impl PhysicalDevice {
             instance.get_physical_device_memory_properties(physical_device)
         };
         let mut heaps = BTreeMap::new();
+        let mut rank = BTreeMap::new();
         vk_physical_device_memory_properties.memory_types
             [..vk_physical_device_memory_properties.memory_type_count as _]
             .iter()
@@ -46,8 +55,14 @@ impl PhysicalDevice {
                     index: index as _,
                     property_flags: vk_memory_type.property_flags,
                     heap_index: vk_memory_type.heap_index,
-                    heap_size: vk_physical_device_memory_properties.memory_heaps[vk_memory_type.heap_index as usize].size,
+                    heap_size: vk_physical_device_memory_properties.memory_heaps
+                        [vk_memory_type.heap_index as usize]
+                        .size,
                 };
+                rank.insert(
+                    vk_memory_type.property_flags.as_raw() & 0b1111,
+                    memory_type.clone(),
+                );
                 match heaps.entry(vk_memory_type.heap_index) {
                     Entry::Vacant(entry) => {
                         let vk_memory_heap =
@@ -64,7 +79,14 @@ impl PhysicalDevice {
                     }
                 }
             });
-        PhysicalDeviceMemoryProperties { heaps }
+        let mut memory_type_in_order = Vec::with_capacity(rank.len());
+        while let Some((_, memory_type)) = rank.pop_last() {
+            memory_type_in_order.push(memory_type);
+        }
+        PhysicalDeviceMemoryProperties {
+            heaps,
+            memory_type_in_order,
+        }
     }
 
     pub fn memory_properties(&self) -> &PhysicalDeviceMemoryProperties {

@@ -68,7 +68,7 @@ use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
 use yarvk::window::enumerate_required_extensions;
-use yarvk::{read_spv, Handle, WHOLE_SIZE, ContinuousImage, ContinuousBuffer};
+use yarvk::{read_spv, ContinuousBuffer, ContinuousImage, Handle, WHOLE_SIZE};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
     BufferUsageFlags, ClearColorValue, ClearDepthStencilValue, ClearValue, ColorComponentFlags,
@@ -135,13 +135,11 @@ pub fn find_memory_type_index<'a>(
     memory_prop: &'a PhysicalDeviceMemoryProperties,
     flags: MemoryPropertyFlags,
 ) -> Option<&'a MemoryType> {
-    for (_, heap) in &memory_prop.heaps {
-        for memory_type in &heap.memory_types {
-            if (1 << memory_type.index) & memory_req.memory_type_bits != 0
-                && memory_type.property_flags & flags == flags
-            {
-                return Some(memory_type);
-            }
+    for memory_type in memory_prop.memory_type_in_order() {
+        if (1 << memory_type.index) & memory_req.memory_type_bits != 0
+            && memory_type.property_flags & flags == flags
+        {
+            return Some(memory_type);
         }
     }
     None
@@ -806,9 +804,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let fragment_shader_module = ShaderModule::builder(&device, &frag_code)
-        .build()
-        .unwrap();
+    let fragment_shader_module = ShaderModule::builder(&device, &frag_code).build().unwrap();
 
     let pipeline_layout = PipelineLayout::builder(&device)
         .add_set_layout(desc_set_layout.clone())
