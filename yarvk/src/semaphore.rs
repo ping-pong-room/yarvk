@@ -7,14 +7,14 @@ pub struct Semaphore {
 }
 
 impl Semaphore {
-    pub fn new(device: Arc<Device>) -> Result<Semaphore, ash::vk::Result> {
+    pub fn new(device: &Arc<Device>) -> Result<Semaphore, ash::vk::Result> {
         let create_info = ash::vk::SemaphoreCreateInfo::builder().build();
         let ash_vk_semaphore = unsafe {
             // Host Synchronization: none
             device.ash_device.create_semaphore(&create_info, None)?
         };
         Ok(Semaphore {
-            device,
+            device: device.clone(),
             ash_vk_semaphore,
         })
     }

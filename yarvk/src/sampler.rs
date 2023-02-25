@@ -28,9 +28,9 @@ impl Drop for Sampler {
 }
 
 impl Sampler {
-    pub fn builder(device: Arc<Device>) -> SamplerBuilder {
+    pub fn builder(device: &Arc<Device>) -> SamplerBuilder {
         SamplerBuilder {
-            device,
+            device: device.clone(),
             flags: Default::default(),
             mag_filter: Default::default(),
             min_filter: Default::default(),

@@ -14,9 +14,9 @@ pub struct ContinuousBuffer {
 }
 
 impl ContinuousBuffer {
-    pub fn builder(device: Arc<Device>) -> ContinuousBufferBuilder {
+    pub fn builder(device: &Arc<Device>) -> ContinuousBufferBuilder {
         ContinuousBufferBuilder {
-            device,
+            device: device.clone(),
             flags: Default::default(),
             size: 0,
             usage: Default::default(),

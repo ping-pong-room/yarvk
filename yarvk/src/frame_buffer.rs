@@ -89,7 +89,7 @@ impl FramebufferBuilder {
         self.layers = layers;
         self
     }
-    pub fn build(self, device: Arc<Device>) -> Result<Arc<Framebuffer>, ash::vk::Result> {
+    pub fn build(self, device: &Arc<Device>) -> Result<Arc<Framebuffer>, ash::vk::Result> {
         // DONE VUID-VkFramebufferCreateInfo-flags-02778
         let ash_vk_attachments = self
             .attachments
@@ -118,7 +118,7 @@ impl FramebufferBuilder {
         };
 
         Ok(Arc::new(Framebuffer {
-            device,
+            device: device.clone(),
             render_pass: self.render_pass,
             _attachments: self.attachments,
             ash_vk_framebuffer,

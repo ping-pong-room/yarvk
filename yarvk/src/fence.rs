@@ -21,17 +21,17 @@ impl Drop for Fence {
 }
 
 impl Fence {
-    pub fn new(device: Arc<Device>) -> Result<UnsignaledFence, ash::vk::Result> {
+    pub fn new(device: &Arc<Device>) -> Result<UnsignaledFence, ash::vk::Result> {
         let create_info = ash::vk::FenceCreateInfo::builder()
             .flags(ash::vk::FenceCreateFlags::default())
             .build();
         // Host Synchronization: none
         let vk_fence = unsafe { device.ash_device.create_fence(&create_info, None)? };
-        Ok(UnsignaledFence(Fence { device, vk_fence }))
+        Ok(UnsignaledFence(Fence { device: device.clone(), vk_fence }))
     }
 
     pub fn new_signaling<T>(
-        device: Arc<Device>,
+        device: &Arc<Device>,
         t: T,
     ) -> Result<SignalingFence<T>, ash::vk::Result> {
         let create_info = ash::vk::FenceCreateInfo::builder()
@@ -40,7 +40,7 @@ impl Fence {
         // Host Synchronization: none
         let vk_fence = unsafe { device.ash_device.create_fence(&create_info, None)? };
         Ok(SignalingFence {
-            inner: Fence { device, vk_fence },
+            inner: Fence { device: device.clone(), vk_fence },
             t,
         })
     }

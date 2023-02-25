@@ -15,9 +15,9 @@ pub struct ContinuousImage {
 }
 
 impl ContinuousImage {
-    pub fn builder(device: Arc<Device>) -> ContinuousImageBuilder {
+    pub fn builder(device: &Arc<Device>) -> ContinuousImageBuilder {
         ContinuousImageBuilder {
-            device,
+            device: device.clone(),
             inner: Default::default(),
         }
     }

@@ -243,7 +243,7 @@ fn main() {
     let queue_create_info = DeviceQueueCreateInfo::builder(queue_family.clone())
         .add_priority(0.9)
         .build();
-    let (device, mut queues) = Device::builder(pdevice.clone())
+    let (device, mut queues) = Device::builder(&pdevice)
         .add_queue_info(queue_create_info)
         .add_extension(&DeviceExtensionType::KhrSwapchain(surface_ext))
         // .add_feature(DeviceFeatures::LogicOp)
@@ -329,7 +329,7 @@ fn main() {
         })
         .collect();
     let device_memory_properties = pdevice.memory_properties();
-    let mut image_builder = ContinuousImage::builder(device.clone());
+    let mut image_builder = ContinuousImage::builder(&device);
     image_builder.image_type(ImageType::TYPE_2D);
     image_builder.format(Format::D16_UNORM);
     image_builder.extent(surface_resolution.into());
@@ -349,7 +349,7 @@ fn main() {
         MemoryPropertyFlags::DEVICE_LOCAL,
     )
     .expect("Unable to find suitable memory index for depth image.");
-    let depth_image_memory = DeviceMemory::builder(&depth_image_memory, device.clone())
+    let depth_image_memory = DeviceMemory::builder(&depth_image_memory, &device)
         .allocation_size(depth_image_memory_req.size)
         // example of how to use dedicated memory
         .dedicated_info(MemoryDedicatedAllocateInfo {
@@ -363,7 +363,7 @@ fn main() {
             .expect("Unable to bind depth image memory"),
     );
 
-    let fence = Fence::new(device.clone()).unwrap();
+    let fence = Fence::new(&device).unwrap();
 
     let command_buffer = command_buffer
         .record(|command_buffer| {
@@ -409,7 +409,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let renderpass = RenderPass::builder(device.clone())
+    let renderpass = RenderPass::builder(&device)
         .add_attachment(
             AttachmentDescription::builder()
                 .format(surface_format.format)
@@ -466,12 +466,12 @@ fn main() {
                 .width(surface_resolution.width)
                 .height(surface_resolution.height)
                 .layers(1)
-                .build(device.clone())
+                .build(&device)
                 .unwrap();
             (present_image_view.image.handle(), framebuffer)
         })
         .collect();
-    let mut buffer_builder = ContinuousBuffer::builder(device.clone());
+    let mut buffer_builder = ContinuousBuffer::builder(&device);
     buffer_builder.sharing_mode(SharingMode::EXCLUSIVE);
 
     let index_buffer_data = [0u32, 1, 2, 2, 3, 0];
@@ -485,7 +485,7 @@ fn main() {
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the index buffer.");
-    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, device.clone())
+    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, &device)
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -536,7 +536,7 @@ fn main() {
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
     let mut vertex_input_buffer_memory =
-        DeviceMemory::builder(&vertex_input_buffer_memory_index, device.clone())
+        DeviceMemory::builder(&vertex_input_buffer_memory_index, &device)
             .allocation_size(vertex_input_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -576,7 +576,7 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
     let mut uniform_color_buffer_memory =
-        DeviceMemory::builder(&uniform_color_buffer_memory_index, device.clone())
+        DeviceMemory::builder(&uniform_color_buffer_memory_index, &device)
             .allocation_size(uniform_color_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -616,7 +616,7 @@ fn main() {
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, device.clone())
+    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, &device)
         .allocation_size(image_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -650,7 +650,7 @@ fn main() {
     )
     .expect("Unable to find suitable memory index for depth image.");
 
-    let texture_memory = DeviceMemory::builder(&texture_memory_index, device.clone())
+    let texture_memory = DeviceMemory::builder(&texture_memory_index, &device)
         .allocation_size(texture_memory_req.size)
         .build()
         .unwrap();
@@ -660,7 +660,7 @@ fn main() {
             .expect("Unable to bind depth image memory"),
     );
 
-    let sampler = Sampler::builder(device.clone())
+    let sampler = Sampler::builder(&device)
         .mag_filter(Filter::LINEAR)
         .min_filter(Filter::LINEAR)
         .mipmap_mode(SamplerMipmapMode::LINEAR)
@@ -802,15 +802,15 @@ fn main() {
 
     let frag_code = read_spv(&mut frag_spv_file).expect("Failed to read fragment shader spv file");
 
-    let vertex_shader_module = ShaderModule::builder(device.clone(), &vertex_code)
+    let vertex_shader_module = ShaderModule::builder(&device, &vertex_code)
         .build()
         .unwrap();
 
-    let fragment_shader_module = ShaderModule::builder(device.clone(), &frag_code)
+    let fragment_shader_module = ShaderModule::builder(&device, &frag_code)
         .build()
         .unwrap();
 
-    let pipeline_layout = PipelineLayout::builder(device.clone())
+    let pipeline_layout = PipelineLayout::builder(&device)
         .add_set_layout(desc_set_layout.clone())
         .build()
         .unwrap();
@@ -918,8 +918,8 @@ fn main() {
         .render_pass(renderpass.clone(), 0)
         .build()
         .unwrap();
-    let present_complete_semaphore = Semaphore::new(device.clone()).unwrap();
-    let mut rendering_complete_semaphore = Semaphore::new(device.clone()).unwrap();
+    let present_complete_semaphore = Semaphore::new(&device).unwrap();
+    let mut rendering_complete_semaphore = Semaphore::new(&device).unwrap();
     let mut draw_commands_reuse_fence = Some(fence);
     let mut draw_command_buffer = Some(command_buffer);
     let secondary_command_buffer =

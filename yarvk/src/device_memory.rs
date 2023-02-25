@@ -1,4 +1,4 @@
-use crate::binding_resource::{BindingResource, BindMemoryInfo};
+use crate::binding_resource::{BindMemoryInfo, BindingResource};
 use crate::device::Device;
 use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::physical_device::memory_properties::MemoryType;
@@ -25,7 +25,12 @@ pub trait UnboundResource: IMemoryRequirements + Send + Sync {
         memory: &DeviceMemory,
         memory_offset: ash::vk::DeviceSize,
     ) -> Result<Self::BoundType, ash::vk::Result>;
-    fn bind_memories<'a, It: IntoIterator<Item=BindMemoryInfo<'a, Self>>>(device: &Arc<Device>, it: It) -> Result<Vec<Self::BoundType>, ash::vk::Result> where Self: Sized;
+    fn bind_memories<'a, It: IntoIterator<Item = BindMemoryInfo<'a, Self>>>(
+        device: &Arc<Device>,
+        it: It,
+    ) -> Result<Vec<Self::BoundType>, ash::vk::Result>
+    where
+        Self: Sized;
 }
 
 pub struct DeviceMemory {
@@ -59,9 +64,9 @@ impl crate::Handle for DeviceMemory {
 }
 
 impl DeviceMemory {
-    pub fn builder(memory_type: &MemoryType, device: Arc<Device>) -> DeviceMemoryBuilder {
+    pub fn builder<'a>(memory_type: &'a MemoryType, device: &Arc<Device>) -> DeviceMemoryBuilder<'a> {
         DeviceMemoryBuilder {
-            device,
+            device: device.clone(),
             allocation_size: 0,
             memory_type,
             dedicated_allocate_info: None,

@@ -7,8 +7,8 @@ pub struct ShaderModule {
 }
 
 impl ShaderModule {
-    pub fn builder(device: Arc<Device>, code: &[u32]) -> ShaderModuleBuilder {
-        ShaderModuleBuilder { device, code }
+    pub fn builder<'a>(device: &Arc<Device>, code: &'a [u32]) -> ShaderModuleBuilder<'a> {
+        ShaderModuleBuilder { device: device.clone(), code }
     }
 }
 

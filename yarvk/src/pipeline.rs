@@ -37,9 +37,9 @@ pub struct PipelineLayout {
 }
 
 impl PipelineLayout {
-    pub fn builder(device: Arc<Device>) -> PipelineLayoutBuilder {
+    pub fn builder(device: &Arc<Device>) -> PipelineLayoutBuilder {
         PipelineLayoutBuilder {
-            device,
+            device: device.clone(),
             set_layouts: vec![],
             push_constant_ranges: vec![],
         }

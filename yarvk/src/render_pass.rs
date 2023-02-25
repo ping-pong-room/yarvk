@@ -84,9 +84,9 @@ pub struct RenderPass {
 }
 
 impl RenderPass {
-    pub fn builder(device: Arc<Device>) -> RenderPassBuilder {
+    pub fn builder(device: &Arc<Device>) -> RenderPassBuilder {
         RenderPassBuilder {
-            device,
+            device: device.clone(),
             flags: Default::default(),
             attachments: vec![],
             subpasses: vec![],

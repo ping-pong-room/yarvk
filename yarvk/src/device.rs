@@ -188,9 +188,9 @@ impl PartialEq for Device {
 }
 
 impl Device {
-    pub fn builder(physical_device: Arc<PhysicalDevice>) -> DeviceBuilder {
+    pub fn builder(physical_device: &Arc<PhysicalDevice>) -> DeviceBuilder {
         DeviceBuilder {
-            physical_device,
+            physical_device: physical_device.clone(),
             device_queue_create_infos: vec![],
             enabled_features: Default::default(),
             enabled_extensions: Default::default(),
