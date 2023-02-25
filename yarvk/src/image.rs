@@ -67,6 +67,10 @@ impl BindingResource for Image {
     fn offset(&self) -> DeviceSize {
         ash::vk::DeviceSize::MAX
     }
+
+    fn size(&self) -> DeviceSize {
+        self.memory_requirements.size
+    }
 }
 
 impl crate::Handle for Image {

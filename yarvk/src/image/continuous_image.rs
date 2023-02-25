@@ -158,6 +158,10 @@ impl BindingResource for BoundContinuousImage {
     fn offset(&self) -> DeviceSize {
         self.offset
     }
+
+    fn size(&self) -> DeviceSize {
+        self.memory_requirements.size
+    }
 }
 
 impl UnboundResource for UnboundContinuousImage {

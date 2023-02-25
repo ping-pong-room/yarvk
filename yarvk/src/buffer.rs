@@ -8,7 +8,7 @@ use crate::device_features::PhysicalDeviceFeatures::{
 use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
 use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
 use crate::device_memory::IMemoryRequirements;
-use ash::vk::Handle;
+use ash::vk::{DeviceSize, Handle};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
@@ -46,6 +46,10 @@ impl BindingResource for Buffer {
 
     fn offset(&self) -> ash::vk::DeviceSize {
         ash::vk::DeviceSize::MAX
+    }
+
+    fn size(&self) -> DeviceSize {
+        self.memory_requirements.size
     }
 }
 
