@@ -5,7 +5,7 @@ use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
 
 use crate::command::constant_command_buffer::ConstantCommandBuffer;
 use crate::fence::{SignalingFence, UnsignaledFence};
-use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
+use crate::pipeline::pipeline_stage_flags::PipelineStageFlag;
 use crate::queue::Queue;
 use crate::semaphore::Semaphore;
 use crate::Handle;
@@ -20,7 +20,7 @@ thread_local! {
 }
 
 pub struct SubmitInfo<'a> {
-    wait_semaphores: Vec<(&'a Semaphore, PipelineStageFlags)>,
+    wait_semaphores: Vec<(&'a Semaphore, PipelineStageFlag)>,
     signal_semaphores: Vec<&'a Semaphore>,
     reusable_command_buffers: Vec<Arc<ConstantCommandBuffer>>,
     onetime_submit_command_buffers: Vec<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>>,
@@ -90,7 +90,7 @@ impl<'a> SubmitInfoBuilder<'a> {
     pub fn add_wait_semaphore(
         mut self,
         wait_semaphore: &'a Semaphore,
-        wait_mask: PipelineStageFlags,
+        wait_mask: PipelineStageFlag,
     ) -> Self {
         self.submit_info
             .wait_semaphores

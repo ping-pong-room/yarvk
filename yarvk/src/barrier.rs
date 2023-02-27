@@ -189,7 +189,7 @@ impl BufferMemoryBarrierBuilder {
         self.ash_vk_buffer_memory_barrier.size = size;
         self
     }
-    pub fn builder(self) -> BufferMemoryBarrier {
+    pub fn build(self) -> BufferMemoryBarrier {
         BufferMemoryBarrier {
             buffer: self.buffer,
             ash_vk_buffer_memory_barrier: self.ash_vk_buffer_memory_barrier,
@@ -197,9 +197,7 @@ impl BufferMemoryBarrierBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
-{
+impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     thread_local! {
         static BARRIERS_CACHES: Cell<(Vec<ash::vk::MemoryBarrier>,
                                         Vec<ash::vk::BufferMemoryBarrier>,
@@ -209,23 +207,14 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope>
     // DONE VUID-vkCmdPipelineBarrier-commandBuffer-recording
     pub fn cmd_pipeline_barrier(
         &mut self,
-        src_stage_mask: impl IntoIterator<Item=PipelineStageFlags>,
-        dst_stage_mask: impl IntoIterator<Item=PipelineStageFlags>,
+        src_stage_mask: PipelineStageFlags,
+        dst_stage_mask: PipelineStageFlags,
         dependency_flags: ash::vk::DependencyFlags,
-        memory_barriers: impl IntoIterator<Item=MemoryBarrier>,
-        buffer_memory_barriers: impl IntoIterator<Item=BufferMemoryBarrier>,
-        image_memory_barriers: impl IntoIterator<Item=ImageMemoryBarrier>,
+        memory_barriers: impl IntoIterator<Item = MemoryBarrier>,
+        buffer_memory_barriers: impl IntoIterator<Item = BufferMemoryBarrier>,
+        image_memory_barriers: impl IntoIterator<Item = ImageMemoryBarrier>,
     ) {
         Self::BARRIERS_CACHES.with(|local| {
-            let mut vk_src_stage_mask = ash::vk::PipelineStageFlags::default();
-            src_stage_mask
-                .into_iter()
-                .for_each(|flag| vk_src_stage_mask |= flag.to_ash());
-            let mut vk_dst_stage_mask = ash::vk::PipelineStageFlags::default();
-            dst_stage_mask
-                .into_iter()
-                .for_each(|flag| vk_dst_stage_mask |= flag.to_ash());
-
             let (mut memory_cache, mut buffer_cache, mut image_cache) = local.take();
             for barrier in memory_barriers {
                 memory_cache.push(barrier.ash_vk_memory_barrier);
@@ -248,8 +237,8 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope>
                 // Host Synchronization: command_buffer command_pool
                 self.device.ash_device.cmd_pipeline_barrier(
                     self.vk_command_buffer,
-                    vk_src_stage_mask,
-                    vk_dst_stage_mask,
+                    src_stage_mask.vk_flags,
+                    dst_stage_mask.vk_flags,
                     dependency_flags,
                     memory_cache.as_slice(),
                     buffer_cache.as_slice(),

@@ -48,7 +48,7 @@ use yarvk::pipeline::input_assembly_state::{
     PipelineInputAssemblyStateCreateInfo, PrimitiveTopology,
 };
 use yarvk::pipeline::multisample_state::PipelineMultisampleStateCreateInfo;
-use yarvk::pipeline::pipeline_stage_flags::PipelineStageFlags;
+use yarvk::pipeline::pipeline_stage_flags::PipelineStageFlag;
 use yarvk::pipeline::rasterization_state::{PipelineRasterizationStateCreateInfo, PolygonMode};
 use yarvk::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStage};
 use yarvk::pipeline::vertex_input_state::{
@@ -297,9 +297,9 @@ fn main() {
         .image_array_layers(1)
         .build()
         .unwrap();
-    let command_buffer =
+    let setup_command_buffer =
         TransientCommandBuffer::<{ PRIMARY }>::new(&device, queue_family.clone()).unwrap();
-    let command_buffer_handler = command_buffer.handle();
+    let command_buffer_handler = setup_command_buffer.handle();
     let present_images = swapchain.get_swapchain_images();
     let present_image_views: Vec<Arc<ImageView>> = present_images
         .iter()
@@ -361,38 +361,7 @@ fn main() {
             .expect("Unable to bind depth image memory"),
     );
 
-    let fence = Fence::new(&device).unwrap();
-
-    let command_buffer = command_buffer
-        .record(|command_buffer| {
-            command_buffer.cmd_pipeline_barrier(
-                [PipelineStageFlags::BottomOfPipe],
-                [PipelineStageFlags::LateFragmentTests],
-                DependencyFlags::empty(),
-                [],
-                [],
-                [ImageMemoryBarrier::builder(depth_image.clone())
-                    .dst_access_mask(
-                        AccessFlags::DEPTH_STENCIL_ATTACHMENT_READ
-                            | AccessFlags::DEPTH_STENCIL_ATTACHMENT_WRITE,
-                    )
-                    .new_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-                    .old_layout(ImageLayout::UNDEFINED)
-                    .subresource_range(
-                        ImageSubresourceRange::builder()
-                            .aspect_mask(ImageAspectFlags::DEPTH)
-                            .layer_count(1)
-                            .level_count(1)
-                            .build(),
-                    )
-                    .build()],
-            );
-            Ok(())
-        })
-        .unwrap();
-
-    let (setup_commands_reuse_fence, setup_command_buffer) =
-        submit(&mut present_queue, command_buffer, fence);
+    let setup_commands_reuse_fence = Fence::new(&device).unwrap();
 
     let depth_image_view = ImageView::builder(depth_image.clone())
         .subresource_range(
@@ -423,7 +392,7 @@ fn main() {
                 .samples(SampleCountFlags::TYPE_1)
                 .load_op(AttachmentLoadOp::CLEAR)
                 .store_op(AttachmentStoreOp::DONT_CARE)
-                .initial_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                // .initial_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .final_layout(ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
                 .build(),
         )
@@ -446,8 +415,8 @@ fn main() {
         .add_dependency(
             SubpassDependency::builder()
                 .src_subpass(SUBPASS_EXTERNAL)
-                .add_src_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
-                .add_dst_stage_mask(PipelineStageFlags::ColorAttachmentOutput)
+                .add_src_stage_mask(PipelineStageFlag::ColorAttachmentOutput)
+                .add_dst_stage_mask(PipelineStageFlag::ColorAttachmentOutput)
                 .dst_access_mask(
                     AccessFlags::COLOR_ATTACHMENT_READ | AccessFlags::COLOR_ATTACHMENT_WRITE,
                 )
@@ -734,8 +703,8 @@ fn main() {
             let mut image_barriers = Vec::with_capacity(1);
             image_barriers.push(texture_barrier);
             command_buffer.cmd_pipeline_barrier(
-                [PipelineStageFlags::BottomOfPipe],
-                [PipelineStageFlags::Transfer],
+                PipelineStageFlag::BottomOfPipe.into(),
+                PipelineStageFlag::Transfer.into(),
                 DependencyFlags::empty(),
                 [],
                 [],
@@ -776,8 +745,8 @@ fn main() {
             let mut image_barriers = Vec::with_capacity(1);
             image_barriers.push(texture_barrier_end);
             command_buffer.cmd_pipeline_barrier(
-                [PipelineStageFlags::Transfer],
-                [PipelineStageFlags::FragmentShader],
+                PipelineStageFlag::Transfer.into(),
+                PipelineStageFlag::FragmentShader.into(),
                 DependencyFlags::empty(),
                 [],
                 [],
@@ -1052,7 +1021,7 @@ fn main() {
                 let submit_info = SubmitInfo::builder()
                     .add_wait_semaphore(
                         &present_complete_semaphore,
-                        PipelineStageFlags::BottomOfPipe,
+                        PipelineStageFlag::BottomOfPipe,
                     )
                     .add_one_time_submit_command_buffer(command_buffer)
                     .add_signal_semaphore(&rendering_complete_semaphore)

@@ -1,6 +1,5 @@
 use crate::physical_device::PhysicalDevice;
 use crate::Handle;
-use ash::vk::MemoryPropertyFlags;
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
@@ -30,6 +29,9 @@ pub struct PhysicalDeviceMemoryProperties {
 }
 
 impl PhysicalDeviceMemoryProperties {
+    pub fn heaps(&self) -> &BTreeMap<u32, MemoryHeap> {
+        &self.heaps
+    }
     pub fn memory_type_in_order(&self) -> &[MemoryType] {
         self.memory_type_in_order.as_slice()
     }

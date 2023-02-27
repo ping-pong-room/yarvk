@@ -1,4 +1,4 @@
-use crate::pipeline::pipeline_stage_flags::PipelineStageFlags;
+use crate::pipeline::pipeline_stage_flags::PipelineStageFlag;
 use crate::render_pass::attachment::AttachmentReference;
 
 #[derive(Default)]
@@ -15,11 +15,11 @@ impl SubpassDependencyBuilder {
         self.subpass_dependency.dst_subpass = dst_subpass;
         self
     }
-    pub fn add_src_stage_mask(mut self, src_stage_mask: PipelineStageFlags) -> Self {
+    pub fn add_src_stage_mask(mut self, src_stage_mask: PipelineStageFlag) -> Self {
         self.subpass_dependency.src_stage_mask |= src_stage_mask.to_ash();
         self
     }
-    pub fn add_dst_stage_mask(mut self, dst_stage_mask: PipelineStageFlags) -> Self {
+    pub fn add_dst_stage_mask(mut self, dst_stage_mask: PipelineStageFlag) -> Self {
         self.subpass_dependency.dst_stage_mask |= dst_stage_mask.to_ash();
         self
     }

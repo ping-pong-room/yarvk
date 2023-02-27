@@ -51,6 +51,10 @@ impl BindingResource for Buffer {
     fn size(&self) -> DeviceSize {
         self.memory_requirements.size
     }
+
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 
 impl Deref for IBuffer {

@@ -1,6 +1,9 @@
+use crate::binding_resource::BindingResource;
+use crate::Image;
+use ash::vk::{ImageSubresource, SubresourceLayout};
 use derive_more::{Deref, DerefMut};
 
-#[derive(Deref, DerefMut, Default)]
+#[derive(Deref, DerefMut, Default, Clone)]
 pub struct ImageSubresourceRange(pub(crate) ash::vk::ImageSubresourceRange);
 
 impl ImageSubresourceRange {
@@ -58,3 +61,15 @@ impl ImageSubresourceRangeBuilder {
         )
     }
 }
+
+pub trait GetImageSubresourceLayout: BindingResource<RawTy = Image> {
+    fn get_image_subresource_layout(&self, subresource: ImageSubresource) -> SubresourceLayout {
+        unsafe {
+            self.device()
+                .ash_device
+                .get_image_subresource_layout(self.raw().vk_image, subresource)
+        }
+    }
+}
+
+impl<T: BindingResource<RawTy = Image> + ?Sized> GetImageSubresourceLayout for T {}

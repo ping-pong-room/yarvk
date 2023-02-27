@@ -2,9 +2,12 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 #![feature(specialization)]
+pub mod barrier;
+pub mod binding_resource;
 pub mod buffer;
 pub mod command;
 pub mod debug_utils_messenger;
+pub mod descriptor_set;
 pub mod device;
 pub mod device_features;
 pub mod device_memory;
@@ -15,18 +18,15 @@ pub mod frame_buffer;
 pub mod image;
 pub mod instance;
 pub mod physical_device;
+pub mod pipeline;
 pub mod queue;
 pub mod render_pass;
-pub mod surface;
-pub mod swapchain;
-pub mod window;
-pub mod barrier;
-pub mod descriptor_set;
-pub mod pipeline;
 pub mod sampler;
 pub mod semaphore;
 pub mod shader_module;
-pub mod binding_resource;
+pub mod surface;
+pub mod swapchain;
+pub mod window;
 
 pub use ash::util::read_spv;
 pub use ash::vk::AccessFlags;
@@ -35,6 +35,7 @@ pub use ash::vk::AttachmentLoadOp;
 pub use ash::vk::AttachmentStoreOp;
 pub use ash::vk::BlendOp;
 pub use ash::vk::BorderColor;
+pub use ash::vk::BufferCopy;
 pub use ash::vk::BufferImageCopy;
 pub use ash::vk::BufferUsageFlags;
 pub use ash::vk::ClearColorValue;
@@ -61,6 +62,7 @@ pub use ash::vk::FrontFace;
 pub use ash::vk::ImageAspectFlags;
 pub use ash::vk::ImageCreateFlags;
 pub use ash::vk::ImageLayout;
+pub use ash::vk::ImageSubresource;
 pub use ash::vk::ImageSubresourceLayers;
 pub use ash::vk::ImageTiling;
 pub use ash::vk::ImageType;
@@ -70,6 +72,8 @@ pub use ash::vk::LogicOp;
 pub use ash::vk::MemoryDedicatedRequirements;
 pub use ash::vk::MemoryPropertyFlags;
 pub use ash::vk::MemoryRequirements;
+pub use ash::vk::Offset2D;
+pub use ash::vk::Offset3D;
 pub use ash::vk::PhysicalDeviceAccelerationStructurePropertiesKHR;
 pub use ash::vk::PhysicalDeviceBlendOperationAdvancedPropertiesEXT;
 pub use ash::vk::PhysicalDeviceConservativeRasterizationPropertiesEXT;
@@ -145,6 +149,7 @@ pub use ash::vk::SpecializationMapEntryBuilder;
 pub use ash::vk::StencilOp;
 pub use ash::vk::StencilOpState;
 pub use ash::vk::SubpassContents;
+pub use ash::vk::SubresourceLayout;
 pub use ash::vk::SurfaceFormatKHR;
 pub use ash::vk::SurfaceTransformFlagsKHR;
 pub use ash::vk::SwapchainCreateFlagsKHR;
@@ -152,8 +157,8 @@ pub use ash::vk::VertexInputRate;
 pub use ash::vk::Viewport;
 
 pub use ash::vk::SUBPASS_EXTERNAL;
-pub use ash::vk::WHOLE_SIZE;
 pub use ash::vk::UUID_SIZE;
+pub use ash::vk::WHOLE_SIZE;
 
 pub use buffer::*;
 pub use image::*;

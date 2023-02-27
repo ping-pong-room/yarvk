@@ -71,6 +71,10 @@ impl BindingResource for Image {
     fn size(&self) -> DeviceSize {
         self.memory_requirements.size
     }
+
+    fn device(&self) -> &Arc<Device> {
+        &self.device
+    }
 }
 
 impl crate::Handle for Image {
