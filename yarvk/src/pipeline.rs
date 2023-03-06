@@ -33,6 +33,7 @@ pub mod viewport_state;
 
 pub struct PipelineLayout {
     pub device: Arc<Device>,
+    _set_layouts: Vec<Arc<dyn IDescriptorSetLayout + Send + Sync>>,
     pub(crate) ash_vk_pipeline_layout: ash::vk::PipelineLayout,
 }
 
@@ -93,12 +94,12 @@ impl PushConstantRangeBuilder {
 
 pub struct PipelineLayoutBuilder {
     device: Arc<Device>,
-    set_layouts: Vec<Arc<dyn IDescriptorSetLayout>>,
+    set_layouts: Vec<Arc<dyn IDescriptorSetLayout + Send + Sync>>,
     push_constant_ranges: Vec<ash::vk::PushConstantRange>,
 }
 
 impl PipelineLayoutBuilder {
-    pub fn add_set_layout(mut self, set_layout: Arc<dyn IDescriptorSetLayout>) -> Self {
+    pub fn add_set_layout(mut self, set_layout: Arc<dyn IDescriptorSetLayout + Send + Sync>) -> Self {
         self.set_layouts.push(set_layout);
         self
     }
@@ -124,6 +125,7 @@ impl PipelineLayoutBuilder {
                 .create_pipeline_layout(&create_info, None)?;
             Ok(Arc::new(PipelineLayout {
                 device: self.device,
+                _set_layouts: self.set_layouts,
                 ash_vk_pipeline_layout,
             }))
         }

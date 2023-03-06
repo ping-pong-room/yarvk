@@ -662,7 +662,7 @@ fn main() {
     let layout_const: <MyDescriptorLayout as DescriptorSetValue>::ConstDescriptorSetValue =
         ConstDescriptorSetValue2 {
             t0: ([(); 1], ShaderStage::Fragment),
-            t1: ([sampler.clone(); 1], ShaderStage::Fragment),
+            t1: ([sampler; 1], ShaderStage::Fragment),
         };
 
     let desc_set_layout = DescriptorSetLayout::new(&device, layout_const).unwrap();
@@ -682,7 +682,7 @@ fn main() {
     };
 
     let descriptor_set = descriptor_pool
-        .allocate([init_value.clone()])
+        .allocate([init_value])
         .pop()
         .unwrap();
 
@@ -776,7 +776,7 @@ fn main() {
     let fragment_shader_module = ShaderModule::builder(&device, &frag_code).build().unwrap();
 
     let pipeline_layout = PipelineLayout::builder(&device)
-        .add_set_layout(desc_set_layout.clone())
+        .add_set_layout(desc_set_layout)
         .build()
         .unwrap();
 

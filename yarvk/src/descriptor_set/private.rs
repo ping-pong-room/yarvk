@@ -138,7 +138,7 @@ impl<T> TryGetImmutableSamplers for T {
 
 pub trait PrivateConstDescriptorSetValue<T: DescriptorSetValue> {
     fn new_descriptor_layout(
-        &self,
+        self,
         device: &Arc<Device>,
         flags: ash::vk::DescriptorSetLayoutCreateFlags,
     ) -> Result<Arc<DescriptorSetLayout<T>>, ash::vk::Result>;

@@ -10,6 +10,7 @@ pub trait IDescriptorSetLayout {
 
 pub struct DescriptorSetLayout<T: DescriptorSetValue> {
     pub device: Arc<Device>,
+    pub(crate) _init_value: T::ConstDescriptorSetValue,
     pub(crate) ash_vk_descriptor_set_layout: ash::vk::DescriptorSetLayout,
     pub(crate) _phantom_data: PhantomData<T>,
 }

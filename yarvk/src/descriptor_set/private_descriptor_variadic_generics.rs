@@ -23,7 +23,7 @@ impl<
     > for ConstDescriptorSetValue1<BINDING_0, DESCRIPTOR_KIND_0, DESCRIPTOR_COUNTS_0>
 {
     fn new_descriptor_layout(
-        &self,
+        self,
         device: &Arc<Device>,
         flags: ash::vk::DescriptorSetLayoutCreateFlags,
     ) -> Result<
@@ -55,6 +55,7 @@ impl<
                 .create_descriptor_set_layout(&create_info, None)?;
             Ok(Arc::new(DescriptorSetLayout {
                 device: device.clone(),
+                _init_value: self,
                 ash_vk_descriptor_set_layout,
                 _phantom_data: Default::default(),
             }))
@@ -149,7 +150,7 @@ impl<
     >
 {
     fn new_descriptor_layout(
-        &self,
+        self,
         device: &Arc<Device>,
         flags: ash::vk::DescriptorSetLayoutCreateFlags,
     ) -> Result<
@@ -198,6 +199,7 @@ impl<
                 .create_descriptor_set_layout(&create_info, None)?;
             Ok(Arc::new(DescriptorSetLayout {
                 device: device.clone(),
+                _init_value: self,
                 ash_vk_descriptor_set_layout,
                 _phantom_data: Default::default(),
             }))
