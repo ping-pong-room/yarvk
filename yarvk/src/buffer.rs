@@ -129,7 +129,7 @@ pub enum BufferCreateFlags {
 
 impl BufferCreateFlags {
     fn to_ash(&self) -> ash::vk::BufferCreateFlags {
-        return match self {
+        match self {
             BufferCreateFlags::SparseBinding(..) => ash::vk::BufferCreateFlags::SPARSE_BINDING,
             BufferCreateFlags::SparseResidency(..) => ash::vk::BufferCreateFlags::SPARSE_RESIDENCY,
             BufferCreateFlags::SparseAliased(..) => ash::vk::BufferCreateFlags::SPARSE_ALIASED,
@@ -137,7 +137,7 @@ impl BufferCreateFlags {
             BufferCreateFlags::DeviceAddressCaptureReplay(..) => {
                 ash::vk::BufferCreateFlags::DEVICE_ADDRESS_CAPTURE_REPLAY
             }
-        };
+        }
     }
 }
 

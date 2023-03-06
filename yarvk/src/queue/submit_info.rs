@@ -2,7 +2,6 @@ use crate::command::command_buffer::CommandBuffer;
 use crate::command::command_buffer::Level::PRIMARY;
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
-
 use crate::command::constant_command_buffer::ConstantCommandBuffer;
 use crate::fence::{SignalingFence, UnsignaledFence};
 use crate::pipeline::pipeline_stage_flags::PipelineStageFlag;
@@ -47,7 +46,7 @@ impl<'a> SubmitInfo<'a> {
         });
         SubmitInfoBuilder { submit_info: cache }
     }
-    fn clear<'b>(&mut self) {
+    fn clear(&mut self) {
         self.wait_semaphores.clear();
         self.signal_semaphores.clear();
         self.reusable_command_buffers.clear();
@@ -153,12 +152,12 @@ impl<'a> Submittable<'a> {
     ) -> Result<SignalingFence<SubmitResult>, ash::vk::Result> {
         let mut submit_result = SUBMIT_RESULT_CACHE.with(|unsafe_cell| unsafe {
             let vec = &mut *unsafe_cell.get();
-            return match vec.pop() {
+            match vec.pop() {
                 Some(raw) => SubmitResult {
                     invalid_command_buffers: raw.invalid_command_buffers,
                 },
                 None => SubmitResult::default(),
-            };
+            }
         });
         // Host Synchronization: queue fence
         // DONE VUID-vkQueueSubmit-fence-00063

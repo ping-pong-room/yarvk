@@ -9,7 +9,7 @@ pub enum PolygonMode {
     Line(Feature<{ FillModeNonSolid.into() }>),
     Point(Feature<{ FillModeNonSolid.into() }>),
     // DONE VUID-VkPipelineRasterizationStateCreateInfo-polygonMode-01414
-    FillRectangleNv(DeviceExtension<{ NvFillRectangle.into() }>),
+    FillRectangleNv(DeviceExtension<{ NvFillRectangle }>),
 }
 
 impl PolygonMode {
@@ -78,7 +78,7 @@ impl PipelineRasterizationStateCreateInfoBuilder {
         depth_clamp_enable: bool,
         _feature: Feature<{ DepthClamp.into() }>,
     ) -> Self {
-        self.inner.depth_clamp_enable = depth_clamp_enable.into();
+        self.inner.depth_clamp_enable = depth_clamp_enable;
         self
     }
     pub fn rasterizer_discard_enable(mut self) -> Self {

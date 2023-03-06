@@ -1,10 +1,9 @@
-use std::sync::Arc;
-use ash::vk::Handle;
-use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::command::command_buffer::State::RECORDING;
-
+use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::descriptor_set::private::{PrivateConstDescriptorSetValue, PrivateDescriptorSetValue};
 use crate::pipeline::PipelineLayout;
+use ash::vk::Handle;
+use std::sync::Arc;
 
 #[const_trait]
 pub trait DescriptorSetValue: PrivateDescriptorSetValue + Send + Sync {
@@ -27,9 +26,7 @@ impl<T: DescriptorSetValue> IDescriptorSet for DescriptorSet<T> {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope>
-CommandBuffer<LEVEL, { RECORDING }, SCOPE>
-{
+impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdBindDescriptorSets-commandBuffer-recording
     pub fn cmd_bind_descriptor_sets<It: IntoIterator<Item = Arc<dyn IDescriptorSet>>>(
         &mut self,

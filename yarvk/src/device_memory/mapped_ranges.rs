@@ -1,6 +1,6 @@
 use crate::device::Device;
-use std::sync::Arc;
 use crate::device_memory::DeviceMemory;
+use std::sync::Arc;
 
 pub struct MappedRanges<'a> {
     device: Arc<Device>,

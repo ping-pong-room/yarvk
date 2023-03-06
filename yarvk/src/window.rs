@@ -1,11 +1,10 @@
 #![warn(trivial_casts, trivial_numeric_casts)]
 
-use ash::{prelude::*, vk, Entry, Instance};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
-
 use crate::extensions::PhysicalInstanceExtensionType;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use ash::extensions::ext;
+use ash::{prelude::*, vk, Entry, Instance};
+use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 #[cfg(any(target_os = "windows"))]
 use ash::extensions::khr;

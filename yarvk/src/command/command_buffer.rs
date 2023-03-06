@@ -9,12 +9,12 @@ use crate::frame_buffer::Framebuffer;
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::pipeline::{Pipeline, PipelineLayout};
 use crate::render_pass::RenderPass;
+use crate::IImage;
 use ash::vk::Handle;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
-use crate::IImage;
 
 #[derive(PartialEq, Eq)]
 pub enum State {
@@ -184,12 +184,12 @@ pub fn par_for_each<
         let mut buffers: Vec<CommandBuffer<T1, T2, T3>> = std::mem::transmute(source);
         let results = buffers
             .par_iter_mut()
-            .map(|foo| {
-                let temp = std::ptr::read(foo);
+            .map(|command_buffer| {
+                let temp = std::ptr::read(command_buffer);
                 let temp: CommandBuffer<S1, S2, S3> = std::mem::transmute(temp);
                 match f(temp) {
                     Ok(temp) => {
-                        std::ptr::write(foo, temp);
+                        std::ptr::write(command_buffer, temp);
                         ash::vk::Result::SUCCESS
                     }
                     Err(err) => err,
@@ -378,7 +378,7 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE
         buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }>,
     ) {
         self.secondary_buffers
-            .push(unsafe { std::mem::transmute(buffer) });
+            .push(buffer);
     }
 }
 
@@ -412,7 +412,7 @@ impl<const LEVEL: Level> TransientCommandBuffer<LEVEL> {
         device: &Arc<Device>,
         queue_family: QueueFamilyProperties,
     ) -> Result<CommandBuffer<LEVEL, { INITIAL }, { OUTSIDE }>, ash::vk::Result> {
-        let pool = CommandPool::builder(device, queue_family.clone())
+        let pool = CommandPool::builder(device, queue_family)
             .add_flag(CommandPoolCreateFlags::TRANSIENT)
             .build()?;
 

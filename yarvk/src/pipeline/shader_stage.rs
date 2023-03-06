@@ -1,9 +1,9 @@
-use std::marker::PhantomData;
 use crate::device_features::Feature;
 use crate::device_features::PhysicalDeviceFeatures::{GeometryShader, TessellationShader};
 use crate::device_features::PhysicalDeviceMeshShaderFeaturesNV::{MeshShader, TaskShader};
 use crate::shader_module::ShaderModule;
 use ash::vk::SpecializationMapEntry;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 pub struct SpecializationInfo<'a> {

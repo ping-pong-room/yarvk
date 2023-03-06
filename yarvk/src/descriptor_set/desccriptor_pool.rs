@@ -62,9 +62,9 @@ impl<T: DescriptorSetValue> DescriptorPool<T> {
         self: &Arc<Self>,
         values: It,
     ) -> Vec<DescriptorSet<T>> {
-        let mut it = values.into_iter();
+        let it = values.into_iter();
         let mut descriptor_sets = Vec::with_capacity(it.size_hint().0);
-        while let Some(value) = it.next() {
+        for value in it {
             if let Some(ash_vk_descriptor_set) = self.unused_descriptor_sets.pop() {
                 descriptor_sets.push(DescriptorSet {
                     ash_vk_descriptor_set,

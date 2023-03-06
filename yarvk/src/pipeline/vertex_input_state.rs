@@ -72,13 +72,13 @@ impl PipelineVertexInputStateCreateInfo {
     pub(crate) fn ash_builder(&mut self) -> ash::vk::PipelineVertexInputStateCreateInfoBuilder {
         let vertex_input_binding_descriptions: FxHashSet<VertexInputBindingDescription> = self
             .vertex_input_attribute_descriptions
-            .iter()
-            .map(|(_, attr)| attr.binding)
+            .values()
+            .map(|attr| attr.binding)
             .collect();
         self.ash_vk_vertex_attribute_descriptions = self
             .vertex_input_attribute_descriptions
-            .iter()
-            .map(|(_, attr)| {
+            .values()
+            .map(|attr| {
                 ash::vk::VertexInputAttributeDescription::builder()
                     .binding(
                         vertex_input_binding_descriptions
@@ -123,10 +123,15 @@ impl PipelineVertexInputStateCreateInfoBuilder {
         vertex_input_attribute_description: VertexInputAttributeDescription,
     ) -> Self {
         // MUST VUID-VkPipelineVertexInputStateCreateInfo-pVertexAttributeDescriptions-00617
-        if let Some(_) = self.inner.vertex_input_attribute_descriptions.insert(
-            vertex_input_attribute_description.location,
-            vertex_input_attribute_description,
-        ) {
+        if self
+            .inner
+            .vertex_input_attribute_descriptions
+            .insert(
+                vertex_input_attribute_description.location,
+                vertex_input_attribute_description,
+            )
+            .is_some()
+        {
             panic!("VUID-VkPipelineVertexInputStateCreateInfo-pVertexAttributeDescriptions-00617")
         }
         self

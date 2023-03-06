@@ -1,7 +1,7 @@
+use crate::device::Device;
 use crate::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
 use ash::vk::DeviceSize;
 use std::sync::Arc;
-use crate::device::Device;
 
 pub trait BindingResource: Send + Sync {
     type RawTy: IMemoryRequirements;

@@ -75,8 +75,7 @@ pub struct ImageView {
 
 impl PartialEq for ImageView {
     fn eq(&self, other: &Self) -> bool {
-        self.image.device == other.image.device
-            && self.ash_vk_image_view == other.ash_vk_image_view
+        self.image.device == other.image.device && self.ash_vk_image_view == other.ash_vk_image_view
     }
 }
 

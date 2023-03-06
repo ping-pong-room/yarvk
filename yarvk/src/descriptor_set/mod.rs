@@ -1,11 +1,11 @@
-pub mod descriptor_set;
-pub mod descriptor_type;
 pub mod desccriptor_pool;
-pub(crate) mod private;
+pub mod descriptor_set;
 pub mod descriptor_set_layout;
-pub mod write_descriptor_set;
+pub mod descriptor_type;
 pub mod descriptor_variadic_generics;
+pub(crate) mod private;
 mod private_descriptor_variadic_generics;
+pub mod write_descriptor_set;
 
 pub(crate) fn diff<T: PartialEq, const I: usize>(
     old: &[T; I],
@@ -16,23 +16,21 @@ pub(crate) fn diff<T: PartialEq, const I: usize>(
     let mut start = None;
     let mut end = None;
     while i < I {
-        if &old[i] == &new[i] {
-            if start != None {
+        if old[i] == new[i] {
+            if start.is_some() {
                 end = Some(i);
             }
-        } else {
-            if start == None {
-                start = Some(i);
-            }
+        } else if start.is_none() {
+            start = Some(i);
         }
-        if end != None {
+        if end.is_some() {
             f(start.unwrap(), end.unwrap());
             start = None;
             end = None;
         }
-        i = i + 1;
+        i += 1;
     }
-    if start != None {
-        f(start.unwrap(), I);
+    if let Some(start) = start {
+        f(start, I);
     }
 }

@@ -12,15 +12,14 @@ use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
 use yarvk::command::command_buffer::State::{EXECUTABLE, INITIAL};
+use yarvk::command::command_buffer::{
+    CommandBuffer, CommandBufferInheritanceInfo, TransientCommandBuffer,
+};
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_set::desccriptor_pool::DescriptorPool;
 use yarvk::descriptor_set::descriptor_set::{DescriptorSetValue, IDescriptorSet};
 use yarvk::descriptor_set::descriptor_type::DescriptorKind;
 use yarvk::device::{Device, DeviceQueueCreateInfo};
-
-use yarvk::command::command_buffer::{
-    CommandBuffer, CommandBufferInheritanceInfo, TransientCommandBuffer,
-};
 
 use yarvk::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
 use yarvk::descriptor_set::descriptor_variadic_generics::{
@@ -135,14 +134,8 @@ pub fn find_memory_type_index<'a>(
     memory_prop: &'a PhysicalDeviceMemoryProperties,
     flags: MemoryPropertyFlags,
 ) -> Option<&'a MemoryType> {
-    for memory_type in memory_prop.memory_type_in_order() {
-        if (1 << memory_type.index) & memory_req.memory_type_bits != 0
-            && memory_type.property_flags & flags == flags
-        {
-            return Some(memory_type);
-        }
-    }
-    None
+    memory_prop.memory_type_in_order().iter().find(|&memory_type| (1 << memory_type.index) & memory_req.memory_type_bits != 0
+            && memory_type.property_flags & flags == flags)
 }
 
 type MyDescriptorLayout = DescriptorSetValue2<
@@ -177,12 +170,7 @@ fn main() {
             let message_id_name = p_callback_data.p_message_id_name;
             let message = p_callback_data.p_message;
             println!(
-                "{:?}:\n{:?} [{} ({})] : {}\n",
-                message_severity,
-                message_type,
-                message_id_name,
-                message_id_number.to_string(),
-                message,
+                "{message_severity:?}:\n{message_type:?} [{message_id_name} ({message_id_number})] : {message}\n",
             );
         })
         .severity(
@@ -193,7 +181,7 @@ fn main() {
     let application_info = ApplicationInfo::builder()
         .engine_name("yarvk_example")
         .build();
-    let mut instance_builder = Instance::builder(entry.clone())
+    let mut instance_builder = Instance::builder(entry)
         .application_info(application_info)
         .add_layer(layer)
         .debug_utils_messenger_exts(vec![debug_utils_messenger_callback]);
@@ -241,7 +229,7 @@ fn main() {
     let queue_create_info = DeviceQueueCreateInfo::builder(queue_family.clone())
         .add_priority(0.9)
         .build();
-    let (device, mut queues) = Device::builder(&pdevice)
+    let (device, mut queues) = Device::builder(pdevice)
         .add_queue_info(queue_create_info)
         .add_extension(&DeviceExtensionType::KhrSwapchain(surface_ext))
         // .add_feature(DeviceFeatures::LogicOp)
@@ -284,7 +272,7 @@ fn main() {
         .cloned()
         .find(|&mode| mode == PresentModeKHR::MAILBOX)
         .unwrap_or(PresentModeKHR::FIFO);
-    let mut swapchain = Swapchain::builder(surface.clone(), swapchian_extension.clone())
+    let mut swapchain = Swapchain::builder(surface.clone(), swapchian_extension)
         .min_image_count(desired_image_count)
         .image_color_space(surface_format.color_space)
         .image_format(surface_format.format)
@@ -342,12 +330,12 @@ fn main() {
 
     let depth_image_memory_req = depth_image.get_memory_requirements();
     let depth_image_memory = find_memory_type_index(
-        &depth_image_memory_req,
-        &device_memory_properties,
+        depth_image_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::DEVICE_LOCAL,
     )
     .expect("Unable to find suitable memory index for depth image.");
-    let depth_image_memory = DeviceMemory::builder(&depth_image_memory, &device)
+    let depth_image_memory = DeviceMemory::builder(depth_image_memory, &device)
         .allocation_size(depth_image_memory_req.size)
         // example of how to use dedicated memory
         .dedicated_info(MemoryDedicatedAllocateInfo {
@@ -363,7 +351,7 @@ fn main() {
 
     let setup_commands_reuse_fence = Fence::new(&device).unwrap();
 
-    let depth_image_view = ImageView::builder(depth_image.clone())
+    let depth_image_view = ImageView::builder(depth_image)
         .subresource_range(
             ImageSubresourceRange::builder()
                 .aspect_mask(ImageAspectFlags::DEPTH)
@@ -447,12 +435,12 @@ fn main() {
     let index_buffer = buffer_builder.build().unwrap();
     let index_buffer_memory_req = index_buffer.get_memory_requirements();
     let index_buffer_memory_index = find_memory_type_index(
-        &index_buffer_memory_req,
-        &device_memory_properties,
+        index_buffer_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the index buffer.");
-    let mut index_buffer_memory = DeviceMemory::builder(&index_buffer_memory_index, &device)
+    let mut index_buffer_memory = DeviceMemory::builder(index_buffer_memory_index, &device)
         .allocation_size(index_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -496,14 +484,14 @@ fn main() {
     let vertex_input_buffer_memory_req = vertex_input_buffer.get_memory_requirements();
 
     let vertex_input_buffer_memory_index = find_memory_type_index(
-        &vertex_input_buffer_memory_req,
-        &device_memory_properties,
+        vertex_input_buffer_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
     let mut vertex_input_buffer_memory =
-        DeviceMemory::builder(&vertex_input_buffer_memory_index, &device)
+        DeviceMemory::builder(vertex_input_buffer_memory_index, &device)
             .allocation_size(vertex_input_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -537,13 +525,13 @@ fn main() {
     let uniform_color_buffer = buffer_builder.build().unwrap();
     let uniform_color_buffer_memory_req = uniform_color_buffer.get_memory_requirements();
     let uniform_color_buffer_memory_index = find_memory_type_index(
-        &uniform_color_buffer_memory_req,
-        &device_memory_properties,
+        uniform_color_buffer_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
     let mut uniform_color_buffer_memory =
-        DeviceMemory::builder(&uniform_color_buffer_memory_index, &device)
+        DeviceMemory::builder(uniform_color_buffer_memory_index, &device)
             .allocation_size(uniform_color_buffer_memory_req.size)
             .build()
             .unwrap();
@@ -577,13 +565,13 @@ fn main() {
     let image_buffer = buffer_builder.build().unwrap();
     let image_buffer_memory_req = image_buffer.get_memory_requirements();
     let image_buffer_memory_index = find_memory_type_index(
-        &image_buffer_memory_req,
-        &device_memory_properties,
+        image_buffer_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::HOST_VISIBLE | MemoryPropertyFlags::HOST_COHERENT,
     )
     .expect("Unable to find suitable memorytype for the vertex buffer.");
 
-    let mut image_buffer_memory = DeviceMemory::builder(&image_buffer_memory_index, &device)
+    let mut image_buffer_memory = DeviceMemory::builder(image_buffer_memory_index, &device)
         .allocation_size(image_buffer_memory_req.size)
         .build()
         .unwrap();
@@ -611,13 +599,13 @@ fn main() {
     let texture_image = image_builder.build().unwrap();
     let texture_memory_req = texture_image.get_memory_requirements();
     let texture_memory_index = find_memory_type_index(
-        &texture_memory_req,
-        &device_memory_properties,
+        texture_memory_req,
+        device_memory_properties,
         MemoryPropertyFlags::DEVICE_LOCAL,
     )
     .expect("Unable to find suitable memory index for depth image.");
 
-    let texture_memory = DeviceMemory::builder(&texture_memory_index, &device)
+    let texture_memory = DeviceMemory::builder(texture_memory_index, &device)
         .allocation_size(texture_memory_req.size)
         .build()
         .unwrap();
@@ -671,12 +659,12 @@ fn main() {
 
     let init_value = MyDescriptorLayout {
         t0: [(
-            uniform_color_buffer.clone(),
+            uniform_color_buffer,
             0,
             std::mem::size_of_val(&uniform_color_buffer_data) as u64,
         )],
         t1: [(
-            tex_image_view.clone(),
+            tex_image_view,
             ImageLayout::SHADER_READ_ONLY_OPTIMAL,
         )],
     };
@@ -700,8 +688,7 @@ fn main() {
                         .build(),
                 )
                 .build();
-            let mut image_barriers = Vec::with_capacity(1);
-            image_barriers.push(texture_barrier);
+            let image_barriers = vec![texture_barrier];
             command_buffer.cmd_pipeline_barrier(
                 PipelineStageFlag::BottomOfPipe.into(),
                 PipelineStageFlag::Transfer.into(),
@@ -742,8 +729,7 @@ fn main() {
                         .build(),
                 )
                 .build();
-            let mut image_barriers = Vec::with_capacity(1);
-            image_barriers.push(texture_barrier_end);
+            let image_barriers = vec![texture_barrier_end];
             command_buffer.cmd_pipeline_barrier(
                 PipelineStageFlag::Transfer.into(),
                 PipelineStageFlag::FragmentShader.into(),
@@ -859,8 +845,8 @@ fn main() {
                 .depth_test_enable()
                 .depth_write_enable()
                 .depth_compare_op(CompareOp::LESS_OR_EQUAL)
-                .front(noop_stencil_state.clone())
-                .back(noop_stencil_state.clone())
+                .front(noop_stencil_state)
+                .back(noop_stencil_state)
                 .depth_bounds(0.0, 1.0)
                 .build(),
         )

@@ -1,19 +1,17 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
+use crate::descriptor_set::descriptor_set_layout::IDescriptorSetLayout;
 use crate::device::Device;
 use crate::pipeline::color_blend_state::PipelineColorBlendStateCreateInfo;
 use crate::pipeline::depth_stencil_state::PipelineDepthStencilStateCreateInfo;
 use crate::pipeline::input_assembly_state::PipelineInputAssemblyStateCreateInfo;
 use crate::pipeline::multisample_state::PipelineMultisampleStateCreateInfo;
-
+use crate::pipeline::pipeline_cache::PipelineCacheImpl;
 use crate::pipeline::rasterization_state::PipelineRasterizationStateCreateInfo;
 use crate::pipeline::shader_stage::{PipelineShaderStageCreateInfo, ShaderStage};
 use crate::pipeline::vertex_input_state::PipelineVertexInputStateCreateInfo;
 use crate::pipeline::viewport_state::PipelineViewportStateCreateInfo;
 use crate::render_pass::RenderPass;
-
-use crate::descriptor_set::descriptor_set_layout::IDescriptorSetLayout;
-use crate::pipeline::pipeline_cache::PipelineCacheImpl;
 use crate::shader_module::ShaderModule;
 use ash::vk::Handle;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -247,7 +245,7 @@ impl<'a> PipelineBuilder<'a> {
     }
     pub fn add_stage(mut self, stage: PipelineShaderStageCreateInfo<'a>) -> Self {
         // MUST VUID-VkGraphicsPipelineCreateInfo-stage-00726
-        if let Some(_) = self.stages.insert(stage.stage, stage) {
+        if self.stages.insert(stage.stage, stage).is_some() {
             panic!("VUID-VkGraphicsPipelineCreateInfo-stage-00726")
         }
         self
@@ -341,7 +339,7 @@ impl<'a> PipelineBuilder<'a> {
         let ash_vk_tessellation_state = self.tessellation_state.ash_builder().build();
         // view port
         let ash_vk_viewport_state = self.viewport_state.ash_builder().build();
-        if ash_vk_viewport_state.p_viewports == std::ptr::null() {
+        if ash_vk_viewport_state.p_viewports.is_null() {
             if ash_vk_viewport_state.viewport_count > 1 {
                 self.dynamic_states
                     .insert(ash::vk::DynamicState::VIEWPORT_WITH_COUNT);
@@ -349,7 +347,7 @@ impl<'a> PipelineBuilder<'a> {
                 self.dynamic_states.insert(ash::vk::DynamicState::VIEWPORT);
             }
         }
-        if ash_vk_viewport_state.p_scissors == std::ptr::null() {
+        if ash_vk_viewport_state.p_scissors.is_null() {
             if ash_vk_viewport_state.scissor_count > 1 {
                 self.dynamic_states
                     .insert(ash::vk::DynamicState::SCISSOR_WITH_COUNT);
@@ -401,7 +399,7 @@ impl<'a> PipelineBuilder<'a> {
             ) {
                 Ok(pipelines) => pipelines[0],
                 Err((_, error)) => {
-                    return Err(error.into());
+                    return Err(error);
                 }
             }
         };

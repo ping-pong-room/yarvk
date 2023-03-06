@@ -27,7 +27,10 @@ impl Fence {
             .build();
         // Host Synchronization: none
         let vk_fence = unsafe { device.ash_device.create_fence(&create_info, None)? };
-        Ok(UnsignaledFence(Fence { device: device.clone(), vk_fence }))
+        Ok(UnsignaledFence(Fence {
+            device: device.clone(),
+            vk_fence,
+        }))
     }
 
     pub fn new_signaling<T>(
@@ -40,7 +43,10 @@ impl Fence {
         // Host Synchronization: none
         let vk_fence = unsafe { device.ash_device.create_fence(&create_info, None)? };
         Ok(SignalingFence {
-            inner: Fence { device: device.clone(), vk_fence },
+            inner: Fence {
+                device: device.clone(),
+                vk_fence,
+            },
             t,
         })
     }

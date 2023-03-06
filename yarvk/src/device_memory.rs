@@ -64,7 +64,10 @@ impl crate::Handle for DeviceMemory {
 }
 
 impl DeviceMemory {
-    pub fn builder<'a>(memory_type: &'a MemoryType, device: &Arc<Device>) -> DeviceMemoryBuilder<'a> {
+    pub fn builder<'a>(
+        memory_type: &'a MemoryType,
+        device: &Arc<Device>,
+    ) -> DeviceMemoryBuilder<'a> {
         DeviceMemoryBuilder {
             device: device.clone(),
             allocation_size: 0,

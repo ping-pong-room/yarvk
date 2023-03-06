@@ -1,4 +1,4 @@
-use crate::device_features::{register_features, Feature, FeatureType, DeviceFeatureTrait};
+use crate::device_features::{register_features, DeviceFeatureTrait, Feature, FeatureType};
 use crate::extensions::{DeviceExtension, DeviceExtensionType, PhysicalDeviceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
@@ -65,7 +65,7 @@ impl DeviceBuilder {
             self.add_extension_inner(extension)
         }
         let feature = feature.to_physical();
-        let feature : FeatureType = feature.into();
+        let feature: FeatureType = feature.into();
         self.enabled_features.insert(feature);
         self
     }
@@ -106,11 +106,11 @@ impl DeviceBuilder {
         }
 
         let mut device_create_info = ash::vk::DeviceCreateInfo::builder();
-        unsafe {
-            let feature2 = register_features(&self.enabled_features);
-            // SILENCE VUID-VkDeviceCreateInfo-pNext-00373
-            device_create_info.p_next = std::mem::transmute(&feature2);
-        }
+        let feature2 = register_features(&self.enabled_features);
+        // SILENCE VUID-VkDeviceCreateInfo-pNext-00373
+        device_create_info.p_next =
+            &feature2 as *const ash::vk::PhysicalDeviceFeatures2 as *const std::ffi::c_void;
+
 
         let queue_create_infos: Vec<ash::vk::DeviceQueueCreateInfo> = self
             .device_queue_create_infos

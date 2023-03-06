@@ -194,7 +194,7 @@ impl ContinuousBufferBuilder {
             }
             SharingMode::CONCURRENT(queue_families) => {
                 family_properties = queue_families
-                    .into_iter()
+                    .iter()
                     .map(|property| property.index)
                     .collect::<Vec<_>>();
                 create_info = create_info
@@ -210,13 +210,11 @@ impl ContinuousBufferBuilder {
                 .ash_device
                 .get_buffer_memory_requirements(ash_vk_buffer)
         };
-        Ok(UnboundContinuousBuffer {
-            0: Buffer {
-                device: self.device.clone(),
-                ash_vk_buffer,
-                free_notification: None,
-                memory_requirements,
-            },
-        })
+        Ok(UnboundContinuousBuffer(Buffer {
+            device: self.device.clone(),
+            ash_vk_buffer,
+            free_notification: None,
+            memory_requirements,
+        }))
     }
 }

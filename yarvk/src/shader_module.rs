@@ -8,7 +8,10 @@ pub struct ShaderModule {
 
 impl ShaderModule {
     pub fn builder<'a>(device: &Arc<Device>, code: &'a [u32]) -> ShaderModuleBuilder<'a> {
-        ShaderModuleBuilder { device: device.clone(), code }
+        ShaderModuleBuilder {
+            device: device.clone(),
+            code,
+        }
     }
 }
 
@@ -31,7 +34,7 @@ pub struct ShaderModuleBuilder<'a> {
 impl<'a> ShaderModuleBuilder<'a> {
     pub fn build(self) -> Result<Arc<ShaderModule>, ash::vk::Result> {
         let shader_info = ash::vk::ShaderModuleCreateInfo::builder()
-            .code(&self.code)
+            .code(self.code)
             .build();
         let ash_vk_shader_module = unsafe {
             // Host Synchronization: none

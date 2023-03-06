@@ -42,10 +42,7 @@ impl Default for ExtensionInfo {
 }
 
 impl ExtensionInfo {
-    pub fn get_all_dependencies<'a>(
-        &'a self,
-        dependency_info: &mut DependencyInfo<'a>,
-    ) {
+    pub fn get_all_dependencies<'a>(&'a self, dependency_info: &mut DependencyInfo<'a>) {
         for dep_ext_info in &self.dependency_info {
             if dep_ext_info.promoted {
                 continue;
@@ -53,7 +50,9 @@ impl ExtensionInfo {
             if self.extension_type == ExtensionType::Device
                 && dep_ext_info.extension_type == ExtensionType::Instance
             {
-                dependency_info.top_level_instance.insert(&dep_ext_info.name);
+                dependency_info
+                    .top_level_instance
+                    .insert(&dep_ext_info.name);
                 continue;
             } else {
                 dependency_info.dependencies.insert(&dep_ext_info.name);
@@ -79,7 +78,7 @@ impl ExtensionMap {
 
 fn to_yarvk_extension_name(name: &str) -> String {
     name.strip_prefix("VK_")
-        .unwrap_or(&name)
+        .unwrap_or(name)
         .to_upper_camel_case()
 }
 
@@ -145,7 +144,7 @@ pub fn generate_extensions(spec2: &Registry) -> (TokenStream, ExtensionMap) {
         if ext_info.promoted {
             continue;
         }
-        let cstr_name = format!("{}\0", vk_name);
+        let cstr_name = format!("{vk_name}\0");
         let cstr_ident = LitByteStr::new(cstr_name.as_bytes(), Span::call_site());
         match ext_info.extension_type {
             ExtensionType::Instance => {

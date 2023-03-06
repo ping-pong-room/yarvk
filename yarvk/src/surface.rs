@@ -1,7 +1,6 @@
 use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
-
 use raw_window_handle::HasRawWindowHandle;
 use std::sync::Arc;
 
@@ -119,14 +118,14 @@ impl Surface {
         unsafe {
             // Host Synchronization: none
             let mut t = T::default();
-            let mut info = ash::vk::PhysicalDeviceSurfaceInfo2KHR::builder().push_next(&mut t);
+            let info = ash::vk::PhysicalDeviceSurfaceInfo2KHR::builder().push_next(&mut t);
             ash::extensions::khr::GetSurfaceCapabilities2::new(
                 &self.physical_device.instance.entry.ash_entry,
                 &self.physical_device.instance.ash_instance,
             )
             .get_physical_device_surface_capabilities2(
                 self.physical_device.vk_physical_device,
-                &mut info,
+                &info,
             )?;
             Ok(t)
         }

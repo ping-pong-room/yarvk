@@ -11,8 +11,7 @@ pub struct Sampler {
 
 impl PartialEq for Sampler {
     fn eq(&self, other: &Self) -> bool {
-        self.device == other.device
-            && self.ash_vk_sampler == other.ash_vk_sampler
+        self.device == other.device && self.ash_vk_sampler == other.ash_vk_sampler
     }
 }
 

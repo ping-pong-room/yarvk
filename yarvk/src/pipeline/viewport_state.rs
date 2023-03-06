@@ -16,7 +16,7 @@ impl Default for PipelineViewportStateCreateInfo {
             viewports: Default::default(),
             dynamic_viewports: 1,
             scissors: Default::default(),
-            dynamic_scissors: 1
+            dynamic_scissors: 1,
         }
     }
 }
@@ -103,9 +103,7 @@ impl PipelineViewportStateCreateInfoBuilder {
     }
 }
 
-impl<const LEVEL: Level, const SCOPE: RenderPassScope>
-    CommandBuffer<LEVEL, { RECORDING }, SCOPE>
-{
+impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RECORDING }, SCOPE> {
     // DONE VUID-vkCmdSetViewport-commandBuffer-recording
     pub fn cmd_set_viewport(&mut self, viewports: &ash::vk::Viewport) {
         unsafe {

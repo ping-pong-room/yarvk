@@ -84,7 +84,7 @@ impl SubpassDescription {
     }
     pub(crate) fn to_ash(&self) -> ash::vk::SubpassDescription {
         let mut builder = ash::vk::SubpassDescription::builder()
-            .flags(*&self.flags)
+            .flags(self.flags)
             .pipeline_bind_point(self.pipeline_bind_point)
             .input_attachments(self.input_attachments.as_slice())
             .color_attachments(self.color_attachments.as_slice())
@@ -175,11 +175,7 @@ impl SubpassDescriptionBuilder {
             .map(|index| index as _)
             .collect();
         let depth_stencil_attachment =
-            if let Some(depth_stencil_attachment) = self.depth_stencil_attachment {
-                Some(depth_stencil_attachment.to_ash())
-            } else {
-                None
-            };
+            self.depth_stencil_attachment.map(|depth_stencil_attachment| depth_stencil_attachment.to_ash());
 
         SubpassDescription {
             flags: self.flags,

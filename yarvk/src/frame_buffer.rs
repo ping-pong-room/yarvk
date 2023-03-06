@@ -69,11 +69,7 @@ impl FramebufferBuilder {
         self.render_pass = render_pass;
         self
     }
-    pub fn add_attachment(
-        mut self,
-        attachment_index: u32,
-        attachment: Arc<ImageView>,
-    ) -> Self {
+    pub fn add_attachment(mut self, attachment_index: u32, attachment: Arc<ImageView>) -> Self {
         self.attachments.insert(attachment_index, attachment);
         self
     }
@@ -93,8 +89,8 @@ impl FramebufferBuilder {
         // DONE VUID-VkFramebufferCreateInfo-flags-02778
         let ash_vk_attachments = self
             .attachments
-            .iter()
-            .map(|(_, image_view)| image_view.ash_vk_image_view)
+            .values()
+            .map(|image_view| image_view.ash_vk_image_view)
             .collect::<Vec<_>>();
         let mut frame_buffer_create_info = ash::vk::FramebufferCreateInfo::builder()
             .flags(self.flags)

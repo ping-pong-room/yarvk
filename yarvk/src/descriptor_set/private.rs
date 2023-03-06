@@ -1,12 +1,12 @@
+use crate::descriptor_set::descriptor_set::DescriptorSetValue;
 use crate::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
 use crate::device::Device;
 use crate::image_view::ImageView;
 use crate::sampler::Sampler;
-use crate::{IBuffer, BufferView};
+use crate::{BufferView, IBuffer};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use crate::descriptor_set::descriptor_set::DescriptorSetValue;
 
 pub trait VkDescriptorUpdateInfo {
     fn update_info<'a>(
@@ -144,7 +144,6 @@ pub trait PrivateConstDescriptorSetValue<T: DescriptorSetValue> {
     ) -> Result<Arc<DescriptorSetLayout<T>>, ash::vk::Result>;
 }
 
-
 struct SyncWriteDescriptorSet(ash::vk::WriteDescriptorSet);
 unsafe impl Sync for SyncWriteDescriptorSet {}
 
@@ -159,7 +158,7 @@ impl<'a> ParallelSplitWriteDescriptorSets<'a> {
     pub fn new() -> Self {
         let current_num_threads = rayon::current_num_threads();
         let mut vectors = Vec::new();
-        vectors.resize_with(rayon::current_num_threads(), || Vec::new());
+        vectors.resize_with(rayon::current_num_threads(), Vec::new);
         Self {
             focused: 0,
             current_num_threads,

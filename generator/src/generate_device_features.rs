@@ -16,11 +16,11 @@ struct FeatureDetail<'a> {
 }
 
 fn required_extension<'a>(extensions: &'a ExtensionMap, ty: &Type) -> Option<&'a ExtensionInfo> {
-    for (_, ext_info) in &extensions.0 {
+    for ext_info in extensions.0.values() {
         if let Some(target_name) = &ty.name {
             for required_struct in &ext_info.required_structs {
                 if !ext_info.promoted && required_struct == target_name {
-                    return Some(&ext_info);
+                    return Some(ext_info);
                 }
             }
         }
@@ -33,9 +33,7 @@ fn get_enum_variant_tuple(extension: Option<&ExtensionInfo>) -> Vec<&Ident> {
         if let ExtensionType::Device = &extension.extension_type {
             let mut idents = DependencyInfo::default();
             extension.get_all_dependencies(&mut idents);
-            return idents.top_level_instance
-                .into_iter()
-                .collect();
+            return idents.top_level_instance.into_iter().collect();
         }
     }
     Vec::default()
@@ -91,13 +89,13 @@ pub fn generate_device_features(spec2: &Registry, extensions: &ExtensionMap) -> 
                                 if name.as_str() == "VkPhysicalDeviceFeatures" {
                                     total_features.insert(
                                         name.as_str(),
-                                        handle_feature_member(&ty, extensions),
+                                        handle_feature_member(ty, extensions),
                                     );
                                 } else if let Some(extends) = &ty.structextends {
                                     if extends.as_str().contains("VkPhysicalDeviceFeatures2") {
                                         total_features.insert(
                                             name.as_str(),
-                                            handle_feature_member(&ty, extensions),
+                                            handle_feature_member(ty, extensions),
                                         );
                                     }
                                 }

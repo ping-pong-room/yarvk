@@ -2,7 +2,6 @@ use crate::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use crate::entry::Entry;
 use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
 use crate::physical_device::PhysicalDevice;
-
 use rustc_hash::FxHashSet;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;

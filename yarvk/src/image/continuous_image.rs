@@ -1,5 +1,7 @@
 use crate::binding_resource::{BindMemoryInfo, BindingResource};
 use crate::device::Device;
+use crate::device_memory::dedicated_memory::DedicatedResource;
+use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 use crate::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
 use crate::image::{Image, ImageCreateInfo};
 use crate::physical_device::SharingMode;
@@ -7,8 +9,6 @@ use ash::vk::{DeviceSize, ExtendsMemoryRequirements2, MemoryRequirements};
 use derive_more::{Deref, DerefMut};
 use std::marker::PhantomData;
 use std::sync::Arc;
-use crate::device_memory::dedicated_memory::DedicatedResource;
-use crate::device_memory::dedicated_memory::MemoryDedicatedAllocateInfo;
 
 pub struct ContinuousImage {
     _phantom: PhantomData<usize>,
@@ -101,15 +101,13 @@ impl ContinuousImageBuilder {
                 .ash_device
                 .get_image_memory_requirements(vk_image)
         };
-        Ok(UnboundContinuousImage {
-            0: Image {
-                device: self.device.clone(),
-                vk_image,
-                presentable: false,
-                free_notification: None,
-                memory_requirements,
-            },
-        })
+        Ok(UnboundContinuousImage(Image {
+            device: self.device.clone(),
+            vk_image,
+            presentable: false,
+            free_notification: None,
+            memory_requirements,
+        }))
     }
 }
 
