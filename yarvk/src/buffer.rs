@@ -15,7 +15,7 @@ use std::sync::Arc;
 pub mod buffer_view;
 pub mod continuous_buffer;
 use crate::binding_resource::BindingResource;
-use crate::command::command_buffer::RenderPassScope::OUTSIDE;
+use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
 pub use buffer_view::*;
 pub use continuous_buffer::*;
 
@@ -191,7 +191,9 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
             );
         }
     }
+}
 
+impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { INSIDE }> {
     pub fn cmd_draw_indexed(
         &mut self,
         index_count: u32,
