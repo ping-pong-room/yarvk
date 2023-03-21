@@ -1,5 +1,6 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
+use crate::descriptor_set::desccriptor_pool::DescriptorPool;
 use crate::descriptor_set::private::{PrivateConstDescriptorSetValue, PrivateDescriptorSetValue};
 use crate::pipeline::PipelineLayout;
 use ash::vk::Handle;
@@ -17,7 +18,8 @@ pub trait IDescriptorSet: Sync + Send {
 
 pub struct DescriptorSet<T: DescriptorSetValue> {
     pub(crate) ash_vk_descriptor_set: ash::vk::DescriptorSet,
-    pub(crate) value: T,
+    pub(crate) value: Option<T>,
+    pub(crate) _descriptor_pool: Arc<DescriptorPool<T>>,
 }
 
 impl<T: DescriptorSetValue> IDescriptorSet for DescriptorSet<T> {

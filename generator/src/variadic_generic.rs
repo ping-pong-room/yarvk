@@ -182,7 +182,6 @@ pub fn descriptor_set_variadic_generics(n: usize) -> (TokenStream, TokenStream) 
                 }
 
                 fn push_to_init(
-                    &self,
                     vk_value: &mut Self::VkType,
                     ash_vk_descriptor_set: DescriptorSet,
                     vec: &mut ParallelSplitWriteDescriptorSets,

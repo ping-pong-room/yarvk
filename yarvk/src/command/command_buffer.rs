@@ -377,8 +377,7 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE
         &mut self,
         buffer: CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }>,
     ) {
-        self.secondary_buffers
-            .push(buffer);
+        self.secondary_buffers.push(buffer);
     }
 }
 

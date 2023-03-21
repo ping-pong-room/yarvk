@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 pub struct DescriptorPool<T: DescriptorSetValue> {
     pub device: Arc<Device>,
-    pub max_sets: usize,
+    pub max_sets: u32,
     pub(crate) ash_vk_descriptor_pool: ash::vk::DescriptorPool,
     unused_descriptor_sets: crossbeam_queue::ArrayQueue<ash::vk::DescriptorSet>,
     _phantom_data: PhantomData<T>,
@@ -14,16 +14,16 @@ pub struct DescriptorPool<T: DescriptorSetValue> {
 
 impl<T: DescriptorSetValue> DescriptorPool<T> {
     pub fn new(
-        device: &Arc<Device>,
-        max_sets: usize,
         layout: &Arc<DescriptorSetLayout<T>>,
+        max_sets: u32,
     ) -> Result<Arc<Self>, ash::vk::Result> {
+        let device = &layout.device;
         let mut pool_sizes = Vec::new();
         for _ in 0..max_sets {
             T::put_pool_size(&mut pool_sizes);
         }
         let info = ash::vk::DescriptorPoolCreateInfo::builder()
-            .max_sets(max_sets as _)
+            .max_sets(max_sets)
             .pool_sizes(pool_sizes.as_slice())
             .build();
         unsafe {
@@ -56,31 +56,16 @@ impl<T: DescriptorSetValue> DescriptorPool<T> {
         }
     }
 
-    // TODO this is not the best solution, since we cannot batching different pool allocations, but
-    // I won't go any further, while waiting descriptor buffer extension ready to land instead.
-    pub fn allocate<It: IntoIterator<Item = T>>(
-        self: &Arc<Self>,
-        values: It,
-    ) -> Vec<DescriptorSet<T>> {
-        let it = values.into_iter();
-        let mut descriptor_sets = Vec::with_capacity(it.size_hint().0);
-        for value in it {
-            if let Some(ash_vk_descriptor_set) = self.unused_descriptor_sets.pop() {
-                descriptor_sets.push(DescriptorSet {
-                    ash_vk_descriptor_set,
-                    value,
-                });
-            } else {
-                break;
-            }
+    pub fn allocate(self: &Arc<Self>) -> Option<DescriptorSet<T>> {
+        if let Some(ash_vk_descriptor_set) = self.unused_descriptor_sets.pop() {
+            Some(DescriptorSet {
+                ash_vk_descriptor_set,
+                value: None,
+                _descriptor_pool: self.clone(),
+            })
+        } else {
+            None
         }
-        let mut update = self.device.update_descriptor_sets();
-        descriptor_sets.iter_mut().for_each(|descriptor_set| {
-            let write_descriptor_sets = descriptor_set.init();
-            update.add_to_init(write_descriptor_sets);
-        });
-        update.update();
-        descriptor_sets
     }
 }
 

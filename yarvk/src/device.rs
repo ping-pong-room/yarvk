@@ -111,7 +111,6 @@ impl DeviceBuilder {
         device_create_info.p_next =
             &feature2 as *const ash::vk::PhysicalDeviceFeatures2 as *const std::ffi::c_void;
 
-
         let queue_create_infos: Vec<ash::vk::DeviceQueueCreateInfo> = self
             .device_queue_create_infos
             .iter()

@@ -174,8 +174,9 @@ impl SubpassDescriptionBuilder {
             .into_iter()
             .map(|index| index as _)
             .collect();
-        let depth_stencil_attachment =
-            self.depth_stencil_attachment.map(|depth_stencil_attachment| depth_stencil_attachment.to_ash());
+        let depth_stencil_attachment = self
+            .depth_stencil_attachment
+            .map(|depth_stencil_attachment| depth_stencil_attachment.to_ash());
 
         SubpassDescription {
             flags: self.flags,

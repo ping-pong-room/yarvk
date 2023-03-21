@@ -97,7 +97,10 @@ pub struct PipelineLayoutBuilder {
 }
 
 impl PipelineLayoutBuilder {
-    pub fn add_set_layout(mut self, set_layout: Arc<dyn IDescriptorSetLayout + Send + Sync>) -> Self {
+    pub fn add_set_layout(
+        mut self,
+        set_layout: Arc<dyn IDescriptorSetLayout + Send + Sync>,
+    ) -> Self {
         self.set_layouts.push(set_layout);
         self
     }
@@ -162,6 +165,7 @@ impl PipelineTessellationStateCreateInfoBuilder {
 
 pub struct Pipeline {
     pub device: Arc<Device>,
+    pub pipeline_layout: Arc<PipelineLayout>,
     _render_pass_holder: Option<Arc<RenderPass>>,
     _shader_modules_holder: Vec<Arc<ShaderModule>>,
     ash_vk_pipeline: ash::vk::Pipeline,
@@ -405,6 +409,7 @@ impl<'a> PipelineBuilder<'a> {
         };
         Ok(Arc::new(Pipeline {
             device: self.device,
+            pipeline_layout: self.layout,
             _render_pass_holder: render_pass_holder,
             _shader_modules_holder: shader_modules_holder,
             ash_vk_pipeline,

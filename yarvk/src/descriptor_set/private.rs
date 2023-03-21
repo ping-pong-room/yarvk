@@ -201,7 +201,6 @@ pub trait PrivateDescriptorSetValue: Clone {
         vec: &mut ParallelSplitWriteDescriptorSets,
     );
     fn push_to_init(
-        &self,
         vk_value: &mut Self::VkType,
         ash_vk_descriptor_set: ash::vk::DescriptorSet,
         vec: &mut ParallelSplitWriteDescriptorSets,

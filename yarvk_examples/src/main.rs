@@ -134,8 +134,13 @@ pub fn find_memory_type_index<'a>(
     memory_prop: &'a PhysicalDeviceMemoryProperties,
     flags: MemoryPropertyFlags,
 ) -> Option<&'a MemoryType> {
-    memory_prop.memory_type_in_order().iter().find(|&memory_type| (1 << memory_type.index) & memory_req.memory_type_bits != 0
-            && memory_type.property_flags & flags == flags)
+    memory_prop
+        .memory_type_in_order()
+        .iter()
+        .find(|&memory_type| {
+            (1 << memory_type.index) & memory_req.memory_type_bits != 0
+                && memory_type.property_flags & flags == flags
+        })
 }
 
 type MyDescriptorLayout = DescriptorSetValue2<
@@ -655,7 +660,7 @@ fn main() {
 
     let desc_set_layout = DescriptorSetLayout::new(&device, layout_const).unwrap();
 
-    let descriptor_pool = DescriptorPool::new(&device, 1, &desc_set_layout).unwrap();
+    let descriptor_pool = DescriptorPool::new(&desc_set_layout, 1).unwrap();
 
     let init_value = MyDescriptorLayout {
         t0: [(
@@ -663,16 +668,16 @@ fn main() {
             0,
             std::mem::size_of_val(&uniform_color_buffer_data) as u64,
         )],
-        t1: [(
-            tex_image_view,
-            ImageLayout::SHADER_READ_ONLY_OPTIMAL,
-        )],
+        t1: [(tex_image_view, ImageLayout::SHADER_READ_ONLY_OPTIMAL)],
     };
 
-    let descriptor_set = descriptor_pool
-        .allocate([init_value])
-        .pop()
-        .unwrap();
+    let mut descriptor_set = descriptor_pool.allocate().unwrap();
+
+    let mut update = device.update_descriptor_sets();
+    update.add(&mut descriptor_set, |_| {
+        init_value
+    });
+    update.update();
 
     let descriptor_set: Arc<dyn IDescriptorSet> = Arc::new(descriptor_set);
     let command_buffer = setup_command_buffer
