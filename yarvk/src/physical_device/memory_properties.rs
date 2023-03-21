@@ -82,7 +82,7 @@ impl PhysicalDevice {
                 }
             });
         let mut memory_type_in_order = Vec::with_capacity(rank.len());
-        while let Some((_, memory_type)) = rank.pop_last() {
+        while let Some((_, memory_type)) = rank.pop_first() {
             memory_type_in_order.push(memory_type);
         }
         PhysicalDeviceMemoryProperties {
