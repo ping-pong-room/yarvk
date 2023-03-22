@@ -54,7 +54,7 @@ use yarvk::pipeline::vertex_input_state::{
     PipelineVertexInputStateCreateInfo, VertexInputAttributeDescription,
     VertexInputBindingDescription,
 };
-use yarvk::pipeline::{Pipeline, PipelineLayout};
+use yarvk::pipeline::{Pipeline, PipelineCacheType, PipelineLayout};
 use yarvk::queue::submit_info::{SubmitInfo, Submittable};
 use yarvk::queue::Queue;
 use yarvk::render_pass::attachment::{AttachmentDescription, AttachmentReference};
@@ -674,9 +674,7 @@ fn main() {
     let mut descriptor_set = descriptor_pool.allocate().unwrap();
 
     let mut update = device.update_descriptor_sets();
-    update.add(&mut descriptor_set, |_| {
-        init_value
-    });
+    update.add(&mut descriptor_set, |_| init_value);
     update.update();
 
     let descriptor_set: Arc<dyn IDescriptorSet> = Arc::new(descriptor_set);
@@ -799,7 +797,7 @@ fn main() {
 
     let entry_name = unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(b"main\0") };
     // let op_feature = device.get_feature::<{ FeatureType::DeviceFeatures(PhysicalDeviceFeatures::LogicOp) }>().unwrap();
-    let graphic_pipeline = Pipeline::builder(pipeline_layout.clone())
+    let graphic_pipeline_builder = Pipeline::builder(pipeline_layout.clone())
         .add_stage(
             PipelineShaderStageCreateInfo::builder(vertex_shader_module, entry_name)
                 .stage(ShaderStage::Vertex)
@@ -871,9 +869,13 @@ fn main() {
                 )
                 .build(),
         )
-        .render_pass(renderpass.clone(), 0)
-        .build()
+        .render_pass(renderpass.clone(), 0);
+    let graphic_pipeline = device
+        .create_pipelines(vec![graphic_pipeline_builder], PipelineCacheType::None)
+        .unwrap()
+        .pop()
         .unwrap();
+
     let present_complete_semaphore = Semaphore::new(&device).unwrap();
     let mut rendering_complete_semaphore = Semaphore::new(&device).unwrap();
     let mut draw_commands_reuse_fence = Some(fence);

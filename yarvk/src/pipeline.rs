@@ -193,7 +193,7 @@ impl Pipeline {
     }
 }
 
-enum PipelineCacheType<'a> {
+pub enum PipelineCacheType<'a> {
     ExternallySynchronized(&'a mut PipelineCacheImpl<true>),
     InternallySynchronized(&'a PipelineCacheImpl<false>),
     None,
@@ -394,7 +394,7 @@ impl<'a> PipelineBuilder<'a> {
             render_pass_holder = Some(render_pass);
         }
         let create_info = create_info_builder.build();
-        // TODO pipeline caching
+        // TODO deal with VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT
         let ash_vk_pipeline = unsafe {
             match self.device.ash_device.create_graphics_pipelines(
                 self.pipeline_cache.to_vk_types(),
@@ -414,6 +414,170 @@ impl<'a> PipelineBuilder<'a> {
             _shader_modules_holder: shader_modules_holder,
             ash_vk_pipeline,
         }))
+    }
+}
+
+struct PipelineCreateInfoTmp {
+    flags: ash::vk::PipelineCreateFlags,
+    layout: Arc<PipelineLayout>,
+    shader_modules_holder: Vec<Arc<ShaderModule>>,
+    ash_vk_stages: Vec<ash::vk::PipelineShaderStageCreateInfo>,
+    ash_vk_vertex_input_state: ash::vk::PipelineVertexInputStateCreateInfo,
+    ash_vk_input_assembly_state: ash::vk::PipelineInputAssemblyStateCreateInfo,
+    ash_vk_tessellation_state: ash::vk::PipelineTessellationStateCreateInfo,
+    ash_vk_viewport_state: ash::vk::PipelineViewportStateCreateInfo,
+    ash_vk_rasterization_state: ash::vk::PipelineRasterizationStateCreateInfo,
+    ash_vk_multisample_state: ash::vk::PipelineMultisampleStateCreateInfo,
+    ash_vk_depth_stencil_state: ash::vk::PipelineDepthStencilStateCreateInfo,
+    ash_vk_color_blend_state: ash::vk::PipelineColorBlendStateCreateInfo,
+    _ash_vk_dynamic_states: Vec<ash::vk::DynamicState>,
+    ash_vk_pipeline_dynamic_state_create_info: ash::vk::PipelineDynamicStateCreateInfo,
+    render_pass_holder: Option<(Arc<RenderPass>, u32)>,
+}
+
+impl Device {
+    pub fn create_pipelines(
+        &self,
+        mut builders: Vec<PipelineBuilder>,
+        pipeline_cache: PipelineCacheType,
+    ) -> Result<Vec<Arc<Pipeline>>, ash::vk::Result> {
+        let mut vk_tmps = builders
+            .iter_mut()
+            .map(|builder| {
+                // stages
+                let mut shader_modules_holder = Vec::with_capacity(builder.stages.len());
+                let mut ash_vk_stages = Vec::with_capacity(builder.stages.len());
+                for (_, info) in &builder.stages {
+                    ash_vk_stages.push(info.ash_builder());
+                    shader_modules_holder.push(info.module.clone());
+                }
+                // vertex input
+                let ash_vk_vertex_input_state = builder
+                    .pipeline_vertex_input_state_create_info
+                    .ash_builder()
+                    .build();
+                // input assembly
+                let ash_vk_input_assembly_state =
+                    builder.input_assembly_state.ash_builder().build();
+                // tessellation
+                let ash_vk_tessellation_state = builder.tessellation_state.ash_builder().build();
+                // view port
+                let ash_vk_viewport_state = builder.viewport_state.ash_builder().build();
+                if ash_vk_viewport_state.p_viewports.is_null() {
+                    if ash_vk_viewport_state.viewport_count > 1 {
+                        builder
+                            .dynamic_states
+                            .insert(ash::vk::DynamicState::VIEWPORT_WITH_COUNT);
+                    } else {
+                        builder
+                            .dynamic_states
+                            .insert(ash::vk::DynamicState::VIEWPORT);
+                    }
+                }
+                if ash_vk_viewport_state.p_scissors.is_null() {
+                    if ash_vk_viewport_state.scissor_count > 1 {
+                        builder
+                            .dynamic_states
+                            .insert(ash::vk::DynamicState::SCISSOR_WITH_COUNT);
+                    } else {
+                        builder
+                            .dynamic_states
+                            .insert(ash::vk::DynamicState::SCISSOR);
+                    }
+                }
+                // rasterization
+                let ash_vk_rasterization_state = builder.rasterization_state.ash_builder().build();
+                // multisample
+                let ash_vk_multisample_state = builder.multisample_state.ash_builder().build();
+                // depth stencil
+                let ash_vk_depth_stencil_state = builder.depth_stencil_state.ash_builder().build();
+                // color blend
+                let ash_vk_color_blend_state = builder.color_blend_state.ash_builder().build();
+                // dynamic states
+                let ash_vk_dynamic_states =
+                    builder.dynamic_states.iter().cloned().collect::<Vec<_>>();
+                let ash_vk_pipeline_dynamic_state_create_info =
+                    ash::vk::PipelineDynamicStateCreateInfo::builder()
+                        .dynamic_states(ash_vk_dynamic_states.as_slice())
+                        .build();
+                PipelineCreateInfoTmp {
+                    flags: builder.flags,
+                    layout: builder.layout.clone(),
+                    shader_modules_holder,
+                    ash_vk_stages,
+                    ash_vk_vertex_input_state,
+                    ash_vk_input_assembly_state,
+                    ash_vk_tessellation_state,
+                    ash_vk_viewport_state,
+                    ash_vk_rasterization_state,
+                    ash_vk_multisample_state,
+                    ash_vk_depth_stencil_state,
+                    ash_vk_color_blend_state,
+                    _ash_vk_dynamic_states: ash_vk_dynamic_states,
+                    ash_vk_pipeline_dynamic_state_create_info,
+                    render_pass_holder: builder.render_pass.clone(),
+                }
+            })
+            .collect::<Vec<_>>();
+        let create_infos = vk_tmps
+            .iter()
+            .map(|vk_tmp| {
+                let mut create_info_builder = ash::vk::GraphicsPipelineCreateInfo::builder()
+                    .flags(vk_tmp.flags)
+                    .stages(vk_tmp.ash_vk_stages.as_slice())
+                    .vertex_input_state(&vk_tmp.ash_vk_vertex_input_state)
+                    .input_assembly_state(&vk_tmp.ash_vk_input_assembly_state)
+                    .tessellation_state(&vk_tmp.ash_vk_tessellation_state)
+                    .viewport_state(&vk_tmp.ash_vk_viewport_state)
+                    .rasterization_state(&vk_tmp.ash_vk_rasterization_state)
+                    .multisample_state(&vk_tmp.ash_vk_multisample_state)
+                    .depth_stencil_state(&vk_tmp.ash_vk_depth_stencil_state)
+                    .color_blend_state(&vk_tmp.ash_vk_color_blend_state)
+                    .layout(vk_tmp.layout.ash_vk_pipeline_layout)
+                    .dynamic_state(&vk_tmp.ash_vk_pipeline_dynamic_state_create_info);
+                if let Some((render_pass, subpass_index)) = &vk_tmp.render_pass_holder {
+                    create_info_builder = create_info_builder
+                        .render_pass(render_pass.ash_vk_renderpass)
+                        .subpass(*subpass_index);
+                }
+                create_info_builder.build()
+            })
+            .collect::<Vec<_>>();
+        // TODO deal with VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT
+        unsafe {
+            let vk_pipelines = match self.ash_device.create_graphics_pipelines(
+                pipeline_cache.to_vk_types(),
+                create_infos.as_slice(),
+                None,
+            ) {
+                Ok(vk_pipelines) => vk_pipelines,
+                Err((_, error)) => {
+                    return Err(error);
+                }
+            };
+            let pipelines = vk_pipelines
+                .into_iter()
+                .enumerate()
+                .map(|(index, ash_vk_pipeline)| {
+                    Arc::new(Pipeline {
+                        device: builders[index].device.clone(),
+                        pipeline_layout: builders[index].layout.clone(),
+                        _render_pass_holder: if let Some((render_pass, _)) =
+                            &vk_tmps[index].render_pass_holder
+                        {
+                            Some(render_pass.clone())
+                        } else {
+                            None
+                        },
+                        _shader_modules_holder: std::mem::take(
+                            &mut vk_tmps[index].shader_modules_holder,
+                        ),
+                        ash_vk_pipeline,
+                    })
+                })
+                .collect();
+            Ok(pipelines)
+        }
     }
 }
 
