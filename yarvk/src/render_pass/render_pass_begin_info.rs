@@ -57,9 +57,24 @@ impl RenderPassBeginInfo {
 }
 
 impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
-    // DONE VUID-vkCmdBeginRenderPass-commandBuffer-recording
-    // DONE VUID-vkCmdEndRenderPass-commandBuffer-recording
-    pub fn cmd_begin_render_pass<F>(
+    pub fn cmd_begin_render_pass(
+        mut self,
+        create_info: Arc<RenderPassBeginInfo>,
+        contents: ash::vk::SubpassContents,
+    ) -> CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }> {
+        unsafe {
+            // Host Synchronization: commandBuffer, VkCommandPool
+            self.device.ash_device.cmd_begin_render_pass(
+                self.vk_command_buffer,
+                &create_info.ash_builder().build(),
+                contents,
+            );
+        }
+        self.holding_resources.render_pass = Some(create_info.render_pass.clone());
+        self.holding_resources.framebuffers = Some(create_info.framebuffer.clone());
+        unsafe { std::mem::transmute(self) }
+    }
+    pub fn cmd_during_render_pass<F>(
         &mut self,
         create_info: Arc<RenderPassBeginInfo>,
         contents: ash::vk::SubpassContents,
@@ -87,12 +102,30 @@ impl CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
                 .ash_device
                 .cmd_end_render_pass(self.vk_command_buffer);
         }
-        self.holding_resources
-            .render_pass
-            .push(create_info.render_pass.clone());
-        self.holding_resources
-            .framebuffers
-            .push(create_info.framebuffer.clone());
+        self.holding_resources.render_pass = None;
+        self.holding_resources.framebuffers = None;
         Ok(())
+    }
+}
+
+impl CommandBuffer<{ PRIMARY }, { RECORDING }, { INSIDE }> {
+    pub fn cmd_next_subpass(&mut self, contents: ash::vk::SubpassContents) {
+        unsafe {
+            // Host Synchronization: commandBuffer, VkCommandPool
+            self.device
+                .ash_device
+                .cmd_next_subpass(self.vk_command_buffer, contents)
+        }
+    }
+    pub fn cmd_end_render_pass(mut self) -> CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }> {
+        unsafe {
+            // Host Synchronization: commandBuffer, VkCommandPool
+            self.device
+                .ash_device
+                .cmd_end_render_pass(self.vk_command_buffer);
+        }
+        self.holding_resources.render_pass = None;
+        self.holding_resources.framebuffers = None;
+        unsafe { std::mem::transmute(self) }
     }
 }

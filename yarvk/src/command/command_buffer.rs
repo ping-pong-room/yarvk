@@ -142,8 +142,8 @@ pub(crate) struct HoldingResources {
     pub pipeline_layouts: FxHashMap<u64, Arc<PipelineLayout>>,
     pub pipelines: FxHashMap<u64, Arc<Pipeline>>,
     pub descriptor_sets: FxHashMap<u64, Arc<dyn IDescriptorSet>>,
-    pub framebuffers: Vec<Arc<Framebuffer>>,
-    pub render_pass: Vec<Arc<RenderPass>>,
+    pub framebuffers: Option<Arc<Framebuffer>>,
+    pub render_pass: Option<Arc<RenderPass>>,
 }
 
 impl HoldingResources {
@@ -155,8 +155,8 @@ impl HoldingResources {
         self.pipeline_layouts.clear();
         self.pipelines.clear();
         self.descriptor_sets.clear();
-        self.render_pass.clear();
-        self.framebuffers.clear();
+        self.render_pass = None;
+        self.framebuffers = None;
     }
 }
 
