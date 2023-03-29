@@ -31,7 +31,7 @@ pub mod viewport_state;
 
 pub struct PipelineLayout {
     pub device: Arc<Device>,
-    _set_layouts: Vec<Arc<dyn IDescriptorSetLayout + Send + Sync>>,
+    pub set_layouts: Vec<Arc<dyn IDescriptorSetLayout + Send + Sync>>,
     pub(crate) ash_vk_pipeline_layout: ash::vk::PipelineLayout,
 }
 
@@ -126,7 +126,7 @@ impl PipelineLayoutBuilder {
                 .create_pipeline_layout(&create_info, None)?;
             Ok(Arc::new(PipelineLayout {
                 device: self.device,
-                _set_layouts: self.set_layouts,
+                set_layouts: self.set_layouts,
                 ash_vk_pipeline_layout,
             }))
         }
@@ -232,15 +232,8 @@ pub struct PipelineBuilder<'a> {
 }
 
 impl<'a> PipelineBuilder<'a> {
-    pub fn externally_synchronized_pipeline_cache(
-        mut self,
-        pipeline_cache: &'a mut PipelineCacheImpl<true>,
-    ) -> Self {
-        self.pipeline_cache = PipelineCacheType::ExternallySynchronized(pipeline_cache);
-        self
-    }
-    pub fn pipeline_cache(mut self, pipeline_cache: &'a PipelineCacheImpl<false>) -> Self {
-        self.pipeline_cache = PipelineCacheType::InternallySynchronized(pipeline_cache);
+    pub fn cache(mut self, pipeline_cache: PipelineCacheType<'a>) -> Self {
+        self.pipeline_cache = pipeline_cache;
         self
     }
     pub fn flags(mut self, flags: ash::vk::PipelineCreateFlags) -> Self {
