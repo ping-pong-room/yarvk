@@ -7,6 +7,7 @@ pub struct Semaphore {
 }
 
 impl Semaphore {
+    // TODO should return Arc, but present queue need a mutable semaphore, why?
     pub fn new(device: &Arc<Device>) -> Result<Semaphore, ash::vk::Result> {
         let create_info = ash::vk::SemaphoreCreateInfo::builder().build();
         let ash_vk_semaphore = unsafe {

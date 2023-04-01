@@ -1,1 +1,1 @@
-1. Advantage of using vkBindBufferMemory2, does this just reduce api calls, or it has other benefits.
+1. Why present queue need a mutable semophore?

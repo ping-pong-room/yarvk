@@ -240,32 +240,29 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
     }
 }
 
-impl<const STATE: State> CommandBuffer<{ PRIMARY }, STATE, { OUTSIDE }> {
-    // DONE VUID-vkBeginCommandBuffer-commandBuffer-02840
-    pub fn begin(
-        mut self,
-    ) -> Result<CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>, ash::vk::Result> {
-        self.holding_resources.clear();
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
-        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
-        // Host Synchronization:commandBuffer, VkCommandPool
-        let begin_info = ash::vk::CommandBufferBeginInfo::builder()
-            .flags(ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT)
-            .build();
-        unsafe {
-            self.device
-                .ash_device
-                .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
-        }
-        Ok(unsafe { std::mem::transmute(self) })
-    }
-}
-
 macro_rules! primary_record_impls {
     ($($stage: expr),*) => {$(
         impl CommandBuffer<{ PRIMARY }, { $stage }, { OUTSIDE }> {
+            // DONE VUID-vkBeginCommandBuffer-commandBuffer-02840
+            pub fn begin(
+                mut self,
+            ) -> Result<CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>, ash::vk::Result> {
+                self.holding_resources.clear();
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
+                // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
+                // Host Synchronization:commandBuffer, VkCommandPool
+                let begin_info = ash::vk::CommandBufferBeginInfo::builder()
+                    .flags(ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT)
+                    .build();
+                unsafe {
+                    self.device
+                        .ash_device
+                        .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
+                }
+                Ok(unsafe { std::mem::transmute(self) })
+            }
             pub fn record(self, f: impl FnOnce(&mut CommandBuffer<{ PRIMARY }, { RECORDING }, { OUTSIDE }>) -> Result<(), ash::vk::Result>)
                              -> Result<CommandBuffer<{ PRIMARY }, { EXECUTABLE }, { OUTSIDE }>, ash::vk::Result>
             {
@@ -279,39 +276,36 @@ macro_rules! primary_record_impls {
 
 primary_record_impls!(INITIAL, EXECUTABLE, INVALID);
 
-impl<const STATE: State> CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }> {
-    pub fn begin<const SCOPE: RenderPassScope>(
-        mut self,
-        inheritance_info: Arc<CommandBufferInheritanceInfo>,
-    ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE>, ash::vk::Result> {
-        self.holding_resources.clear();
-        self.inheritance_info = inheritance_info;
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
-        // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
-        // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
-        // Host Synchronization:commandBuffer, VkCommandPool
-        let mut flags = ash::vk::CommandBufferUsageFlags::default();
-        flags |= ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
-        if SCOPE == INSIDE {
-            flags |= ash::vk::CommandBufferUsageFlags::RENDER_PASS_CONTINUE;
-        };
-        let begin_info = ash::vk::CommandBufferBeginInfo::builder()
-            .flags(flags)
-            .inheritance_info(&self.inheritance_info.ash_vk_info)
-            .build();
-        unsafe {
-            self.device
-                .ash_device
-                .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
-        }
-        Ok(unsafe { std::mem::transmute(self) })
-    }
-}
-
 macro_rules! secondary_record_impls {
     ($($stage: expr),*) => {$(
         impl CommandBuffer<{ SECONDARY }, { $stage },  { OUTSIDE }> {
+            pub fn begin<const SCOPE: RenderPassScope>(
+                mut self,
+                inheritance_info: Arc<CommandBufferInheritanceInfo>,
+            ) -> Result<CommandBuffer<{ SECONDARY }, { RECORDING }, SCOPE>, ash::vk::Result> {
+                self.holding_resources.clear();
+                self.inheritance_info = inheritance_info;
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00049
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00050
+                // VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT is forced to be set in yarvk
+                // DONE VUID-vkBeginCommandBuffer-commandBuffer-00051
+                // Host Synchronization:commandBuffer, VkCommandPool
+                let mut flags = ash::vk::CommandBufferUsageFlags::default();
+                flags |= ash::vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT;
+                if SCOPE == INSIDE {
+                    flags |= ash::vk::CommandBufferUsageFlags::RENDER_PASS_CONTINUE;
+                };
+                let begin_info = ash::vk::CommandBufferBeginInfo::builder()
+                    .flags(flags)
+                    .inheritance_info(&self.inheritance_info.ash_vk_info)
+                    .build();
+                unsafe {
+                    self.device
+                        .ash_device
+                        .begin_command_buffer(self.vk_command_buffer, &begin_info)?;
+                }
+                Ok(unsafe { std::mem::transmute(self) })
+            }
             pub fn record(self,
                             inheritance_info: Arc<CommandBufferInheritanceInfo>, f: impl FnOnce(&mut CommandBuffer<{ SECONDARY }, { RECORDING },  { OUTSIDE }>) -> Result<(), ash::vk::Result>)
                              -> Result<CommandBuffer<{ SECONDARY }, { EXECUTABLE },  { OUTSIDE }>, ash::vk::Result>

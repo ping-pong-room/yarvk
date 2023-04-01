@@ -145,6 +145,7 @@ impl<'a> Submittable<'a> {
         self.submit_infos.push(submit_info);
         self
     }
+    // TODO fence is optional
     pub fn submit(
         mut self,
         queue: &mut Queue,
