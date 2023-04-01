@@ -1,5 +1,5 @@
 use crate::command::command_buffer::CommandBuffer;
-use crate::command::command_buffer::Level::PRIMARY;
+use crate::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use crate::command::command_buffer::RenderPassScope::OUTSIDE;
 use crate::command::command_buffer::State::{EXECUTABLE, INITIAL, INVALID};
 use crate::command::constant_command_buffer::ConstantCommandBuffer;
@@ -218,10 +218,12 @@ pub struct SubmitResult {
 impl SubmitResult {
     pub fn add_primary_buffer(
         &mut self,
-        buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
+        mut primary_buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
+        secondary_buffers: Vec<CommandBuffer<{SECONDARY}, {INITIAL}, {OUTSIDE}>>,
     ) {
+        primary_buffer.secondary_buffers = secondary_buffers;
         self.invalid_command_buffers
-            .insert(buffer.handle(), unsafe { std::mem::transmute(buffer) });
+            .insert(primary_buffer.handle(), unsafe { std::mem::transmute(primary_buffer) });
     }
     pub fn take_invalid_primary_buffer(
         &mut self,
