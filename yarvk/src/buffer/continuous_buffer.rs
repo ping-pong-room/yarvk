@@ -141,6 +141,7 @@ impl UnboundResource for UnboundContinuousBuffer {
     }
 }
 
+#[derive(Clone)]
 pub struct ContinuousBufferBuilder {
     device: Arc<Device>,
     flags: ash::vk::BufferCreateFlags,

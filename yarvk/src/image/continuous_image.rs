@@ -23,6 +23,7 @@ impl ContinuousImage {
     }
 }
 
+#[derive(Clone)]
 pub struct ContinuousImageBuilder {
     device: Arc<Device>,
     inner: ImageCreateInfo,
@@ -37,6 +38,9 @@ impl ContinuousImageBuilder {
     }
     pub fn format(&mut self, format: ash::vk::Format) {
         self.inner.format = format;
+    }
+    pub fn get_format(&self) -> ash::vk::Format {
+        self.inner.format
     }
     pub fn extent(&mut self, extent: ash::vk::Extent3D) {
         self.inner.extent = extent;
