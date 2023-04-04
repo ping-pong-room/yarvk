@@ -64,6 +64,16 @@ impl<const EXTERNALLY_SYNCHRONIZED: bool> PipelineCacheImpl<EXTERNALLY_SYNCHRONI
     }
 }
 
+impl<const EXTERNALLY_SYNCHRONIZED: bool> Drop for PipelineCacheImpl<EXTERNALLY_SYNCHRONIZED> {
+    fn drop(&mut self) {
+        unsafe {
+            self.device
+                .ash_device
+                .destroy_pipeline_cache(self.vk_pipeline_cache, None)
+        }
+    }
+}
+
 pub struct PipelineCacheBuilder<'a> {
     device: Arc<Device>,
     initial_data: Option<&'a [u8]>,
