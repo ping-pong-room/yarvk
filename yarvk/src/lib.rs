@@ -94,6 +94,7 @@ pub use ash::vk::PhysicalDeviceFragmentShadingRateEnumsPropertiesNV;
 pub use ash::vk::PhysicalDeviceFragmentShadingRatePropertiesKHR;
 pub use ash::vk::PhysicalDeviceIDProperties;
 pub use ash::vk::PhysicalDeviceInlineUniformBlockProperties;
+pub use ash::vk::PhysicalDeviceLimits;
 pub use ash::vk::PhysicalDeviceLineRasterizationPropertiesEXT;
 pub use ash::vk::PhysicalDeviceMaintenance3Properties;
 pub use ash::vk::PhysicalDeviceMaintenance4Properties;

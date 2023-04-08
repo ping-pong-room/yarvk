@@ -28,6 +28,7 @@ pub struct PhysicalDevice {
     pub(crate) vk_physical_device: ash::vk::PhysicalDevice,
     pub(crate) supported_extensions: FxHashSet<PhysicalDeviceExtensionType>,
     pub(crate) memory_properties: PhysicalDeviceMemoryProperties,
+    pub(super) physical_device_properties: ash::vk::PhysicalDeviceProperties,
 }
 
 impl PhysicalDevice {
@@ -46,11 +47,18 @@ impl PhysicalDevice {
                 }).collect();
         let memory_properties =
             Self::memory_properties_inner(&instance.ash_instance, vk_physical_device);
+        let physical_device_properties = unsafe {
+            // Host Synchronization: none
+            instance
+                .ash_instance
+                .get_physical_device_properties(vk_physical_device)
+        };
         Ok(Arc::new(Self {
             instance,
             vk_physical_device,
             supported_extensions,
             memory_properties,
+            physical_device_properties,
         }))
     }
 
