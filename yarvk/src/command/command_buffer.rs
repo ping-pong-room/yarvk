@@ -149,14 +149,14 @@ pub(crate) struct HoldingResources {
 impl HoldingResources {
     fn clear(&mut self) {
         self.write_images.clear();
-        self.read_images.clear();
         self.write_buffers.clear();
+        self.read_images.clear();
         self.read_buffers.clear();
         self.pipeline_layouts.clear();
         self.pipelines.clear();
         self.descriptor_sets.clear();
-        self.render_pass = None;
         self.framebuffers = None;
+        self.render_pass = None;
     }
 }
 

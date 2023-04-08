@@ -243,6 +243,7 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
         dst_offset: ash::vk::DeviceSize,
         data: &[u8],
     ) {
+        self.holding_resources.write_buffers.insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
         unsafe {
             self.device.ash_device.cmd_update_buffer(
                 self.vk_command_buffer,
@@ -259,6 +260,8 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
         dst_buffer: Arc<IBuffer>,
         regions: &[ash::vk::BufferCopy],
     ) {
+        self.holding_resources.read_buffers.insert(src_buffer.ash_vk_buffer.as_raw(), src_buffer.clone());
+        self.holding_resources.write_buffers.insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
         unsafe {
             self.device.ash_device.cmd_copy_buffer(
                 self.vk_command_buffer,
