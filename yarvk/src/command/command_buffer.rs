@@ -378,13 +378,12 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE
 impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE> {
     pub fn cmd_execute_commands(
         &mut self,
-        secondary_command_buffers: &mut Vec<
+        secondary_command_buffers: Vec<
             CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>,
         >,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
-        while !secondary_command_buffers.is_empty() {
-            let buffer = secondary_command_buffers.pop().unwrap();
+        for buffer in secondary_command_buffers {
             vk_buffers.push(buffer.vk_command_buffer);
             let buffer = unsafe { std::mem::transmute(buffer) };
             self.secondary_buffers.push(buffer);

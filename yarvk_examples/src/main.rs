@@ -999,7 +999,7 @@ fn main() {
                         });
                         Ok(())
                      }).unwrap();
-                render_pass_command_buffer.cmd_execute_commands(&mut vec);
+                render_pass_command_buffer.cmd_execute_commands(vec);
                 let recording_command_buffer = render_pass_command_buffer.cmd_end_render_pass();
                 let command_buffer = recording_command_buffer.end().unwrap();
                 let submit_info = SubmitInfo::builder()
