@@ -59,6 +59,7 @@ impl<T: DescriptorSetValue> DescriptorPool<T> {
     pub fn allocate(self: &Arc<Self>) -> Option<DescriptorSet<T>> {
         if let Some(ash_vk_descriptor_set) = self.unused_descriptor_sets.pop() {
             Some(DescriptorSet {
+                device: self.device.clone(),
                 ash_vk_descriptor_set,
                 value: None,
                 _descriptor_pool: self.clone(),

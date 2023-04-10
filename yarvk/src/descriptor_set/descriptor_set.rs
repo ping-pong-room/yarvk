@@ -5,6 +5,7 @@ use crate::descriptor_set::private::{PrivateConstDescriptorSetValue, PrivateDesc
 use crate::pipeline::PipelineLayout;
 use ash::vk::Handle;
 use std::sync::Arc;
+use crate::device::Device;
 
 #[const_trait]
 pub trait DescriptorSetValue: PrivateDescriptorSetValue + Send + Sync {
@@ -17,6 +18,7 @@ pub trait IDescriptorSet: Sync + Send {
 }
 
 pub struct DescriptorSet<T: DescriptorSetValue> {
+    pub device: Arc<Device>,
     pub(crate) ash_vk_descriptor_set: ash::vk::DescriptorSet,
     pub(crate) value: Option<T>,
     pub(crate) _descriptor_pool: Arc<DescriptorPool<T>>,

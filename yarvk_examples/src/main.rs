@@ -936,7 +936,7 @@ fn main() {
                 );
                 let secondary_buffer = secondary_command_buffer.take().unwrap();
                 let vec = vec![secondary_buffer];
-                let mut vec = CommandBuffer
+                let vec = CommandBuffer
                     ::<{ SECONDARY }, { INITIAL }, { OUTSIDE }>
                     ::record_render_pass_continue_buffers
                     (vec, inheritance_info.clone(),
