@@ -1,6 +1,8 @@
 #![feature(const_trait_impl)]
 #![feature(const_convert)]
 
+use raw_window_handle::HasRawDisplayHandle;
+use raw_window_handle::HasRawWindowHandle;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Cursor;
@@ -8,6 +10,7 @@ use std::sync::Arc;
 use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
+
 use yarvk::barrier::ImageMemoryBarrier;
 use yarvk::command::command_buffer::Level::{PRIMARY, SECONDARY};
 use yarvk::command::command_buffer::RenderPassScope::OUTSIDE;
@@ -18,13 +21,12 @@ use yarvk::command::command_buffer::{
 use yarvk::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use yarvk::descriptor_set::desccriptor_pool::DescriptorPool;
 use yarvk::descriptor_set::descriptor_set::{DescriptorSetValue, IDescriptorSet};
-use yarvk::descriptor_set::descriptor_type::DescriptorKind;
-use yarvk::device::{Device, DeviceQueueCreateInfo};
-
 use yarvk::descriptor_set::descriptor_set_layout::DescriptorSetLayout;
+use yarvk::descriptor_set::descriptor_type::DescriptorKind;
 use yarvk::descriptor_set::descriptor_variadic_generics::{
     ConstDescriptorSetValue2, DescriptorSetValue2,
 };
+use yarvk::device::{Device, DeviceQueueCreateInfo};
 use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
@@ -79,6 +81,7 @@ use yarvk::{
     StencilOp, StencilOpState, SubpassContents, SurfaceTransformFlagsKHR, VertexInputRate,
     Viewport, SUBPASS_EXTERNAL,
 };
+
 #[macro_export]
 macro_rules! offset_of {
     ($base:path, $field:ident) => {{
@@ -166,7 +169,7 @@ fn main() {
         .unwrap();
 
     let entry = Entry::load().unwrap();
-    let surface_extensions = enumerate_required_extensions(&window).unwrap();
+    let surface_extensions = enumerate_required_extensions(window.raw_display_handle()).unwrap();
 
     let layer = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
     let debug_utils_messenger_callback = DebugUtilsMessengerCreateInfoEXT::builder()
@@ -207,7 +210,8 @@ fn main() {
                 .filter_map(|queue_family_properties| {
                     if let Some(surface) = Surface::get_physical_device_surface_support(
                         khr_surface_ext.clone(),
-                        &window,
+                        window.raw_display_handle(),
+                        window.raw_window_handle(),
                         &queue_family_properties,
                     )
                     .unwrap()
@@ -560,7 +564,7 @@ fn main() {
 
     let image = image::load_from_memory(include_bytes!("rust.png"))
         .unwrap()
-        .to_rgba8();
+        .to_bgra8();
     let (width, height) = image.dimensions();
     let image_extent = Extent2D { width, height };
     let image_data = image.into_raw();
@@ -593,7 +597,7 @@ fn main() {
     // mapped_ranges.flush().unwrap();
     let image_buffer = Arc::new(image_buffer.bind_memory(&image_buffer_memory, 0).unwrap());
     image_builder.image_type(ImageType::TYPE_2D);
-    image_builder.format(Format::R8G8B8A8_UNORM);
+    image_builder.format(Format::from_raw(44));
     image_builder.extent(image_extent.into());
     image_builder.mip_levels(1);
     image_builder.array_layers(1);
@@ -635,7 +639,7 @@ fn main() {
 
     let tex_image_view = ImageView::builder(texture_image.clone())
         .view_type(ImageViewType::Type2d)
-        .format(Format::R8G8B8A8_UNORM)
+        .format(Format::from_raw(44))
         .components(ComponentMapping {
             r: ComponentSwizzle::R,
             g: ComponentSwizzle::G,
@@ -930,10 +934,11 @@ fn main() {
                 );
                 let command_buffer = draw_command_buffer.take().unwrap();
                 let recording_command_buffer = command_buffer.begin().unwrap();
-                let mut render_pass_command_buffer = recording_command_buffer.cmd_begin_render_pass(
-                    render_pass_begin_info.clone(),
-                    SubpassContents::SECONDARY_COMMAND_BUFFERS,
-                );
+                let mut render_pass_command_buffer = recording_command_buffer
+                    .cmd_begin_render_pass(
+                        render_pass_begin_info.clone(),
+                        SubpassContents::SECONDARY_COMMAND_BUFFERS,
+                    );
                 let secondary_buffer = secondary_command_buffer.take().unwrap();
                 let vec = vec![secondary_buffer];
                 let vec = CommandBuffer

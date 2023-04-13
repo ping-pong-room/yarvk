@@ -1,7 +1,8 @@
 use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
 use crate::physical_device::PhysicalDevice;
-use raw_window_handle::HasRawWindowHandle;
+use raw_window_handle::RawWindowHandle;
+use raw_window_handle::RawDisplayHandle;
 use std::sync::Arc;
 
 pub struct DisplayNativeHdrSurfaceCapabilitiesAMD {
@@ -32,7 +33,8 @@ pub struct Surface {
 impl Surface {
     pub fn get_physical_device_surface_support(
         _surface_ext: InstanceExtension<{ PhysicalInstanceExtensionType::KhrSurface }>,
-        window_handle: &dyn HasRawWindowHandle,
+        display_handle: RawDisplayHandle,
+        window_handle: RawWindowHandle,
         queue_family: &QueueFamilyProperties,
     ) -> Result<Option<Arc<Self>>, ash::vk::Result> {
         let physical_device = &queue_family.physical_device;
@@ -41,6 +43,7 @@ impl Surface {
             crate::window::create_surface(
                 &instance.entry.ash_entry,
                 &instance.ash_instance,
+                display_handle,
                 window_handle,
                 None,
             )?
