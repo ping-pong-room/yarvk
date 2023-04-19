@@ -940,70 +940,56 @@ fn main() {
                         SubpassContents::SECONDARY_COMMAND_BUFFERS,
                     );
                 let secondary_buffer = secondary_command_buffer.take().unwrap();
-                let vec = vec![secondary_buffer];
-                let vec = CommandBuffer
-                    ::<{ SECONDARY }, { INITIAL }, { OUTSIDE }>
-                    ::record_render_pass_continue_buffers
-                    (vec, inheritance_info.clone(),
-                     |command_buffers| {
-                        let command_buffer =
-                            command_buffers.iter_mut().next().unwrap();
-                        // use thread pool in real cases
-                        std::thread::scope(|s| {
-                            s.spawn(|| {
-                                command_buffer.cmd_set_viewport(&Viewport {
-                                    x: 0.0,
-                                    y: 0.0,
-                                    width: surface_resolution.width as f32,
-                                    height: surface_resolution.height as f32,
-                                    min_depth: 0.0,
-                                    max_depth: 1.0,
-                                });
-                                command_buffer.cmd_set_scissor(&Rect2D {
-                                    extent: surface_resolution,
-                                    ..Default::default()
-                                });
-                                command_buffer.cmd_bind_pipeline(
-                                    PipelineBindPoint::GRAPHICS,
-                                    graphic_pipeline.clone(),
-                                );
-                                // command_buffer.cmd_bind_descriptor_sets(
-                                //     PipelineBindPoint::GRAPHICS,
-                                //     pipeline_layout.clone(),
-                                //     0,
-                                //     [descriptor_set.clone()],
-                                //     &[],
-                                // );
-                                command_buffer.cmd_bind_descriptor_sets(
-                                    PipelineBindPoint::GRAPHICS,
-                                    pipeline_layout.clone(),
-                                    0,
-                                    [descriptor_set.clone()],
-                                    &[],
-                                );
-                                command_buffer.cmd_bind_vertex_buffers(
-                                    0,
-                                    [vertex_input_buffer.clone() as _],
-                                    &[0],
-                                );
-                                command_buffer.cmd_bind_index_buffer(
-                                    index_buffer.clone(),
-                                    0,
-                                    IndexType::UINT32,
-                                );
-                                command_buffer.cmd_draw_indexed(
-                                    index_buffer_data.len() as u32,
-                                    1,
-                                    0,
-                                    0,
-                                    1,
-                                );
-                            })
-                            .join()
-                            .unwrap();
+                let mut command_buffer = secondary_buffer.begin(inheritance_info.clone()).unwrap();
+                // use thread pool in real cases
+                std::thread::scope(|s| {
+                    s.spawn(|| {
+                        command_buffer.cmd_set_viewport(&Viewport {
+                            x: 0.0,
+                            y: 0.0,
+                            width: surface_resolution.width as f32,
+                            height: surface_resolution.height as f32,
+                            min_depth: 0.0,
+                            max_depth: 1.0,
                         });
-                        Ok(())
-                     }).unwrap();
+                        command_buffer.cmd_set_scissor(&Rect2D {
+                            extent: surface_resolution,
+                            ..Default::default()
+                        });
+                        command_buffer.cmd_bind_pipeline(
+                            PipelineBindPoint::GRAPHICS,
+                            graphic_pipeline.clone(),
+                        );
+                        // command_buffer.cmd_bind_descriptor_sets(
+                        //     PipelineBindPoint::GRAPHICS,
+                        //     pipeline_layout.clone(),
+                        //     0,
+                        //     [descriptor_set.clone()],
+                        //     &[],
+                        // );
+                        command_buffer.cmd_bind_descriptor_sets(
+                            PipelineBindPoint::GRAPHICS,
+                            pipeline_layout.clone(),
+                            0,
+                            [descriptor_set.clone()],
+                            &[],
+                        );
+                        command_buffer.cmd_bind_vertex_buffers(
+                            0,
+                            [vertex_input_buffer.clone() as _],
+                            &[0],
+                        );
+                        command_buffer.cmd_bind_index_buffer(
+                            index_buffer.clone(),
+                            0,
+                            IndexType::UINT32,
+                        );
+                        command_buffer.cmd_draw_indexed(index_buffer_data.len() as u32, 1, 0, 0, 1);
+                    })
+                    .join()
+                    .unwrap();
+                });
+                let vec = vec![command_buffer.end().unwrap()];
                 render_pass_command_buffer.cmd_execute_commands(vec);
                 let recording_command_buffer = render_pass_command_buffer.cmd_end_render_pass();
                 let command_buffer = recording_command_buffer.end().unwrap();

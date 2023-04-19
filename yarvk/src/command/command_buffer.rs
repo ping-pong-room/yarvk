@@ -11,8 +11,6 @@ use crate::pipeline::{Pipeline, PipelineLayout};
 use crate::render_pass::RenderPass;
 use crate::IImage;
 use ash::vk::Handle;
-use rayon::iter::IntoParallelRefMutIterator;
-use rayon::iter::ParallelIterator;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
@@ -169,41 +167,41 @@ pub struct CommandBuffer<const LEVEL: Level, const STATE: State, const SCOPE: Re
     pub(crate) secondary_buffers: Vec<CommandBuffer<{ SECONDARY }, STATE, { OUTSIDE }>>,
 }
 
-pub fn par_for_each<
-    const S1: Level,
-    const S2: State,
-    const S3: RenderPassScope,
-    const T1: Level,
-    const T2: State,
-    const T3: RenderPassScope,
->(
-    source: Vec<CommandBuffer<S1, S2, S3>>,
-    f: impl Fn(CommandBuffer<S1, S2, S3>) -> Result<CommandBuffer<T1, T2, T3>, ash::vk::Result> + Sync,
-) -> Result<Vec<CommandBuffer<T1, T2, T3>>, ash::vk::Result> {
-    unsafe {
-        let mut buffers: Vec<CommandBuffer<T1, T2, T3>> = std::mem::transmute(source);
-        let results = buffers
-            .par_iter_mut()
-            .map(|command_buffer| {
-                let temp = std::ptr::read(command_buffer);
-                let temp: CommandBuffer<S1, S2, S3> = std::mem::transmute(temp);
-                match f(temp) {
-                    Ok(temp) => {
-                        std::ptr::write(command_buffer, temp);
-                        ash::vk::Result::SUCCESS
-                    }
-                    Err(err) => err,
-                }
-            })
-            .collect::<Vec<ash::vk::Result>>();
-        for result in &results {
-            if *result != ash::vk::Result::SUCCESS {
-                return Err(*result);
-            }
-        }
-        Ok(buffers)
-    }
-}
+// pub fn par_for_each<
+//     const S1: Level,
+//     const S2: State,
+//     const S3: RenderPassScope,
+//     const T1: Level,
+//     const T2: State,
+//     const T3: RenderPassScope,
+// >(
+//     source: Vec<CommandBuffer<S1, S2, S3>>,
+//     f: impl Fn(CommandBuffer<S1, S2, S3>) -> Result<CommandBuffer<T1, T2, T3>, ash::vk::Result> + Sync,
+// ) -> Result<Vec<CommandBuffer<T1, T2, T3>>, ash::vk::Result> {
+//     unsafe {
+//         let mut buffers: Vec<CommandBuffer<T1, T2, T3>> = std::mem::transmute(source);
+//         let results = buffers
+//             .par_iter_mut()
+//             .map(|command_buffer| {
+//                 let temp = std::ptr::read(command_buffer);
+//                 let temp: CommandBuffer<S1, S2, S3> = std::mem::transmute(temp);
+//                 match f(temp) {
+//                     Ok(temp) => {
+//                         std::ptr::write(command_buffer, temp);
+//                         ash::vk::Result::SUCCESS
+//                     }
+//                     Err(err) => err,
+//                 }
+//             })
+//             .collect::<Vec<ash::vk::Result>>();
+//         for result in &results {
+//             if *result != ash::vk::Result::SUCCESS {
+//                 return Err(*result);
+//             }
+//         }
+//         Ok(buffers)
+//     }
+// }
 
 impl<const LEVEL: Level, const STATE: State, const SCOPE: RenderPassScope> crate::Handle
     for CommandBuffer<LEVEL, STATE, SCOPE>
@@ -322,36 +320,36 @@ macro_rules! secondary_record_impls {
                 f(&mut recording_buffer)?;
                 recording_buffer.end()
             }
-            pub fn record_buffers(
-                buffers: Vec<Self>,
-                inheritance_info: Arc<CommandBufferInheritanceInfo>,
-                f: impl FnOnce(
-                    &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { OUTSIDE }>],
-                ) -> Result<(), ash::vk::Result>,
-            ) -> Result<
-                Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
-                ash::vk::Result,
-            > {
-                let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ OUTSIDE }>(inheritance_info.clone()))?;
-                f(buffers.as_mut_slice())?;
-                let buffers = par_for_each(buffers, |buffer| buffer.end())?;
-                Ok(buffers)
-            }
-            pub fn record_render_pass_continue_buffers(
-                buffers: Vec<Self>,
-                inheritance_info: Arc<CommandBufferInheritanceInfo>,
-                f: impl FnOnce(
-                    &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { INSIDE }>],
-                ) -> Result<(), ash::vk::Result>,
-            ) -> Result<
-                Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
-                ash::vk::Result,
-            > {
-                let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ INSIDE }>(inheritance_info.clone()))?;
-                f(buffers.as_mut_slice())?;
-                let buffers = par_for_each(buffers, |buffer| buffer.end())?;
-                Ok(buffers)
-            }
+            // pub fn record_buffers(
+            //     buffers: Vec<Self>,
+            //     inheritance_info: Arc<CommandBufferInheritanceInfo>,
+            //     f: impl FnOnce(
+            //         &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { OUTSIDE }>],
+            //     ) -> Result<(), ash::vk::Result>,
+            // ) -> Result<
+            //     Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
+            //     ash::vk::Result,
+            // > {
+            //     let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ OUTSIDE }>(inheritance_info.clone()))?;
+            //     f(buffers.as_mut_slice())?;
+            //     let buffers = par_for_each(buffers, |buffer| buffer.end())?;
+            //     Ok(buffers)
+            // }
+            // pub fn record_render_pass_continue_buffers(
+            //     buffers: Vec<Self>,
+            //     inheritance_info: Arc<CommandBufferInheritanceInfo>,
+            //     f: impl FnOnce(
+            //         &mut [CommandBuffer<{ SECONDARY }, { RECORDING }, { INSIDE }>],
+            //     ) -> Result<(), ash::vk::Result>,
+            // ) -> Result<
+            //     Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
+            //     ash::vk::Result,
+            // > {
+            //     let mut buffers = par_for_each(buffers, |buffer| buffer.begin::<{ INSIDE }>(inheritance_info.clone()))?;
+            //     f(buffers.as_mut_slice())?;
+            //     let buffers = par_for_each(buffers, |buffer| buffer.end())?;
+            //     Ok(buffers)
+            // }
         }
     )*};
 }
