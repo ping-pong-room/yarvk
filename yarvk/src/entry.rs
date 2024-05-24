@@ -1,4 +1,4 @@
-use crate::extensions::PhysicalInstanceExtensionType;
+use crate::extensions::InstanceExtension;
 use std::ffi::CStr;
 use std::sync::Arc;
 
@@ -12,19 +12,14 @@ impl Entry {
             ash_entry: unsafe { ash::Entry::load()? },
         }))
     }
-    pub fn enumerate_instance_extension_properties(
-        &self,
-        layer_name: Option<&CStr>,
-    ) -> Result<Vec<PhysicalInstanceExtensionType>, ash::vk::Result> {
-        Ok(self
-            .ash_entry
-            .enumerate_instance_extension_properties(layer_name)?
+    pub fn supports_extension<EXT: InstanceExtension>(&self, layer_name: Option<&CStr>) -> bool {
+        self.ash_entry
+            .enumerate_instance_extension_properties(layer_name)
+            .unwrap()
             .iter()
-            .filter_map(|ext_props| {
-                PhysicalInstanceExtensionType::from_cstr(unsafe {
-                    CStr::from_ptr(ext_props.extension_name.as_ptr())
-                })
+            .find(|ext_props| unsafe {
+                CStr::from_ptr(ext_props.extension_name.as_ptr()) == EXT::NAME
             })
-            .collect())
+            .is_some()
     }
 }

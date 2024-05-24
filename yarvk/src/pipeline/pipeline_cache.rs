@@ -1,6 +1,5 @@
 use crate::device::Device;
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceVulkan13Features::PipelineCreationCacheControl;
+use crate::device_features::physical_device_pipeline_creation_cache_control_features::FeaturePipelineCreationCacheControl;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
@@ -86,7 +85,7 @@ impl<'a> PipelineCacheBuilder<'a> {
 
     pub fn build_externally_synchronized(
         self,
-        _feature: &Feature<{ PipelineCreationCacheControl.into() }>,
+        _feature: &FeaturePipelineCreationCacheControl,
     ) -> Result<PipelineCacheImpl<true>, ash::vk::Result> {
         let device = self.device.clone();
         let vk_pipeline_cache = self.build(true)?;

@@ -16,7 +16,7 @@ impl<
         const BINDING_0: u32,
         const DESCRIPTOR_KIND_0: DescriptorKind,
         const DESCRIPTOR_COUNTS_0: usize,
-    > const DescriptorSetValue
+    > DescriptorSetValue
     for DescriptorSetValue1<BINDING_0, DESCRIPTOR_KIND_0, DESCRIPTOR_COUNTS_0>
 {
     type ConstDescriptorSetValue =
@@ -54,7 +54,7 @@ impl<
         const BINDING_1: u32,
         const DESCRIPTOR_KIND_1: DescriptorKind,
         const DESCRIPTOR_COUNTS_1: usize,
-    > const DescriptorSetValue
+    > DescriptorSetValue
     for DescriptorSetValue2<
         BINDING_0,
         DESCRIPTOR_KIND_0,

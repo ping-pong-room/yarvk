@@ -9,7 +9,7 @@ pub enum CommandPoolCreateFlags {
     /* yarvk do not reset buffer, either reset pool, or a const command buffer */
     // ResetCommandBuffer,
     // DONE VUID-VkCommandPoolCreateInfo-flags-02860
-    // PROTECTED(Feature<{ ProtectedMemory.into() }>),
+    // PROTECTED(FeatureProtectedMemory),
 }
 
 impl CommandPoolCreateFlags {

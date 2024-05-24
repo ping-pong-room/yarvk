@@ -1,6 +1,4 @@
 #![feature(adt_const_params)]
-#![feature(const_trait_impl)]
-#![feature(const_convert)]
 #![feature(specialization)]
 pub mod barrier;
 pub mod binding_resource;

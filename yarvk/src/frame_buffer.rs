@@ -1,6 +1,5 @@
 use crate::device::Device;
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceVulkan12Features::ImagelessFramebuffer;
+use crate::device_features::physical_device_imageless_framebuffer_features::FeatureImagelessFramebuffer;
 use crate::image::image_view::ImageView;
 use crate::render_pass::RenderPass;
 use std::collections::btree_map::BTreeMap;
@@ -8,7 +7,7 @@ use std::sync::Arc;
 
 pub enum FramebufferCreateFlags {
     // DONE VUID-VkFramebufferCreateInfo-flags-03189
-    Imageless(Feature<{ ImagelessFramebuffer.into() }>),
+    Imageless(FeatureImagelessFramebuffer),
 }
 
 impl FramebufferCreateFlags {

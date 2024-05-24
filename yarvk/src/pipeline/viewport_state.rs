@@ -1,7 +1,6 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::MultiViewport;
+use crate::device_features::physical_device_features::FeatureMultiViewport;
 
 pub struct PipelineViewportStateCreateInfo {
     viewports: Vec<ash::vk::Viewport>,
@@ -60,16 +59,12 @@ impl PipelineViewportStateCreateInfoBuilder {
     pub fn add_viewport(
         mut self,
         viewport: ash::vk::Viewport,
-        _feature: Feature<{ MultiViewport.into() }>,
+        _feature: FeatureMultiViewport,
     ) -> Self {
         self.inner.viewports.push(viewport);
         self
     }
-    pub fn dynamic_viewports(
-        mut self,
-        counts: u32,
-        _feature: Feature<{ MultiViewport.into() }>,
-    ) -> Self {
+    pub fn dynamic_viewports(mut self, counts: u32, _feature: FeatureMultiViewport) -> Self {
         self.inner.dynamic_viewports = counts;
         self
     }
@@ -82,19 +77,11 @@ impl PipelineViewportStateCreateInfoBuilder {
         self
     }
     // DONE VUID-VkPipelineViewportStateCreateInfo-scissorCount-01217
-    pub fn add_scissor(
-        mut self,
-        scissor: ash::vk::Rect2D,
-        _feature: Feature<{ MultiViewport.into() }>,
-    ) -> Self {
+    pub fn add_scissor(mut self, scissor: ash::vk::Rect2D, _feature: FeatureMultiViewport) -> Self {
         self.inner.scissors.push(scissor);
         self
     }
-    pub fn dynamic_scissors(
-        mut self,
-        counts: u32,
-        _feature: Feature<{ MultiViewport.into() }>,
-    ) -> Self {
+    pub fn dynamic_scissors(mut self, counts: u32, _feature: FeatureMultiViewport) -> Self {
         self.inner.dynamic_scissors = counts;
         self
     }
@@ -118,7 +105,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         &mut self,
         first_viewport: u32,
         viewports: &[ash::vk::Viewport],
-        _feature: Feature<{ MultiViewport.into() }>,
+        _feature: FeatureMultiViewport,
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
@@ -145,7 +132,7 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         &mut self,
         first_scissor: u32,
         scissors: &[ash::vk::Rect2D],
-        _feature: Feature<{ MultiViewport.into() }>,
+        _feature: FeatureMultiViewport,
     ) {
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool

@@ -1,7 +1,6 @@
 use crate::device::Device;
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::SamplerAnisotropy;
-use crate::device_features::PhysicalDevicePortabilitySubsetFeaturesKHR::SamplerMipLodBias;
+use crate::device_features::physical_device_features::FeatureSamplerAnisotropy;
+use crate::device_features::physical_device_portability_subset_features_khr::FeatureSamplerMipLodBias;
 use std::sync::Arc;
 
 pub struct Sampler {
@@ -97,11 +96,7 @@ impl SamplerBuilder {
         self
     }
     // DONE VUID-VkSamplerCreateInfo-samplerMipLodBias-04467
-    pub fn mip_lod_bias(
-        mut self,
-        mip_lod_bias: f32,
-        _feature: Feature<{ SamplerMipLodBias.into() }>,
-    ) -> Self {
+    pub fn mip_lod_bias(mut self, mip_lod_bias: f32, _feature: FeatureSamplerMipLodBias) -> Self {
         self.mip_lod_bias = mip_lod_bias;
         self
     }
@@ -109,7 +104,7 @@ impl SamplerBuilder {
     pub fn max_anisotropy(
         mut self,
         max_anisotropy: f32,
-        _feature: Feature<{ SamplerAnisotropy.into() }>,
+        _feature: FeatureSamplerAnisotropy,
     ) -> Self {
         self.max_anisotropy = Some(max_anisotropy);
         self

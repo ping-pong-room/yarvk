@@ -92,7 +92,7 @@ pub fn descriptor_set_variadic_generics(n: usize) -> (TokenStream, TokenStream) 
             }
             impl<
                 #(#generic_parameters,)*
-            > const DescriptorSetValue
+            > DescriptorSetValue
             for #descriptor_set_value_ident<#(#generic_arguments,)*>
             {
                 type ConstDescriptorSetValue =
@@ -117,7 +117,7 @@ pub fn descriptor_set_variadic_generics(n: usize) -> (TokenStream, TokenStream) 
                 #(#generic_arguments,)*
             > {
                 fn new_descriptor_layout(
-                        &self,
+                        self,
                         device: &Arc<Device>,
                         flags: ash::vk::DescriptorSetLayoutCreateFlags,
                     ) -> Result<

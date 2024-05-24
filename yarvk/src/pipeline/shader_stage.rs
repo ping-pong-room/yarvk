@@ -1,6 +1,9 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{GeometryShader, TessellationShader};
-use crate::device_features::PhysicalDeviceMeshShaderFeaturesNV::{MeshShader, TaskShader};
+use crate::device_features::physical_device_features::{
+    FeatureGeometryShader, FeatureTessellationShader,
+};
+use crate::device_features::physical_device_mesh_shader_features_nv::{
+    FeatureMeshShader, FeatureTaskShader,
+};
 use crate::shader_module::ShaderModule;
 use ash::vk::SpecializationMapEntry;
 use std::marker::PhantomData;
@@ -31,9 +34,9 @@ impl<'a> SpecializationInfo<'a> {
 */
 pub enum ShaderStage {
     Vertex,
-    TessellationControl(Feature<{ TessellationShader.into() }>),
-    TessellationEvaluation(Feature<{ TessellationShader.into() }>),
-    Geometry(Feature<{ GeometryShader.into() }>),
+    TessellationControl(FeatureTessellationShader),
+    TessellationEvaluation(FeatureTessellationShader),
+    Geometry(FeatureGeometryShader),
     Fragment,
     Compute,
     // according to the spec, all_graphics and all do not contain all stages, exclude them in yarvk
@@ -45,8 +48,8 @@ pub enum ShaderStage {
     MissKhr,
     IntersectionKhr,
     CallableKhr,
-    TaskNv(Feature<{ TaskShader.into() }>),
-    MeshNv(Feature<{ MeshShader.into() }>),
+    TaskNv(FeatureTaskShader),
+    MeshNv(FeatureMeshShader),
     SubpassShadingHuawei,
 }
 

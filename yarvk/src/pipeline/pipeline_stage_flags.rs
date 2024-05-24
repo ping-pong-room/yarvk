@@ -1,11 +1,3 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{GeometryShader, TessellationShader};
-use crate::device_features::PhysicalDeviceFragmentDensityMapFeaturesEXT::FragmentDensityMap;
-use crate::device_features::PhysicalDeviceMeshShaderFeaturesNV::{MeshShader, TaskShader};
-use crate::device_features::PhysicalDeviceShadingRateImageFeaturesNV::ShadingRateImage;
-use crate::device_features::PhysicalDeviceTransformFeedbackFeaturesEXT::TransformFeedback;
-use crate::device_features::PhysicalDeviceVulkan13Features::Synchronization2;
-
 /* DONE
     VUID-VkSubpassDependency-srcStageMask-04091
     VUID-VkSubmitInfo-pWaitDstStageMask-04091
@@ -29,14 +21,25 @@ use crate::device_features::PhysicalDeviceVulkan13Features::Synchronization2;
     VUID-VkSubpassDependency-srcStageMask-03937
     VUID-VkSubpassDependency-dstStageMask-03937
 */
+use crate::device_features::physical_device_features::{
+    FeatureGeometryShader, FeatureTessellationShader,
+};
+use crate::device_features::physical_device_fragment_density_map_features_ext::FeatureFragmentDensityMap;
+use crate::device_features::physical_device_mesh_shader_features_nv::{
+    FeatureMeshShader, FeatureTaskShader,
+};
+use crate::device_features::physical_device_shading_rate_image_features_nv::FeatureShadingRateImage;
+use crate::device_features::physical_device_synchronization2_features::FeatureSynchronization2;
+use crate::device_features::physical_device_transform_feedback_features_ext::FeatureTransformFeedback;
+
 pub enum PipelineStageFlag {
     TopOfPipe,
     DrawIndirect,
     VertexInput,
     VertexShader,
-    TessellationControlShader(Feature<{ TessellationShader.into() }>),
-    TessellationEvaluationShader(Feature<{ TessellationShader.into() }>),
-    GeometryShader(Feature<{ GeometryShader.into() }>),
+    TessellationControlShader(FeatureTessellationShader),
+    TessellationEvaluationShader(FeatureTessellationShader),
+    GeometryShader(FeatureGeometryShader),
     FragmentShader,
     EarlyFragmentTests,
     LateFragmentTests,
@@ -47,20 +50,20 @@ pub enum PipelineStageFlag {
     Host,
     AllGraphics,
     AllCommands,
-    NONE(Feature<{ Synchronization2.into() }>),
-    TransformFeedbackExt(Feature<{ TransformFeedback.into() }>),
+    NONE(FeatureSynchronization2),
+    TransformFeedbackExt(FeatureTransformFeedback),
     ConditionalRenderingExt(),
     AccelerationStructureBuildKhr,
     RayTracingShaderKhr,
-    TaskShaderNv(Feature<{ TaskShader.into() }>),
-    MeshShaderNv(Feature<{ MeshShader.into() }>),
-    FragmentDensityProcessExt(Feature<{ FragmentDensityMap.into() }>),
+    TaskShaderNv(FeatureTaskShader),
+    MeshShaderNv(FeatureMeshShader),
+    FragmentDensityProcessExt(FeatureFragmentDensityMap),
     FragmentShadingRateAttachmentKhr,
     CommandPreprocessNv,
-    ShadingRateImageNv(Feature<{ ShadingRateImage.into() }>),
+    ShadingRateImageNv(FeatureShadingRateImage),
     RayTracingShaderNv,
     AccelerationStructureBuildNv,
-    NoneKhr(Feature<{ Synchronization2.into() }>),
+    NoneKhr(FeatureSynchronization2),
 }
 
 impl PipelineStageFlag {

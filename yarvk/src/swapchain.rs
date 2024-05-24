@@ -1,5 +1,5 @@
 use crate::device::Device;
-use crate::extensions::{DeviceExtension, PhysicalDeviceExtensionType};
+use crate::extensions::ExtensionKhrSwapchain;
 use crate::fence::{SignalingFence, UnsignaledFence};
 use crate::image::{IImage, Image, ImageCreateInfo, ImageFormatListCreateInfo};
 use crate::physical_device::SharingMode;
@@ -345,10 +345,7 @@ pub struct Swapchain {
 }
 
 impl Swapchain {
-    pub fn builder(
-        surface: Arc<Surface>,
-        extension: DeviceExtension<{ PhysicalDeviceExtensionType::KhrSwapchain }>,
-    ) -> SwapchainBuilder {
+    pub fn builder(surface: Arc<Surface>, extension: ExtensionKhrSwapchain) -> SwapchainBuilder {
         SwapchainBuilder {
             surface,
             device: extension.device,

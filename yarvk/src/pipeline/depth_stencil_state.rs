@@ -1,16 +1,12 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::DepthBounds;
-use crate::device_features::PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM::{
-    RasterizationOrderDepthAttachmentAccess, RasterizationOrderStencilAttachmentAccess,
+use crate::device_features::physical_device_features::FeatureDepthBounds;
+use crate::device_features::physical_device_rasterization_order_attachment_access_features_arm::{
+    FeatureRasterizationOrderDepthAttachmentAccess,
+    FeatureRasterizationOrderStencilAttachmentAccess,
 };
 
 pub enum PipelineDepthStencilStateCreateFlags {
-    RasterizationOrderAttachmentDepthAccessArm(
-        Feature<{ RasterizationOrderDepthAttachmentAccess.into() }>,
-    ),
-    RasterizationOrderAttachmentStencilAccessArm(
-        Feature<{ RasterizationOrderStencilAttachmentAccess.into() }>,
-    ),
+    RasterizationOrderAttachmentDepthAccessArm(FeatureRasterizationOrderDepthAttachmentAccess),
+    RasterizationOrderAttachmentStencilAccessArm(FeatureRasterizationOrderStencilAttachmentAccess),
 }
 
 impl PipelineDepthStencilStateCreateFlags {
@@ -84,7 +80,7 @@ impl PipelineDepthStencilStateCreateInfoBuilder {
         self
     }
     // DONE VUID-VkPipelineDepthStencilStateCreateInfo-depthBoundsTestEnable-00598
-    pub fn depth_bounds_test_enable(mut self, _feature: Feature<{ DepthBounds.into() }>) -> Self {
+    pub fn depth_bounds_test_enable(mut self, _feature: FeatureDepthBounds) -> Self {
         self.inner.depth_bounds_test_enable = true;
         self
     }

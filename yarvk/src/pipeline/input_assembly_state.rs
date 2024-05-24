@@ -1,6 +1,4 @@
-use crate::device_features::Feature;
-
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum PrimitiveTopology {
     PointList,
     LineList,
@@ -46,9 +44,9 @@ pub struct RestartBuilder<const TOPOLOGY: PrimitiveTopology> {
 }
 
 macro_rules! fn_topology_build {
-    ($feature: expr, $($topology: expr),*) => {$(
+    ($feature: ty, $($topology: expr),*) => {$(
         impl RestartBuilder<{ $topology }> {
-            pub fn build(self, _feature: Feature<{ $feature.into() }>) -> PipelineInputAssemblyStateCreateInfo {
+            pub fn build(self, _feature: $feature) -> PipelineInputAssemblyStateCreateInfo {
                 PipelineInputAssemblyStateCreateInfo {
                     topology: $topology.to_ash(),
                     primitive_restart_enable: self.primitive_restart_enable,
@@ -59,7 +57,7 @@ macro_rules! fn_topology_build {
 }
 // DONE VUID-VkPipelineInputAssemblyStateCreateInfo-topology-00429
 fn_topology_build!(
-    crate::device_features::PhysicalDeviceFeatures::GeometryShader,
+    crate::device_features::physical_device_features::FeatureGeometryShader,
     PrimitiveTopology::LineListWithAdjacency,
     PrimitiveTopology::LineStripWithAdjacency,
     PrimitiveTopology::TriangleListWithAdjacency,
@@ -67,12 +65,12 @@ fn_topology_build!(
 );
 // DONE VUID-VkPipelineInputAssemblyStateCreateInfo-topology-00430
 fn_topology_build!(
-    crate::device_features::PhysicalDeviceFeatures::TessellationShader,
+    crate::device_features::physical_device_features::FeatureTessellationShader,
     PrimitiveTopology::PatchList
 );
 // DONE VUID-VkPipelineInputAssemblyStateCreateInfo-triangleFans-04452
 fn_topology_build!(
-    crate::device_features::PhysicalDevicePortabilitySubsetFeaturesKHR::TriangleFans,
+    crate::device_features::physical_device_portability_subset_features_khr::FeatureTriangleFans,
     PrimitiveTopology::TriangleFan
 );
 macro_rules! fn_topology_build_no_feature {
@@ -96,9 +94,9 @@ fn_topology_build_no_feature!(
 );
 
 macro_rules! fn_restart_enable {
-    ($feature: expr, $($topology: expr),*) => {$(
+    ($feature: ty, $($topology: expr),*) => {$(
         impl RestartBuilder<{$topology}> {
-            pub fn restart_enable(mut self, _feature: Feature<{ $feature.into() }>) -> Self {
+            pub fn restart_enable(mut self, _feature: $feature) -> Self {
                 self.primitive_restart_enable = true;
                 self
             }
@@ -107,7 +105,7 @@ macro_rules! fn_restart_enable {
 }
 
 // DONE VUID-VkPipelineInputAssemblyStateCreateInfo-topology-06252
-fn_restart_enable!(crate::device_features::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT::PrimitiveTopologyListRestart,
+fn_restart_enable!(crate::device_features::physical_device_primitive_topology_list_restart_features_ext::FeaturePrimitiveTopologyListRestart,
     PrimitiveTopology::PointList,
     PrimitiveTopology::LineList,
     PrimitiveTopology::TriangleList,
@@ -116,7 +114,7 @@ fn_restart_enable!(crate::device_features::PhysicalDevicePrimitiveTopologyListRe
 );
 
 // DONE VUID-VkPipelineInputAssemblyStateCreateInfo-topology-06253
-fn_restart_enable!(crate::device_features::PhysicalDevicePrimitiveTopologyListRestartFeaturesEXT::PrimitiveTopologyPatchListRestart,
+fn_restart_enable!(crate::device_features::physical_device_primitive_topology_list_restart_features_ext::FeaturePrimitiveTopologyPatchListRestart,
     PrimitiveTopology::PatchList
 );
 macro_rules! fn_restart_enable_no_feature {

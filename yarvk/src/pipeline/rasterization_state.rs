@@ -1,15 +1,15 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{DepthClamp, FillModeNonSolid};
-use crate::extensions::DeviceExtension;
-use crate::extensions::PhysicalDeviceExtensionType::NvFillRectangle;
+use crate::device_features::physical_device_features::{
+    FeatureDepthClamp, FeatureFillModeNonSolid,
+};
+use crate::extensions::ExtensionNvFillRectangle;
 
 pub enum PolygonMode {
     Fill,
     // DONE VUID-VkPipelineRasterizationStateCreateInfo-polygonMode-01507
-    Line(Feature<{ FillModeNonSolid.into() }>),
-    Point(Feature<{ FillModeNonSolid.into() }>),
+    Line(FeatureFillModeNonSolid),
+    Point(FeatureFillModeNonSolid),
     // DONE VUID-VkPipelineRasterizationStateCreateInfo-polygonMode-01414
-    FillRectangleNv(DeviceExtension<{ NvFillRectangle }>),
+    FillRectangleNv(ExtensionNvFillRectangle),
 }
 
 impl PolygonMode {
@@ -76,7 +76,7 @@ impl PipelineRasterizationStateCreateInfoBuilder {
     pub fn depth_clamp_enable(
         mut self,
         depth_clamp_enable: bool,
-        _feature: Feature<{ DepthClamp.into() }>,
+        _feature: FeatureDepthClamp,
     ) -> Self {
         self.inner.depth_clamp_enable = depth_clamp_enable;
         self

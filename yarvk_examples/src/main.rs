@@ -1,5 +1,4 @@
 #![feature(const_trait_impl)]
-#![feature(const_convert)]
 
 use raw_window_handle::HasRawDisplayHandle;
 use raw_window_handle::HasRawWindowHandle;
@@ -27,13 +26,12 @@ use yarvk::descriptor_set::descriptor_variadic_generics::{
     ConstDescriptorSetValue2, DescriptorSetValue2,
 };
 use yarvk::device::{Device, DeviceQueueCreateInfo};
-use yarvk::device_features::{DeviceFeatures, PhysicalDeviceFeatures};
 use yarvk::device_memory::dedicated_memory::{DedicatedResource, MemoryDedicatedAllocateInfo};
 use yarvk::device_memory::{DeviceMemory, IMemoryRequirements, UnboundResource};
 use yarvk::entry::Entry;
-use yarvk::extensions::{
-    DeviceExtensionType, PhysicalDeviceExtensionType, PhysicalInstanceExtensionType,
-};
+
+use yarvk::device_features::physical_device_features::FeatureSamplerAnisotropy;
+use yarvk::extensions::{ExtensionKhrSurface, ExtensionKhrSwapchain};
 use yarvk::fence::{Fence, UnsignaledFence};
 use yarvk::frame_buffer::Framebuffer;
 use yarvk::image::image_subresource_range::ImageSubresourceRange;
@@ -68,7 +66,7 @@ use yarvk::semaphore::Semaphore;
 use yarvk::shader_module::ShaderModule;
 use yarvk::surface::Surface;
 use yarvk::swapchain::{PresentInfo, Swapchain};
-use yarvk::window::enumerate_required_extensions;
+use yarvk::window::enable_required_wsi_extensions;
 use yarvk::{read_spv, ContinuousBuffer, ContinuousImage, Handle, WHOLE_SIZE};
 use yarvk::{
     AccessFlags, AttachmentLoadOp, AttachmentStoreOp, BlendOp, BorderColor, BufferImageCopy,
@@ -169,37 +167,34 @@ fn main() {
         .unwrap();
 
     let entry = Entry::load().unwrap();
-    let surface_extensions = enumerate_required_extensions(window.raw_display_handle()).unwrap();
 
     let layer = unsafe { CStr::from_bytes_with_nul_unchecked(b"VK_LAYER_KHRONOS_validation\0") };
-    let debug_utils_messenger_callback = DebugUtilsMessengerCreateInfoEXT::builder()
-        .callback(|message_severity, message_type, p_callback_data| {
-            let message_id_number = p_callback_data.message_id_number;
-            let message_id_name = p_callback_data.p_message_id_name;
-            let message = p_callback_data.p_message;
-            println!(
-                "{message_severity:?}:\n{message_type:?} [{message_id_name} ({message_id_number})] : {message}\n",
-            );
-        })
-        .severity(
-            // DebugUtilsMessageSeverityFlagsEXT::VERBOSE | DebugUtilsMessageSeverityFlagsEXT::INFO |
-            DebugUtilsMessageSeverityFlagsEXT::WARNING | DebugUtilsMessageSeverityFlagsEXT::ERROR,
-        )
-        .build();
+    // let debug_utils_messenger_callback = DebugUtilsMessengerCreateInfoEXT::builder()
+    //     .callback(|message_severity, message_type, p_callback_data| {
+    //         let message_id_number = p_callback_data.message_id_number;
+    //         let message_id_name = p_callback_data.p_message_id_name;
+    //         let message = p_callback_data.p_message;
+    //         println!(
+    //             "{message_severity:?}:\n{message_type:?} [{message_id_name} ({message_id_number})] : {message}\n",
+    //         );
+    //     })
+    //     .severity(
+    //         // DebugUtilsMessageSeverityFlagsEXT::VERBOSE | DebugUtilsMessageSeverityFlagsEXT::INFO |
+    //         DebugUtilsMessageSeverityFlagsEXT::WARNING | DebugUtilsMessageSeverityFlagsEXT::ERROR,
+    //     )
+    //     .build();
     let application_info = ApplicationInfo::builder()
         .engine_name("yarvk_example")
         .build();
     let mut instance_builder = Instance::builder(entry)
         .application_info(application_info)
         .add_layer(layer)
-        .debug_utils_messenger_exts(vec![debug_utils_messenger_callback]);
-    for ext in surface_extensions {
-        instance_builder = instance_builder.add_extension(&ext);
-    }
+        // .debug_utils_messenger_exts(vec![debug_utils_messenger_callback])
+        ;
+    instance_builder =
+        enable_required_wsi_extensions(window.raw_display_handle(), instance_builder).unwrap();
     let instance = instance_builder.build().unwrap();
-    let khr_surface_ext = instance
-        .get_extension::<{ PhysicalInstanceExtensionType::KhrSurface }>()
-        .unwrap();
+    let khr_surface_ext = instance.get_extension::<ExtensionKhrSurface>().unwrap();
     let pdevices = instance.enumerate_physical_devices().unwrap();
     let (pdevice, queue_family, surface) = pdevices
         .iter()
@@ -232,25 +227,21 @@ fn main() {
     // let portable_property = pdevice.get_physical_device_properties2::<PhysicalDevicePortabilitySubsetPropertiesKHR>();
     // println!("min_vertex_input_binding_stride_alignment: {}", portable_property.min_vertex_input_binding_stride_alignment);
     // let prop2_ext = instance.get_extension::<{ PhysicalInstanceExtensionType::KhrGetPhysicalDeviceProperties2 }>().unwrap();
-    let surface_ext = instance
-        .get_extension::<{ PhysicalInstanceExtensionType::KhrSurface }>()
-        .unwrap();
+    let surface_ext = instance.get_extension::<ExtensionKhrSurface>().unwrap();
     let queue_create_info = DeviceQueueCreateInfo::builder(queue_family.clone())
         .add_priority(0.9)
         .build();
     let (device, mut queues) = Device::builder(pdevice)
         .add_queue_info(queue_create_info)
-        .add_extension(&DeviceExtensionType::KhrSwapchain(surface_ext))
+        .add_extension::<ExtensionKhrSwapchain>((surface_ext,))
+        .unwrap()
         // .add_feature(DeviceFeatures::LogicOp)
-        .add_feature(DeviceFeatures::SamplerAnisotropy)
+        .add_feature::<FeatureSamplerAnisotropy>()
+        .unwrap()
         .build()
         .unwrap();
-    let feature_sampler_anisotropy = device
-        .get_feature::<{ PhysicalDeviceFeatures::SamplerAnisotropy.into() }>()
-        .unwrap();
-    let swapchian_extension = device
-        .get_extension::<{ PhysicalDeviceExtensionType::KhrSwapchain }>()
-        .unwrap();
+    let feature_sampler_anisotropy = device.get_feature::<FeatureSamplerAnisotropy>().unwrap();
+    let swapchian_extension = device.get_extension::<ExtensionKhrSwapchain>().unwrap();
     let mut present_queue = queues.get_mut(&queue_family).unwrap().pop().unwrap();
     let surface_format = surface.get_physical_device_surface_formats()[0];
     let surface_capabilities = surface.get_physical_device_surface_capabilities();

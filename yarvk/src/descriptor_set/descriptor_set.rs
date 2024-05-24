@@ -2,12 +2,11 @@ use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::descriptor_set::desccriptor_pool::DescriptorPool;
 use crate::descriptor_set::private::{PrivateConstDescriptorSetValue, PrivateDescriptorSetValue};
+use crate::device::Device;
 use crate::pipeline::PipelineLayout;
 use ash::vk::Handle;
 use std::sync::Arc;
-use crate::device::Device;
 
-#[const_trait]
 pub trait DescriptorSetValue: PrivateDescriptorSetValue + Send + Sync {
     type ConstDescriptorSetValue: PrivateConstDescriptorSetValue<Self>;
 }

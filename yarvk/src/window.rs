@@ -1,12 +1,17 @@
 #![warn(trivial_casts, trivial_numeric_casts)]
 
+use crate::extensions::{
+    ExtensionExtMetalSurface, ExtensionKhrAndroidSurface, ExtensionKhrSurface,
+    ExtensionKhrWaylandSurface, ExtensionKhrWin32Surface, ExtensionKhrXcbSurface,
+    ExtensionKhrXlibSurface,
+};
+use crate::instance::InstanceBuilder;
 use ash::{
     extensions::{ext, khr},
     prelude::*,
     vk, Entry, Instance,
 };
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle};
-use crate::extensions::PhysicalInstanceExtensionType;
 
 /// Create a surface from a raw surface handle.
 ///
@@ -103,55 +108,54 @@ pub unsafe fn create_surface(
     }
 }
 
-/// Query the required instance extensions for creating a surface from a display handle.
+/// Enable required instance extensions for creating a surface from a display handle.
 ///
 /// This [`RawDisplayHandle`] can typically be acquired from a window, but is usually also
 /// accessible earlier through an "event loop" concept to allow querying required instance
 /// extensions and creation of a compatible Vulkan instance prior to creating a window.
-///
-/// The returned extensions will include all extension dependencies.
-pub fn enumerate_required_extensions(
-    display_handle: RawDisplayHandle,
-) ->VkResult<Vec<PhysicalInstanceExtensionType>> {
-    let extensions = match display_handle {
-        RawDisplayHandle::Windows(_) => vec![
-            PhysicalInstanceExtensionType::KhrSurface,
-            PhysicalInstanceExtensionType::KhrWin32Surface,
-        ],
 
-        RawDisplayHandle::Wayland(_) => {
-            vec![
-                PhysicalInstanceExtensionType::KhrSurface,
-                PhysicalInstanceExtensionType::KhrWaylandSurface,
-            ]
+pub fn enable_required_wsi_extensions(
+    display_handle: RawDisplayHandle,
+    instance_builder: InstanceBuilder,
+) -> Result<InstanceBuilder, ash::vk::Result> {
+    match display_handle {
+        RawDisplayHandle::Windows(_) => {
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionKhrWin32Surface>()
         }
 
-        RawDisplayHandle::Xlib(_) => vec![
-            PhysicalInstanceExtensionType::KhrSurface,
-            PhysicalInstanceExtensionType::KhrXlibSurface,
-        ],
+        RawDisplayHandle::Wayland(_) => {
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionKhrWaylandSurface>()
+        }
 
-        RawDisplayHandle::Xcb(_) => vec![
-            PhysicalInstanceExtensionType::KhrSurface,
-            PhysicalInstanceExtensionType::KhrXcbSurface,
-        ],
+        RawDisplayHandle::Xlib(_) => {
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionKhrXlibSurface>()
+        }
+
+        RawDisplayHandle::Xcb(_) => {
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionKhrXcbSurface>()
+        }
 
         RawDisplayHandle::Android(_) => {
-            vec![
-                PhysicalInstanceExtensionType::KhrSurface,
-                PhysicalInstanceExtensionType::KhrAndroidSurface,
-            ]
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionKhrAndroidSurface>()
         }
 
         RawDisplayHandle::AppKit(_) | RawDisplayHandle::UiKit(_) => {
-            vec![
-                PhysicalInstanceExtensionType::KhrSurface,
-                PhysicalInstanceExtensionType::ExtMetalSurface,
-            ]
+            instance_builder
+                // .add_extension::<ExtensionKhrSurface>()
+                .add_extension::<ExtensionExtMetalSurface>()
         }
 
-        _ => return Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT),
-    };
-
-    Ok(extensions)
+        // TODO Ref builders
+        _ => Err(vk::Result::ERROR_EXTENSION_NOT_PRESENT),
+    }
 }

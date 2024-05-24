@@ -1,5 +1,6 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{AlphaToOne, SampleRateShading};
+use crate::device_features::physical_device_features::{
+    FeatureAlphaToOne, FeatureSampleRateShading,
+};
 
 pub struct PipelineMultisampleStateCreateInfo {
     rasterization_samples: ash::vk::SampleCountFlags,
@@ -54,10 +55,7 @@ impl PipelineMultisampleStateCreateInfoBuilder {
         self
     }
     // DONE VUID-VkPipelineMultisampleStateCreateInfo-sampleShadingEnable-00784
-    pub fn sample_shading_enable(
-        mut self,
-        _feature: Feature<{ SampleRateShading.into() }>,
-    ) -> Self {
+    pub fn sample_shading_enable(mut self, _feature: FeatureSampleRateShading) -> Self {
         self.inner.sample_shading_enable = true;
         self
     }
@@ -76,7 +74,7 @@ impl PipelineMultisampleStateCreateInfoBuilder {
         self
     }
     // DONE VUID-VkPipelineMultisampleStateCreateInfo-alphaToOneEnable-00785
-    pub fn alpha_to_one_enable(mut self, _feature: Feature<{ AlphaToOne.into() }>) -> Self {
+    pub fn alpha_to_one_enable(mut self, _feature: FeatureAlphaToOne) -> Self {
         self.inner.alpha_to_one_enable = true;
         self
     }

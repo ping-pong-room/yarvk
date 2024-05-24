@@ -1,7 +1,11 @@
 use crate::debug_utils_messenger::DebugUtilsMessengerCreateInfoEXT;
 use crate::entry::Entry;
-use crate::extensions::{InstanceExtension, PhysicalInstanceExtensionType};
+use crate::extensions::{
+    Extension, ExtensionExtDebugUtils, ExtensionKhrGetSurfaceCapabilities2,
+    ExtensionKhrPortabilityEnumeration, InstanceExtension,
+};
 use crate::physical_device::PhysicalDevice;
+use ash::vk::ExtensionProperties;
 use rustc_hash::FxHashSet;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -84,7 +88,7 @@ pub struct InstanceBuilder {
     flags: ash::vk::InstanceCreateFlags,
     application_info: ApplicationInfo,
     enabled_layers: FxHashSet<&'static CStr>,
-    enabled_extensions: FxHashSet<PhysicalInstanceExtensionType>,
+    enabled_extensions: FxHashSet<&'static CStr>,
     debug_utils_messenger_create_info_exts: Vec<DebugUtilsMessengerCreateInfoEXT>,
 }
 
@@ -101,18 +105,20 @@ impl InstanceBuilder {
         self.enabled_layers.insert(layer);
         self
     }
-    fn add_extension_inner(&mut self, extension: &PhysicalInstanceExtensionType) -> &mut Self {
+    fn add_extension_inner<EXT: InstanceExtension>(&mut self) -> &mut Self {
         // SILENCE VUID-vkCreateInstance-ppEnabledExtensionNames-01388
-        let deps = extension.get_dependencies();
-        for dep in deps {
+        for dep in EXT::DEPENDENCIES {
             self.enabled_extensions.insert(*dep);
         }
-        self.enabled_extensions.insert(*extension);
+        self.enabled_extensions.insert(EXT::NAME);
         self
     }
-    pub fn add_extension(mut self, extension: &PhysicalInstanceExtensionType) -> Self {
-        self.add_extension_inner(extension);
-        self
+    pub fn add_extension<EXT: InstanceExtension>(mut self) -> Result<Self, ash::vk::Result> {
+        if !self.entry.supports_extension::<EXT>(None) {
+            return Err(ash::vk::Result::ERROR_EXTENSION_NOT_PRESENT);
+        }
+        self.add_extension_inner::<EXT>();
+        Ok(self)
     }
     pub fn debug_utils_messenger_exts(
         mut self,
@@ -122,13 +128,13 @@ impl InstanceBuilder {
         self
     }
     pub fn build(mut self) -> Result<Arc<Instance>, ash::vk::Result> {
-        let supported_extensions = self.entry.enumerate_instance_extension_properties(None)?;
-
         // SILENCE EXTENSION: VK_KHR_get_surface_capabilities2 by default,
         // function vkGetPhysicalDeviceSurfaceCapabilities2KHR relies on it.
-        if supported_extensions.contains(&PhysicalInstanceExtensionType::KhrGetSurfaceCapabilities2)
+        if self
+            .entry
+            .supports_extension::<ExtensionKhrGetSurfaceCapabilities2>(None)
         {
-            self.add_extension_inner(&PhysicalInstanceExtensionType::KhrGetSurfaceCapabilities2);
+            self.add_extension_inner::<ExtensionKhrGetSurfaceCapabilities2>();
         }
 
         // TODO SILENCE VUID-VkInstanceCreateInfo-pNext-04925
@@ -141,16 +147,16 @@ impl InstanceBuilder {
         if !self.debug_utils_messenger_create_info_exts.is_empty()
             && !self
                 .enabled_extensions
-                .contains(&PhysicalInstanceExtensionType::ExtDebugUtils)
+                .contains(ExtensionExtDebugUtils::NAME)
         {
-            self.add_extension_inner(&PhysicalInstanceExtensionType::ExtDebugUtils);
+            self.add_extension_inner::<ExtensionExtDebugUtils>();
         }
         // SILENCE VUID-VkInstanceCreateInfo-flags-06559
         if self
             .flags
             .contains(ash::vk::InstanceCreateFlags::ENUMERATE_PORTABILITY_KHR)
         {
-            self.add_extension_inner(&PhysicalInstanceExtensionType::KhrPortabilityEnumeration);
+            self.add_extension_inner::<ExtensionKhrPortabilityEnumeration>();
         }
 
         let enabled_layer_names_raw: Vec<*const c_char> = self
@@ -161,7 +167,7 @@ impl InstanceBuilder {
         let enabled_extension_names_raw: Vec<*const c_char> = self
             .enabled_extensions
             .iter()
-            .map(|extension| extension.to_cstr().as_ptr())
+            .map(|extension| extension.as_ptr())
             .collect();
 
         let ash_vk_application_info = self.application_info.ash_builder().build();
@@ -195,7 +201,7 @@ pub struct Instance {
     pub(crate) ash_instance: ash::Instance,
     _debug_utils_messenger_create_info_exts: Vec<DebugUtilsMessengerCreateInfoEXT>,
     // pub(crate) enabled_layers: FxHashSet<&'static CStr>,
-    pub(crate) enabled_extensions: FxHashSet<PhysicalInstanceExtensionType>,
+    pub(crate) enabled_extensions: FxHashSet<&'static CStr>,
 }
 
 impl PartialEq for Instance {
@@ -228,14 +234,9 @@ impl Instance {
         }
         Ok(arc_devices)
     }
-    pub fn get_extension<const EXT: PhysicalInstanceExtensionType>(
-        self: &Arc<Self>,
-    ) -> Option<InstanceExtension<EXT>> {
-        if self.enabled_extensions.contains(&EXT) {
-            Some(InstanceExtension::<EXT> {
-                instance: self.clone(),
-                _p: Default::default(),
-            })
+    pub fn get_extension<EXT: InstanceExtension>(self: &Arc<Self>) -> Option<EXT> {
+        if self.enabled_extensions.contains(EXT::NAME) {
+            Some(EXT::new(self))
         } else {
             None
         }

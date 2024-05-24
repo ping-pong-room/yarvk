@@ -1,6 +1,5 @@
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{DualSrcBlend, LogicOp};
-use crate::device_features::PhysicalDeviceRasterizationOrderAttachmentAccessFeaturesARM::RasterizationOrderColorAttachmentAccess;
+use crate::device_features::physical_device_features::{FeatureDualSrcBlend, FeatureLogicOp};
+use crate::device_features::physical_device_rasterization_order_attachment_access_features_arm::FeatureRasterizationOrderColorAttachmentAccess;
 
 // DONE VUID-VkPipelineColorBlendAttachmentState-srcColorBlendFactor-00608
 // DONE VUID-VkPipelineColorBlendAttachmentState-dstColorBlendFactor-00609
@@ -22,10 +21,10 @@ pub enum BlendFactor {
     ConstantAlpha,
     OneMinusConstantAlpha,
     SrcAlphaSaturate,
-    Src1Color(Feature<{ DualSrcBlend.into() }>),
-    OneMinusSrc1Color(Feature<{ DualSrcBlend.into() }>),
-    Src1Alpha(Feature<{ DualSrcBlend.into() }>),
-    OneMinusSrc1Alpha(Feature<{ DualSrcBlend.into() }>),
+    Src1Color(FeatureDualSrcBlend),
+    OneMinusSrc1Color(FeatureDualSrcBlend),
+    Src1Alpha(FeatureDualSrcBlend),
+    OneMinusSrc1Alpha(FeatureDualSrcBlend),
 }
 
 impl BlendFactor {
@@ -129,9 +128,7 @@ impl PipelineColorBlendAttachmentStateBuilder {
 
 pub enum PipelineColorBlendStateCreateFlags {
     // DONE VUID-VkPipelineColorBlendStateCreateInfo-rasterizationOrderColorAttachmentAccess-06465
-    RasterizationOrderAttachmentAccessArm(
-        Feature<{ RasterizationOrderColorAttachmentAccess.into() }>,
-    ),
+    RasterizationOrderAttachmentAccessArm(FeatureRasterizationOrderColorAttachmentAccess),
 }
 
 impl PipelineColorBlendStateCreateFlags {
@@ -183,11 +180,7 @@ impl PipelineColorBlendStateCreateInfoBuilder {
         self
     }
     // DONE VUID-VkPipelineColorBlendStateCreateInfo-logicOpEnable-00606
-    pub fn logic_op(
-        mut self,
-        logic_op: ash::vk::LogicOp,
-        _feature: Feature<{ LogicOp.into() }>,
-    ) -> Self {
+    pub fn logic_op(mut self, logic_op: ash::vk::LogicOp, _feature: FeatureLogicOp) -> Self {
         // SILENCE VUID-VkPipelineColorBlendStateCreateInfo-logicOpEnable-00607
         self.inner.logic_op = Some(logic_op);
         self

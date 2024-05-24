@@ -4,7 +4,7 @@ use crate::sampler::Sampler;
 use crate::{BufferView, IBuffer};
 use std::sync::Arc;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum DescriptorKind {
     Sampler,
     SamplerImmutable,

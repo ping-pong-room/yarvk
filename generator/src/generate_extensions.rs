@@ -130,15 +130,9 @@ pub fn generate_extensions(spec2: &Registry) -> (TokenStream, ExtensionMap) {
         extension_info.promoted = extension.promotedto.is_some();
         extension_info.required_structs = required_structs;
     }
-    let mut instance_extension_enum_variants = Vec::<&Ident>::new();
-    let mut instance_extension_cstr_names = Vec::<LitByteStr>::new();
-    let mut instance_extensions_dependencies = Vec::<Vec<&Ident>>::new();
 
-    let mut device_extension_enum_variants = Vec::<&Ident>::new();
-    let mut device_extension_cstr_names = Vec::<LitByteStr>::new();
-    let mut device_extension_dependencies = Vec::<Vec<&Ident>>::new();
-    let mut device_extension_instance_dependencies = Vec::<TokenStream>::new();
-    let mut device_extension_match_pattern = Vec::<TokenStream>::new();
+    let mut instance_extension_struct_definations = Vec::new();
+    let mut device_extension_struct_definations = Vec::new();
 
     for (vk_name, ext_info) in &extension_infos.0 {
         if ext_info.promoted {
@@ -148,109 +142,100 @@ pub fn generate_extensions(spec2: &Registry) -> (TokenStream, ExtensionMap) {
         let cstr_ident = LitByteStr::new(cstr_name.as_bytes(), Span::call_site());
         match ext_info.extension_type {
             ExtensionType::Instance => {
-                instance_extension_enum_variants.push(&ext_info.name);
-                instance_extension_cstr_names.push(cstr_ident);
+                let struct_name = format_ident!("Extension{}", &ext_info.name);
                 let mut dependencies_info = DependencyInfo::default();
                 ext_info.get_all_dependencies(&mut dependencies_info);
-                instance_extensions_dependencies
-                    .push(dependencies_info.dependencies.into_iter().collect());
+                let DependencyInfo {
+                    dependencies,
+                    top_level_instance,
+                } = dependencies_info;
+                let dependencies: Vec<Ident> = dependencies
+                    .into_iter()
+                    .map(|ident| format_ident!("Extension{}", &ident))
+                    .collect();
+                let _instance_dependencies: Vec<&Ident> = top_level_instance.into_iter().collect();
+                instance_extension_struct_definations.push(
+                    quote!(
+                        #[derive(Clone)]
+                        pub struct #struct_name {
+                            pub instance: std::sync::Arc<crate::instance::Instance>,
+                        }
+                        impl Extension for #struct_name {
+                            const NAME: &'static std::ffi::CStr =  unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(#cstr_ident) };
+                            const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
+                                #(#dependencies::NAME,)*
+                            ];
+                        }
+                        impl InstanceExtension for #struct_name {
+                            fn new(instance: &std::sync::Arc<crate::instance::Instance>) -> Self {
+                                Self {
+                                    instance: instance.clone(),
+                                }
+                            }
+                        }
+                    )
+                );
             }
             ExtensionType::Device => {
-                device_extension_enum_variants.push(&ext_info.name);
-                device_extension_cstr_names.push(cstr_ident);
+                let struct_name = format_ident!("Extension{}", &ext_info.name);
                 let mut dependencies_info = DependencyInfo::default();
                 ext_info.get_all_dependencies(&mut dependencies_info);
-                device_extension_dependencies
-                    .push(dependencies_info.dependencies.into_iter().collect());
-                let tuples = dependencies_info
-                    .top_level_instance
+                let DependencyInfo {
+                    dependencies,
+                    top_level_instance,
+                } = dependencies_info;
+                let dependencies: Vec<Ident> = dependencies
                     .into_iter()
-                    .map(
-                        |ident| quote!(InstanceExtension<{PhysicalInstanceExtensionType::#ident}>,),
+                    .map(|ident| format_ident!("Extension{}", &ident))
+                    .collect();
+                let instance_dependencies: Vec<Ident> = top_level_instance
+                    .into_iter()
+                    .map(|ident| format_ident!("Extension{}", &ident))
+                    .collect();
+                device_extension_struct_definations.push(
+                    quote!(
+                        #[derive(Clone)]
+                        pub struct #struct_name {
+                            pub device: std::sync::Arc<crate::device::Device>,
+                        }
+                        impl Extension for #struct_name {
+                            const NAME: &'static std::ffi::CStr =  unsafe { std::ffi::CStr::from_bytes_with_nul_unchecked(#cstr_ident) };
+                            const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
+                                #(#dependencies::NAME,)*
+                            ];
+                        }
+                        impl DeviceExtension for #struct_name {
+                            type InstanceDependenciesTy = (#(#instance_dependencies,)*);
+                            const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
+                                #(#instance_dependencies::NAME,)*
+                            ];
+                            fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
+                                Self {
+                                    device: device.clone(),
+                                }
+                            }
+                        }
                     )
-                    .collect::<Vec<_>>();
-                let tuples_tokens = if tuples.is_empty() {
-                    quote!()
-                } else {
-                    quote!((#(#tuples)*))
-                };
-                device_extension_instance_dependencies.push(tuples_tokens);
-                let pattern = if tuples.is_empty() {
-                    quote!()
-                } else {
-                    quote!((..))
-                };
-                device_extension_match_pattern.push(pattern);
+                );
             }
         }
     }
     let res = quote! {
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum PhysicalInstanceExtensionType {
-            #(#instance_extension_enum_variants,)*
+        pub trait Extension: Clone {
+            const NAME: &'static std::ffi::CStr;
+            const DEPENDENCIES: &'static [&'static std::ffi::CStr];
         }
-        impl PhysicalInstanceExtensionType {
-            pub fn to_cstr(&self) -> &'static std::ffi::CStr {
-                match self {
-                    #(Self::#instance_extension_enum_variants => unsafe {std::ffi::CStr::from_bytes_with_nul_unchecked(#instance_extension_cstr_names)})*
-                }
-            }
-            pub fn get_dependencies(&self) -> &[Self] {
-                match self {
-                    #(Self::#instance_extension_enum_variants => &[#(Self::#instance_extensions_dependencies,)*],)*
-                }
-            }
-            pub fn from_cstr(vk_name: &'static std::ffi::CStr) -> Option<Self> {
-                let bytes = vk_name.to_bytes_with_nul();
-                match bytes {
-                    #(#instance_extension_cstr_names => {Some(Self::#instance_extension_enum_variants)})*
-                    _ => {None}
-                }
-            }
+        pub trait InstanceExtension: Extension {
+            fn new(instance: &std::sync::Arc<crate::instance::Instance>) -> Self;
         }
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum PhysicalDeviceExtensionType {
-            #(#device_extension_enum_variants,)*
+        pub trait DeviceExtension: Extension {
+            type InstanceDependenciesTy;
+            const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr];
+            fn new(device: &std::sync::Arc<crate::device::Device>) -> Self;
         }
-        impl PhysicalDeviceExtensionType {
-            pub fn to_cstr(&self) -> &'static std::ffi::CStr {
-                match self {
-                    #(Self::#device_extension_enum_variants => unsafe {std::ffi::CStr::from_bytes_with_nul_unchecked(#device_extension_cstr_names)})*
-                }
-            }
-            pub fn get_dependencies(&self) -> &[Self] {
-                match self {
-                    #(Self::#device_extension_enum_variants => &[#(Self::#device_extension_dependencies,)*],)*
-                }
-            }
-            pub fn from_cstr(vk_name: &'static std::ffi::CStr) -> Option<Self> {
-                let bytes = vk_name.to_bytes_with_nul();
-                match bytes {
-                    #(#device_extension_cstr_names => {Some(Self::#device_extension_enum_variants)})*
-                    _ => {None}
-                }
-            }
-        }
-        pub enum DeviceExtensionType {
-            #(#device_extension_enum_variants #device_extension_instance_dependencies,)*
-        }
-        impl From<&DeviceExtensionType> for PhysicalDeviceExtensionType {
-            fn from(device_ext_type: &DeviceExtensionType) -> PhysicalDeviceExtensionType {
-                match device_ext_type {
-                    #(DeviceExtensionType::#device_extension_enum_variants #device_extension_match_pattern => Self::#device_extension_enum_variants,)*
-                }
-            }
-        }
-        #[derive(Clone)]
-        pub struct InstanceExtension<const EXT: PhysicalInstanceExtensionType> {
-            pub instance: std::sync::Arc<crate::instance::Instance>,
-            pub(crate) _p: std::marker::PhantomData<usize>,
-        }
-        #[derive(Clone)]
-        pub struct DeviceExtension<const EXT: PhysicalDeviceExtensionType> {
-            pub device: std::sync::Arc<crate::device::Device>,
-            pub(crate) _p: std::marker::PhantomData<usize>,
-        }
+
+        #(#instance_extension_struct_definations)*
+        #(#device_extension_struct_definations)*
     };
     (res, extension_infos)
 }

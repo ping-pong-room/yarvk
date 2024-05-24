@@ -66,14 +66,14 @@ flag type for feature safety:
 ```
 pub enum BufferCreateFlags {
     // DONE VUID-VkBufferCreateInfo-flags-00915
-    SparseBinding(Feature<{ SparseBinding.into() }>),
+    SparseBinding(FeatureSparseBinding),
     // DONE VUID-VkBufferCreateInfo-flags-00916
-    SparseResidency(Feature<{ SparseResidencyBuffer.into() }>),
+    SparseResidency(FeatureSparseResidencyBuffer),
     // DONE VUID-VkBufferCreateInfo-flags-00917
-    SparseAliased(Feature<{ SparseResidencyAliased.into() }>),
+    SparseAliased(FeatureSparseResidencyAliased),
     // DONE VUID-VkBufferCreateInfo-flags-01887
-    PROTECTED(Feature<{ ProtectedMemory.into() }>),
+    PROTECTED(FeatureProtectedMemory),
     // DONE VUID-VkBufferCreateInfo-flags-03338
-    DeviceAddressCaptureReplay(Feature<{ BufferDeviceAddressCaptureReplay.into() }>),
+    DeviceAddressCaptureReplay(FeatureBufferDeviceAddressCaptureReplay),
 }
 ```

@@ -613,7 +613,9 @@ impl<const LEVEL: Level, const SCOPE: RenderPassScope> CommandBuffer<LEVEL, { RE
         offset: u32,
         constants: &[u8],
     ) {
-        self.holding_resources.pipeline_layouts.insert(layout.ash_vk_pipeline_layout.as_raw(), layout.clone());
+        self.holding_resources
+            .pipeline_layouts
+            .insert(layout.ash_vk_pipeline_layout.as_raw(), layout.clone());
         unsafe {
             // Host Synchronization: commandBuffer, VkCommandPool
             self.device.ash_device.cmd_push_constants(

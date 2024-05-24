@@ -219,11 +219,13 @@ impl SubmitResult {
     pub fn add_primary_buffer(
         &mut self,
         mut primary_buffer: CommandBuffer<{ PRIMARY }, { INITIAL }, { OUTSIDE }>,
-        secondary_buffers: Vec<CommandBuffer<{SECONDARY}, {INITIAL}, {OUTSIDE}>>,
+        secondary_buffers: Vec<CommandBuffer<{ SECONDARY }, { INITIAL }, { OUTSIDE }>>,
     ) {
         primary_buffer.secondary_buffers = secondary_buffers;
         self.invalid_command_buffers
-            .insert(primary_buffer.handle(), unsafe { std::mem::transmute(primary_buffer) });
+            .insert(primary_buffer.handle(), unsafe {
+                std::mem::transmute(primary_buffer)
+            });
     }
     pub fn take_invalid_primary_buffer(
         &mut self,

@@ -1,5 +1,5 @@
-use crate::device_features::{PhysicalDeviceFeatures, SubPhysicalFeature, VkDeviceFeature};
-use crate::extensions::PhysicalDeviceExtensionType;
+use crate::device_features::Feature;
+use crate::extensions::DeviceExtension;
 use crate::instance::Instance;
 use crate::physical_device::memory_properties::PhysicalDeviceMemoryProperties;
 use crate::physical_device::queue_family_properties::QueueFamilyProperties;
@@ -26,9 +26,9 @@ impl Default for SharingMode {
 pub struct PhysicalDevice {
     pub instance: Arc<Instance>,
     pub(crate) vk_physical_device: ash::vk::PhysicalDevice,
-    pub(crate) supported_extensions: FxHashSet<PhysicalDeviceExtensionType>,
     pub(crate) memory_properties: PhysicalDeviceMemoryProperties,
     pub(super) physical_device_properties: ash::vk::PhysicalDeviceProperties,
+    supported_extensions: Vec<ash::vk::ExtensionProperties>,
 }
 
 impl PhysicalDevice {
@@ -36,15 +36,6 @@ impl PhysicalDevice {
         instance: Arc<Instance>,
         vk_physical_device: ash::vk::PhysicalDevice,
     ) -> Result<Arc<Self>, ash::vk::Result> {
-        let supported_extensions =
-            // Host Synchronization: none
-            unsafe { instance.ash_instance.enumerate_device_extension_properties(vk_physical_device)? }
-                .iter()
-                .filter_map(|ext_props| {
-                    PhysicalDeviceExtensionType::from_cstr(
-                        unsafe { CStr::from_ptr(ext_props.extension_name.as_ptr()) }
-                    )
-                }).collect();
         let memory_properties =
             Self::memory_properties_inner(&instance.ash_instance, vk_physical_device);
         let physical_device_properties = unsafe {
@@ -53,42 +44,44 @@ impl PhysicalDevice {
                 .ash_instance
                 .get_physical_device_properties(vk_physical_device)
         };
+        let supported_extensions = unsafe {
+            // Host Synchronization: none
+            instance
+                .ash_instance
+                .enumerate_device_extension_properties(vk_physical_device)
+                .unwrap()
+        };
         Ok(Arc::new(Self {
             instance,
             vk_physical_device,
-            supported_extensions,
             memory_properties,
             physical_device_properties,
+            supported_extensions,
         }))
     }
 
-    pub fn get_physical_device_features(&self) -> FxHashSet<PhysicalDeviceFeatures> {
+    pub fn supported_feature<T: Feature>(&self) -> bool {
         unsafe {
-            // Host Synchronization: none
+            let mut feature_holder = ash::vk::PhysicalDeviceFeatures2::default();
+            let mut feature2 = T::VkFeatureType::default();
+            if T::IS_FEATURE2 {
+                feature_holder.p_next = <*mut T::VkFeatureType>::cast(&mut feature2);
+            }
             self.instance
                 .ash_instance
-                .get_physical_device_features(self.vk_physical_device)
-                .collect_feature()
+                .get_physical_device_features2(self.vk_physical_device, &mut feature_holder);
+            if T::IS_FEATURE2 {
+                T::is_enabled(&feature2)
+            } else {
+                T::is_enabled(std::mem::transmute(&feature_holder.features))
+            }
         }
     }
 
-    pub fn get_physical_device_features2<T: SubPhysicalFeature>(
-        &self,
-    ) -> FxHashSet<<T::VkStruct as VkDeviceFeature>::SubFeatureEnumTy> {
-        let mut t = T::VkStruct::default();
-        let mut feature2 = ash::vk::PhysicalDeviceFeatures2::builder()
-            .push_next(&mut t)
-            .build();
-        unsafe {
-            // Host Synchronization: none
-            self.instance
-                .ash_instance
-                .get_physical_device_features2(self.vk_physical_device, &mut feature2);
-        }
-        t.collect_feature()
-    }
-
-    pub fn enumerate_device_extension_properties(&self) -> &FxHashSet<PhysicalDeviceExtensionType> {
-        &self.supported_extensions
+    pub fn supported_extension<EXT: DeviceExtension>(&self) -> bool {
+        self.supported_extensions
+            .iter()
+            .find(|ext| unsafe { CStr::from_ptr(ext.extension_name.as_ptr()) == EXT::NAME })
+            .is_some()
     }
 }

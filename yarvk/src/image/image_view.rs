@@ -1,8 +1,7 @@
 use crate::device::Device;
-use crate::device_features::{
-    Feature, FeatureType, PhysicalDeviceFeatures, PhysicalDeviceFragmentDensityMap2FeaturesEXT,
-    PhysicalDeviceFragmentDensityMapFeaturesEXT,
-};
+use crate::device_features::physical_device_features::FeatureImageCubeArray;
+use crate::device_features::physical_device_fragment_density_map2_features_ext::FeatureFragmentDensityMapDeferred;
+use crate::device_features::physical_device_fragment_density_map_features_ext::FeatureFragmentDensityMapDynamic;
 use crate::image::image_subresource_range::ImageSubresourceRange;
 use crate::image::IImage;
 use std::sync::Arc;
@@ -15,7 +14,7 @@ pub enum ImageViewType {
     Type1dArray,
     Type2dArray,
     // DONE VUID-VkImageViewCreateInfo-viewType-01004
-    TypeCubeArray(Feature<{ FeatureType::DeviceFeatures(PhysicalDeviceFeatures::ImageCubeArray) }>),
+    TypeCubeArray(FeatureImageCubeArray),
 }
 
 impl ImageViewType {
@@ -34,25 +33,9 @@ impl ImageViewType {
 
 pub enum ImageViewCreateFlags {
     // DONE VUID-VkImageViewCreateInfo-flags-02572
-    FragmentDensityMapDynamicBitExt(
-        Feature<
-            {
-                FeatureType::DeviceFragmentDensityMapFeaturesEXT(
-                    PhysicalDeviceFragmentDensityMapFeaturesEXT::FragmentDensityMapDynamic,
-                )
-            },
-        >,
-    ),
+    FragmentDensityMapDynamicBitExt(FeatureFragmentDensityMapDynamic),
     // DONE VUID-VkImageViewCreateInfo-flags-03567
-    FragmentDensityMapDeferredBitExt(
-        Feature<
-            {
-                FeatureType::DeviceFragmentDensityMap2FeaturesEXT(
-                    PhysicalDeviceFragmentDensityMap2FeaturesEXT::FragmentDensityMapDeferred,
-                )
-            },
-        >,
-    ),
+    FragmentDensityMapDeferredBitExt(FeatureFragmentDensityMapDeferred),
 }
 
 impl ImageViewCreateFlags {

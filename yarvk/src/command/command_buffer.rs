@@ -14,7 +14,7 @@ use ash::vk::Handle;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum State {
     INITIAL,
     RECORDING,
@@ -24,13 +24,13 @@ pub enum State {
     INVALID,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum Level {
     PRIMARY,
     SECONDARY,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, std::marker::ConstParamTy)]
 pub enum RenderPassScope {
     INSIDE,
     OUTSIDE,
@@ -110,7 +110,7 @@ impl CommandBufferInheritanceInfoBuilder {
         // TODO VUID-VkCommandBufferInheritanceInfo-pipelineStatistics-00058
         let mut arc_info = Arc::new(CommandBufferInheritanceInfo::default());
         unsafe {
-            let mut info = Arc::get_mut(&mut arc_info).unwrap_unchecked();
+            let info = Arc::get_mut(&mut arc_info).unwrap_unchecked();
             info.render_pass = self.render_pass;
             info.subpass = self.subpass;
             info.framebuffer = self.framebuffer;
@@ -376,9 +376,7 @@ impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { INITIAL }, SCOPE
 impl<const SCOPE: RenderPassScope> CommandBuffer<{ PRIMARY }, { RECORDING }, SCOPE> {
     pub fn cmd_execute_commands(
         &mut self,
-        secondary_command_buffers: Vec<
-            CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>,
-        >,
+        secondary_command_buffers: Vec<CommandBuffer<{ SECONDARY }, { EXECUTABLE }, { OUTSIDE }>>,
     ) {
         let mut vk_buffers = Vec::with_capacity(secondary_command_buffers.len());
         for buffer in secondary_command_buffers {

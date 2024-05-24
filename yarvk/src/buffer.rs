@@ -1,12 +1,6 @@
 use crate::command::command_buffer::State::RECORDING;
 use crate::command::command_buffer::{CommandBuffer, Level, RenderPassScope};
 use crate::device::Device;
-use crate::device_features::Feature;
-use crate::device_features::PhysicalDeviceFeatures::{
-    SparseBinding, SparseResidencyAliased, SparseResidencyBuffer,
-};
-use crate::device_features::PhysicalDeviceVulkan11Features::ProtectedMemory;
-use crate::device_features::PhysicalDeviceVulkan12Features::BufferDeviceAddressCaptureReplay;
 use crate::device_memory::IMemoryRequirements;
 use ash::vk::{DeviceSize, Handle};
 use std::ops::{Deref, DerefMut};
@@ -16,6 +10,11 @@ pub mod buffer_view;
 pub mod continuous_buffer;
 use crate::binding_resource::BindingResource;
 use crate::command::command_buffer::RenderPassScope::{INSIDE, OUTSIDE};
+use crate::device_features::physical_device_buffer_device_address_features::FeatureBufferDeviceAddressCaptureReplay;
+use crate::device_features::physical_device_features::{
+    FeatureSparseBinding, FeatureSparseResidencyAliased, FeatureSparseResidencyBuffer,
+};
+use crate::device_features::physical_device_protected_memory_features::FeatureProtectedMemory;
 pub use buffer_view::*;
 pub use continuous_buffer::*;
 
@@ -116,15 +115,15 @@ impl Drop for Buffer {
 
 pub enum BufferCreateFlags {
     // DONE VUID-VkBufferCreateInfo-flags-00915
-    SparseBinding(Feature<{ SparseBinding.into() }>),
+    SparseBinding(FeatureSparseBinding),
     // DONE VUID-VkBufferCreateInfo-flags-00916
-    SparseResidency(Feature<{ SparseResidencyBuffer.into() }>),
+    SparseResidency(FeatureSparseResidencyBuffer),
     // DONE VUID-VkBufferCreateInfo-flags-00917
-    SparseAliased(Feature<{ SparseResidencyAliased.into() }>),
+    SparseAliased(FeatureSparseResidencyAliased),
     // DONE VUID-VkBufferCreateInfo-flags-01887
-    PROTECTED(Feature<{ ProtectedMemory.into() }>),
+    PROTECTED(FeatureProtectedMemory),
     // DONE VUID-VkBufferCreateInfo-flags-03338
-    DeviceAddressCaptureReplay(Feature<{ BufferDeviceAddressCaptureReplay.into() }>),
+    DeviceAddressCaptureReplay(FeatureBufferDeviceAddressCaptureReplay),
 }
 
 impl BufferCreateFlags {
@@ -243,7 +242,9 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
         dst_offset: ash::vk::DeviceSize,
         data: &[u8],
     ) {
-        self.holding_resources.write_buffers.insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
+        self.holding_resources
+            .write_buffers
+            .insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
         unsafe {
             self.device.ash_device.cmd_update_buffer(
                 self.vk_command_buffer,
@@ -260,8 +261,12 @@ impl<const LEVEL: Level> CommandBuffer<LEVEL, { RECORDING }, { OUTSIDE }> {
         dst_buffer: Arc<IBuffer>,
         regions: &[ash::vk::BufferCopy],
     ) {
-        self.holding_resources.read_buffers.insert(src_buffer.ash_vk_buffer.as_raw(), src_buffer.clone());
-        self.holding_resources.write_buffers.insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
+        self.holding_resources
+            .read_buffers
+            .insert(src_buffer.ash_vk_buffer.as_raw(), src_buffer.clone());
+        self.holding_resources
+            .write_buffers
+            .insert(dst_buffer.ash_vk_buffer.as_raw(), dst_buffer.clone());
         unsafe {
             self.device.ash_device.cmd_copy_buffer(
                 self.vk_command_buffer,
