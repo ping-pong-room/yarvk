@@ -557,7 +557,7 @@ impl Extension for ExtensionKhrIncrementalPresent {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionKhrIncrementalPresent {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -611,7 +611,7 @@ impl Extension for ExtensionNvAcquireWinrtDisplay {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[];
 }
 impl DeviceExtension for ExtensionNvAcquireWinrtDisplay {
-    type InstanceDependenciesTy = (ExtensionExtDirectModeDisplay,);
+    type InstanceDependenciesTy = ExtensionExtDirectModeDisplay;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] =
         &[ExtensionExtDirectModeDisplay::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
@@ -631,7 +631,7 @@ impl Extension for ExtensionKhrSwapchainMutableFormat {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionKhrSwapchainMutableFormat {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -685,7 +685,7 @@ impl Extension for ExtensionAmdDisplayNativeHdr {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionAmdDisplayNativeHdr {
-    type InstanceDependenciesTy = (ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
         ExtensionKhrGetSurfaceCapabilities2::NAME,
         ExtensionKhrSurface::NAME,
@@ -1114,7 +1114,7 @@ impl Extension for ExtensionKhrPresentWait {
         &[ExtensionKhrSwapchain::NAME, ExtensionKhrPresentId::NAME];
 }
 impl DeviceExtension for ExtensionKhrPresentWait {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -1168,7 +1168,7 @@ impl Extension for ExtensionKhrDisplaySwapchain {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionKhrDisplaySwapchain {
-    type InstanceDependenciesTy = (ExtensionKhrDisplay, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionKhrDisplay, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] =
         &[ExtensionKhrDisplay::NAME, ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
@@ -1370,7 +1370,7 @@ impl Extension for ExtensionExtHdrMetadata {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionExtHdrMetadata {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -1764,7 +1764,7 @@ impl Extension for ExtensionGgpFrameToken {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionGgpFrameToken {
-    type InstanceDependenciesTy = (ExtensionGgpStreamDescriptorSurface, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionGgpStreamDescriptorSurface, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
         ExtensionGgpStreamDescriptorSurface::NAME,
         ExtensionKhrSurface::NAME,
@@ -1858,7 +1858,7 @@ impl Extension for ExtensionKhrPresentId {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionKhrPresentId {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -1931,7 +1931,7 @@ impl Extension for ExtensionExtDisplayControl {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionExtDisplayControl {
-    type InstanceDependenciesTy = (ExtensionExtDisplaySurfaceCounter, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionExtDisplaySurfaceCounter, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
         ExtensionExtDisplaySurfaceCounter::NAME,
         ExtensionKhrSurface::NAME,
@@ -1971,7 +1971,7 @@ impl Extension for ExtensionKhrSharedPresentableImage {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionKhrSharedPresentableImage {
-    type InstanceDependenciesTy = (ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
         ExtensionKhrGetSurfaceCapabilities2::NAME,
         ExtensionKhrSurface::NAME,
@@ -2014,7 +2014,7 @@ impl Extension for ExtensionQcomRenderPassTransform {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionQcomRenderPassTransform {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -2668,7 +2668,7 @@ impl Extension for ExtensionKhrSwapchain {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[];
 }
 impl DeviceExtension for ExtensionKhrSwapchain {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -2742,7 +2742,7 @@ impl Extension for ExtensionQcomRotatedCopyCommands {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionQcomRotatedCopyCommands {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -2817,7 +2817,7 @@ impl Extension for ExtensionExtFullScreenExclusive {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionExtFullScreenExclusive {
-    type InstanceDependenciesTy = (ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface);
+    type InstanceDependenciesTy = ((ExtensionKhrGetSurfaceCapabilities2, ExtensionKhrSurface));
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
         ExtensionKhrGetSurfaceCapabilities2::NAME,
         ExtensionKhrSurface::NAME,
@@ -2935,7 +2935,7 @@ impl Extension for ExtensionNvExternalMemoryWin32 {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionNvExternalMemory::NAME];
 }
 impl DeviceExtension for ExtensionNvExternalMemoryWin32 {
-    type InstanceDependenciesTy = (ExtensionNvExternalMemoryCapabilities,);
+    type InstanceDependenciesTy = ExtensionNvExternalMemoryCapabilities;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] =
         &[ExtensionNvExternalMemoryCapabilities::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
@@ -3010,7 +3010,7 @@ impl Extension for ExtensionGoogleDisplayTiming {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSwapchain::NAME];
 }
 impl DeviceExtension for ExtensionGoogleDisplayTiming {
-    type InstanceDependenciesTy = (ExtensionKhrSurface,);
+    type InstanceDependenciesTy = ExtensionKhrSurface;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[ExtensionKhrSurface::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {
         Self {
@@ -3028,7 +3028,7 @@ impl Extension for ExtensionNvExternalMemory {
     const DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[];
 }
 impl DeviceExtension for ExtensionNvExternalMemory {
-    type InstanceDependenciesTy = (ExtensionNvExternalMemoryCapabilities,);
+    type InstanceDependenciesTy = ExtensionNvExternalMemoryCapabilities;
     const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] =
         &[ExtensionNvExternalMemoryCapabilities::NAME];
     fn new(device: &std::sync::Arc<crate::device::Device>) -> Self {

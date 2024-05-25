@@ -94,7 +94,7 @@ impl DeviceBuilder {
         self
     }
 
-    pub fn add_feature<FT: Feature + 'static>(mut self) -> Result<Self, ash::vk::Result> {
+    pub fn add_feature<FT: Feature + 'static>(mut self, _instance_extension_dependency: <FT::RequiredExtension as DeviceExtension>::InstanceDependenciesTy) -> Result<Self, ash::vk::Result> {
         if !self.physical_device.supported_feature::<FT>() {
             return Err(ash::vk::Result::ERROR_FEATURE_NOT_PRESENT);
         }

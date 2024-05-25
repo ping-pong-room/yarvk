@@ -141,6 +141,7 @@ pub fn descriptor_set_variadic_generics(n: usize) -> (TokenStream, TokenStream) 
                                 .create_descriptor_set_layout(&create_info, None)?;
                             Ok(Arc::new(DescriptorSetLayout {
                                 device: device.clone(),
+                                _init_value: self,
                                 ash_vk_descriptor_set_layout,
                                 _phantom_data: Default::default(),
                             }))

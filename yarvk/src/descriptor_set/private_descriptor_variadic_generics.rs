@@ -11,6 +11,7 @@ use crate::descriptor_set::private::{
     PrivateConstDescriptorSetValue, PrivateDescriptorSetValue, TryGetImmutableSamplers,
 };
 use crate::device::Device;
+use ash::vk::DescriptorSet;
 use std::sync::Arc;
 impl<
         const BINDING_0: u32,
@@ -96,7 +97,7 @@ impl<
     }
     fn push_to_init(
         vk_value: &mut Self::VkType,
-        ash_vk_descriptor_set: ash::vk::DescriptorSet,
+        ash_vk_descriptor_set: DescriptorSet,
         vec: &mut ParallelSplitWriteDescriptorSets,
     ) {
         {
@@ -267,7 +268,7 @@ impl<
     }
     fn push_to_init(
         vk_value: &mut Self::VkType,
-        ash_vk_descriptor_set: ash::vk::DescriptorSet,
+        ash_vk_descriptor_set: DescriptorSet,
         vec: &mut ParallelSplitWriteDescriptorSets,
     ) {
         {

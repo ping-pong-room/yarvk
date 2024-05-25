@@ -233,10 +233,10 @@ fn main() {
         .build();
     let (device, mut queues) = Device::builder(pdevice)
         .add_queue_info(queue_create_info)
-        .add_extension::<ExtensionKhrSwapchain>((surface_ext,))
+        .add_extension::<ExtensionKhrSwapchain>(surface_ext)
         .unwrap()
         // .add_feature(DeviceFeatures::LogicOp)
-        .add_feature::<FeatureSamplerAnisotropy>()
+        .add_feature::<FeatureSamplerAnisotropy>(())
         .unwrap()
         .build()
         .unwrap();

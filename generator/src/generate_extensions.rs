@@ -192,6 +192,15 @@ pub fn generate_extensions(spec2: &Registry) -> (TokenStream, ExtensionMap) {
                     .into_iter()
                     .map(|ident| format_ident!("Extension{}", &ident))
                     .collect();
+                // we manually handle this to deal with nd dependency, single dependency, and multiple dependencies.
+                // the reason to do this is to avoid tuple type for single dependency.
+                let instance_dependency_ty = if instance_dependencies.is_empty() {
+                    quote!(()) // couldn't be nicer, unless using specialization in nightly.
+                } else if instance_dependencies.len() == 1 {
+                    quote!(#(#instance_dependencies)*) // no comma, no tuple
+                } else {
+                    quote!(((#(#instance_dependencies,)*))) // tuple with comma
+                };
                 device_extension_struct_definations.push(
                     quote!(
                         #[derive(Clone)]
@@ -205,7 +214,7 @@ pub fn generate_extensions(spec2: &Registry) -> (TokenStream, ExtensionMap) {
                             ];
                         }
                         impl DeviceExtension for #struct_name {
-                            type InstanceDependenciesTy = (#(#instance_dependencies,)*);
+                            type InstanceDependenciesTy = #instance_dependency_ty;
                             const INSTANCE_DEPENDENCIES: &'static [&'static std::ffi::CStr] = &[
                                 #(#instance_dependencies::NAME,)*
                             ];
