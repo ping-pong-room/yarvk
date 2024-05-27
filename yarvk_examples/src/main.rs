@@ -135,13 +135,10 @@ pub fn find_memory_type_index<'a>(
     memory_prop: &'a PhysicalDeviceMemoryProperties,
     flags: MemoryPropertyFlags,
 ) -> Option<&'a MemoryType> {
-    memory_prop
-        .memory_type_in_order()
-        .iter()
-        .find(|&memory_type| {
-            (1 << memory_type.index) & memory_req.memory_type_bits != 0
-                && memory_type.property_flags & flags == flags
-        })
+    memory_prop.memory_types().iter().find(|&memory_type| {
+        (1 << memory_type.index) & memory_req.memory_type_bits != 0
+            && memory_type.property_flags & flags == flags
+    })
 }
 
 type MyDescriptorLayout = DescriptorSetValue2<
